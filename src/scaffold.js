@@ -26,6 +26,7 @@ export async function scaffold(answers) {
   log.success('Files generated.');
 
   checkPrettierOnPath();
+  checkB6pInstalled();
 
   if (answers.initGit) {
     try {
@@ -48,6 +49,34 @@ function checkPrettierOnPath() {
   } catch {
     log.warn('prettier not found in WSL PATH. The prettier-on-save hook will be a no-op until you run: wsl bash -lc "npm i -g prettier"');
   }
+}
+
+function checkB6pInstalled() {
+  try {
+    execSync('wsl bash -lc "command -v b6p"', { stdio: 'ignore' });
+    return;
+  } catch {
+    // fall through to the warning
+  }
+  log.warn(
+    [
+      'b6p CLI not found in WSL. The /b6p-pull and /b6p-push skills will not work without it.',
+      '',
+      'Install it by cloning the upstream monorepo and linking the CLI package:',
+      '',
+      '    git clone git@github.com:Bluestep-Systems/vscode-extension.git ~/bluestep-vscode-extension',
+      '    cd ~/bluestep-vscode-extension',
+      '    npm install',
+      '    npm run compile',
+      '    cd packages/b6p-cli',
+      '    npm link',
+      '',
+      'Verify with: wsl bash -lc "b6p --help"',
+      '',
+      'If the git clone fails with a permissions error, you need access to the',
+      'Bluestep-Systems GitHub org. Ask in your team channel or contact a maintainer.',
+    ].join('\n')
+  );
 }
 
 // Generate .github/instructions/<name>.instructions.md from the same content

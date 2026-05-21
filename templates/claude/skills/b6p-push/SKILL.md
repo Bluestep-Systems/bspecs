@@ -71,4 +71,8 @@ Where `<prefix>` is `bash -lc` (inside WSL) or `wsl bash -lc` (from Windows). Us
 
 ## If the CLI fails
 
-The VS Code b6p extension is the equivalent fallback. Do not retry the CLI in a loop.
+Two distinct failure modes — handle them differently:
+
+- **`command not found: b6p`** — the CLI is not installed on this machine. Do NOT retry. Tell the user:
+  > `b6p` is not installed. See the "Install the b6p CLI" section of this project's `README.md` for one-time setup. Once installed, retry `/b6p-push <component>`.
+- **Any other error** (network, auth, conflict, etc.) — the VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Do not retry the CLI in a loop.

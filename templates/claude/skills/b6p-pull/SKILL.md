@@ -122,4 +122,8 @@ Next: read draft/README.md, then start editing. For a new feature use /spec-crea
 
 ## If the CLI fails
 
-The VS Code b6p extension is the equivalent fallback. Tell the user to use it via the editor UI rather than retrying the CLI in a loop.
+Two distinct failure modes — handle them differently:
+
+- **`command not found: b6p`** — the CLI is not installed on this machine. Do NOT retry, do NOT try alternative invocations. Tell the user:
+  > `b6p` is not installed. See the "Install the b6p CLI" section of this project's `README.md` for one-time setup. Once installed, retry `/b6p-pull <DAV URL>`.
+- **Any other error** (network, auth, lock, etc.) — `b6p` is installed but the call failed. The VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Tell the user to use it via the editor UI rather than retrying the CLI in a loop.

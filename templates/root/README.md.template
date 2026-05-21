@@ -8,13 +8,39 @@ A project is a collection of B6P components, organised by Unit. `b6p pull "<DAV 
 
 ## Prerequisites
 
-- `b6p` CLI installed in **WSL** under nvm (typical install path).
-- Always invoke b6p through a WSL **login shell** so nvm/PATH load:
-  - `wsl bash -lc 'b6p pull "<DAV URL>"'`
-  - `wsl bash -lc 'b6p push --file "U######/<Component>/draft/scripts/app.ts"'`
-- Plain `wsl b6p ...` fails with `command not found` because it skips the profile. The `require-wsl-for-b6p` hook enforces the correct shape.
-- The DAV URL is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
-- If the b6p CLI fails, use the **VS Code b6p extension** as a fallback.
+### Install the `b6p` CLI (one-time)
+
+This project relies on the `b6p` CLI for all sync with the BlueStep platform. As of this writing, `b6p` is not yet published to npm, so it has to be built from source:
+
+```bash
+git clone git@github.com:Bluestep-Systems/vscode-extension.git ~/bluestep-vscode-extension
+cd ~/bluestep-vscode-extension
+npm install
+npm run compile
+cd packages/b6p-cli
+npm link
+```
+
+Verify with:
+
+```bash
+wsl bash -lc "b6p --help"
+```
+
+If `git clone` fails with a permissions error, you need access to the `Bluestep-Systems` GitHub org — ask in your team channel.
+
+The **VS Code b6p extension** (`bsjs-push-pull`, published in the Marketplace) is an equivalent fallback for pull/push when the CLI is not available.
+
+### How to invoke `b6p`
+
+Always through a WSL **login shell** so nvm/PATH load:
+
+- `wsl bash -lc 'b6p pull "<DAV URL>"'`
+- `wsl bash -lc 'b6p push --file "U######/<Component>/draft/scripts/app.ts"'`
+
+Plain `wsl b6p ...` fails with `command not found` because it skips the profile. The `require-wsl-for-b6p` hook enforces the correct shape.
+
+The DAV URL is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
 
 ## Daily workflow
 

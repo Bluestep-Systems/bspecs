@@ -1,6 +1,6 @@
 {
   "name": "@bluestep/init",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Scaffolding CLI for BlueStep Platform projects",
   "type": "module",
   "bin": {
