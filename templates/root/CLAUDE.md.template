@@ -1,0 +1,114 @@
+# {{CLIENT_NAME}} — {{PROJECT_NAME}}
+
+**Scaffolded:** {{SCAFFOLD_DATE}}
+
+## Project description
+
+{{PROJECT_DESCRIPTION}}
+
+## Workspace model
+
+This workspace is a **local copy** of components that live on the BlueStep platform. The platform is the source of truth.
+
+- A project may span **one or more Unit folders** (`U######/`). Unit folders are created by `b6p pull` — never by hand.
+- Each Unit folder contains one or more **components** of any type (MergeReport, Endpoint, Formula, OnDemand, Scheduled, Post-Save). A single project mixes types freely.
+- New B6P **components** are created on the platform, never locally. Inside an existing component, creating new `.ts` files locally is fine.
+- Sync with the platform via `b6p pull "<DAV URL>"` (first pull or re-sync) and `b6p push --file "<component-path>/..."` (deploy). See the Sync workflow section below for the exact invocation.
+
+## Critical rules (always apply)
+
+1. **NEVER** edit `declarations/`, `B.d.ts`, `scriptlibrary.d.ts`, `Globals.d.ts` — platform-generated. _(enforced by hook)_
+2. **NEVER** use `.writable()`. Field writability is configured on the platform, not requested in code.
+3. **NEVER** run `tsc` locally. Compilation is handled by the platform on push. _(enforced by hook)_
+4. **NEVER** create new B6P components locally. Create them on the platform first, then pull.
+5. **ALWAYS** run `b6p` through a WSL login shell: `wsl bash -lc 'b6p ...'`. Plain `wsl b6p ...` skips the login shell and fails with "command not found" because nvm/PATH never loads. _(enforced by hook)_
+6. In **MergeReports**: frontend (HTML/CSS/JS) lives in `static/`, NOT in `scripts/`.
+7. The workspace is a local copy — the platform is source of truth.
+8. **NEVER** fabricate query/form/field references. They must exist in `imports.ts` (older modules) or `declarations.d.ts` (newer modules) before use. If missing, add them on the platform and pull first.
+
+## Module structure
+
+```
+<project-root>/
+├── U######/                       ← Unit folder (created by `b6p pull`, one per unit)
+│   └── ComponentName/             ← any component type — read metadata.json to identify
+│       ├── declarations/          ← platform-generated, DO NOT EDIT
+│       └── draft/
+│           ├── README.md          ← what this module does today — read before editing
+│           ├── scripts/           ← TypeScript source (BsJs)
+│           ├── objects/           ← imports.ts (older modules) or declarations.d.ts (newer)
+│           ├── static/            ← MergeReport only: HTML, CSS, client JS
+│           └── info/              ← config.json, metadata.json, permissions.json
+└── U######/                       ← another unit, more components — same shape
+```
+
+Component type is encoded in `draft/info/metadata.json` (and the matching `config.json`). When you need to know whether a component is an Endpoint, MergeReport, etc., read those — don't infer from folder names.
+
+**Two distinct docs, by lifecycle:**
+
+- `<Component>/draft/README.md` — describes what the module **does today**. Lives inside `draft/` so it ships to the platform on push; anyone who pulls the module gets the doc. Scaffolded automatically by `/b6p-pull` when missing; if you change documented behavior, update the README in the same change.
+- `.claude/specs/<feature>/` — describes what you are about to **change or add** (requirements → design → tasks). Per feature, not per component. Created by `/spec-create`.
+
+## The `B` object (platform API)
+
+| Namespace     | Purpose                                       |
+|---------------|-----------------------------------------------|
+| `B.net`       | Outbound HTTP (`B.net.fetch()`)               |
+| `B.util`      | Utilities (logging, parsing, formatting)      |
+| `B.io`        | I/O, WebSocket push (`B.io.sendMessage()`)    |
+| `B.db`        | Database access                               |
+| `B.time`      | Date/time — use this instead of native `Date` |
+| `B.queries`   | Query objects defined on the platform         |
+| `B.exports`   | Cross-formula data sharing                    |
+| `B.user`      | Current user (null in scheduled/cron scripts) |
+| `B.commit()`  | Force a mid-script transaction commit         |
+
+Full API patterns: @.claude/instructions/bsjs-development.md
+
+## MCP servers
+
+- **Context7** (`.vscode/mcp.json`) — fetch up-to-date docs for external libraries when a script depends on one.
+
+## Session start — read this once per conversation
+
+**At the start of every session, before suggesting or implementing anything, read `draft/README.md` of every component pulled under any `U######/` directory.**
+
+That's the context you need to be useful in this project. Each module's `draft/README.md` describes what the module does today. They were scaffolded by `/b6p-pull` from the code; treat them as the source of truth for current behavior. Do this once at session start, not per task — the READMEs are stable across a session.
+
+If a module has no `draft/README.md` (or it's empty boilerplate), ask the user to run `/b6p-pull <DAV URL>` against that component to scaffold one. Don't proceed to edit code in a module whose README is missing.
+
+## Documentation and planning workflow
+
+Two distinct artifacts, separated by lifecycle:
+
+- **`<Component>/draft/README.md`** — what the module **does today**. Read at session start (see above). Update only when documented behavior changes. Ships to the platform on push, so other devs who pull the module get the doc.
+- **`.claude/specs/<feature>/`** — what we're about to **change or add** (requirements → design → tasks). Per feature, not per component. Created by `/spec-create`. Archived/deleted when the feature is done.
+
+Workflows:
+
+- **New feature:** `/spec-create <feature-name>` → requirements → design → tasks (with approval gates) → `/spec-execute <feature> <task#>` one task at a time.
+- **Bug fix:** `/bug-fix` (shorter, no full 3-phase spec).
+
+## Sync workflow (b6p CLI)
+
+- **Pull (DAV URL required):** `wsl bash -lc 'b6p pull "<DAV URL>"'`. The DAV URL is copied from the component's page in the BlueStep platform UI — `b6p pull` does not accept display names. First pull creates the `U######/` folder and the component skeleton.
+- **Push (file-driven):** `wsl bash -lc 'b6p push --file "U######/<Component>/draft/scripts/app.ts"'`. `--file` lets the CLI derive the destination from local metadata.
+- Both verify per-file integrity and only transfer files whose content changed.
+- If the b6p CLI fails, the VS Code b6p extension is an equivalent fallback.
+
+## Self-improvement
+
+If you discover a B6P rule or pattern that is not documented here:
+
+1. Apply it for the current task.
+2. Update the relevant file (`CLAUDE.md`, `.claude/instructions/bsjs-development.md`, or `.claude/instructions/b6p-platform.md`) to capture the rule.
+3. Note in your response: "Added rule: <description>".
+
+## Secrets
+
+`.vscode/mcp.json` is gitignored because it contains the Context7 API key. Do not remove it from `.gitignore`.
+
+## Deep reference
+
+@.claude/instructions/bsjs-development.md
+@.claude/instructions/b6p-platform.md

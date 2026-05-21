@@ -1,0 +1,313 @@
+---
+description: Deep technical reference for BsJs (BlueStep TypeScript). Read when writing or modifying component code.
+applyTo: "**/draft/scripts/**/*.ts"
+---
+
+# BsJs Development Reference
+
+Deep reference for BlueStep TypeScript development. Critical rules live in `CLAUDE.md`; this file covers patterns, APIs, and conventions that apply when actually writing code.
+
+## Module structure
+
+```
+<project-root>/
+└── U######/                       ← Unit folder, created by `b6p pull`
+    └── ComponentName/
+        ├── declarations/          ← platform-generated, DO NOT EDIT
+        │   ├── B.d.ts
+        │   ├── scriptlibrary.d.ts
+        │   ├── Globals.d.ts
+        │   └── declarations.d.ts  ← newer modules: imports declared here
+        └── draft/
+            ├── scripts/           ← TypeScript source
+            │   ├── app.ts         ← entry point
+            │   └── <feature>.ts   ← split modules
+            ├── objects/
+            │   └── imports.ts     ← older modules: imports declared here (see R2)
+            ├── static/            ← MergeReport only: HTML, CSS, client JS
+            └── info/
+                ├── config.json
+                ├── metadata.json  ← identifies component type (read to know what this is)
+                └── permissions.json
+```
+
+A project may contain multiple Unit folders, each with multiple components of varying types. **Module split convention:** split complex logic into focused files under `scripts/`. `app.ts` is the entry point.
+
+## The `B` object — full API
+
+### `B.net` — outbound HTTP
+
+```typescript
+const response = B.net.fetch("https://api.example.com/data", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ key: "value" }),
+  timeout: 30000,
+});
+
+if (response.ok) {
+  const data = JSON.parse(response.body);
+}
+```
+
+### `B.time` — date/time
+
+Use `B.time` for any date/time work. Native `Date` is not supported.
+
+```typescript
+const now = B.time.now();
+const formatted = B.time.format(now, "yyyy-MM-dd HH:mm:ss");
+const parsed = B.time.parse("2026-05-15", "yyyy-MM-dd");
+```
+
+### `B.queries` — query objects
+
+Queries are defined on the platform and exposed in `imports.ts` (older modules) or `declarations.d.ts` (newer modules). Reference them only after pulling.
+
+```typescript
+const results = B.queries.activeClients.execute();
+for (const record of results) {
+  // ...
+}
+```
+
+**Unit scoping:** queries are unit-scoped by default. When re-using a query across units, call `clearSearchAndSort()` to reset filters:
+
+```typescript
+const query = B.queries.allRecords;
+query.execute();             // current unit
+query.clearSearchAndSort();
+query.unit = otherUnit;
+query.execute();             // other unit
+```
+
+### `B.exports` — cross-formula data
+
+Used to pass data between formulas in the same execution context.
+
+```typescript
+B.exports.totalScore = computeScore();
+B.clearExports();            // when starting fresh
+```
+
+### `B.user` — current user
+
+`B.user` is **null** in scheduled / cron scripts. Always guard:
+
+```typescript
+if (B.user) {
+  const userId = B.user.id;
+}
+```
+
+### `B.commit()` — manual transaction commit
+
+The platform calls `B.commit()` automatically when the script finishes. Only call it manually when:
+
+- You need a newly created entry's ID before the script ends.
+- You need post-saves to fire before subsequent reads.
+
+```typescript
+const newEntry = B.queries.someForm.getNewEntry();
+newEntry.name.set("test");
+B.commit();
+const id = newEntry.id;      // now available
+```
+
+## Reading and writing fields
+
+### Read
+
+```typescript
+const value = entry.fieldName.val();                          // current value
+const exportValue = entry.statusField.selectedExportValue();  // dropdown export value
+const all = entry.tagsField.allValues();                       // multi-select
+```
+
+### Write
+
+Do not call `.writable()`. Field writability is configured on the platform — if the field is not configured as writable for this script type, the write will throw at runtime. Write directly:
+
+```typescript
+entry.nameField.set("new value");
+entry.statusField.setByExportValue("active");
+entry.tagsField.add("priority");
+entry.tagsField.remove("legacy");
+```
+
+### Multi-entry forms
+
+```typescript
+for (const entry of record.someForm.allEntries) {
+  entry.field.set("value");
+}
+
+const newEntry = record.someForm.getNewEntry();
+newEntry.name.set("new");
+
+oldEntry.delete();
+```
+
+## Patterns by script type
+
+### Post-Save
+
+Runs after a record is saved. Use `justCreated()` to distinguish new vs. updated records. `curEntry` is the entry being saved.
+
+```typescript
+export function run(): void {
+  if (curEntry.justCreated()) {
+    sendWelcomeEmail();
+  } else {
+    syncToExternal();
+  }
+}
+```
+
+### Endpoint
+
+Receives an HTTP request, returns a response. **Set `contentType` before writing the body. Use exactly one output method per request** (`out`, `stream`, or `redirect`).
+
+```typescript
+export function run(): void {
+  const action = request.param("action");
+  switch (action) {
+    case "list":  return listAll();
+    case "get":   return getOne();
+    default:      return badRequest();
+  }
+}
+
+function listAll(): void {
+  response.contentType = "application/json";
+  response.out(JSON.stringify({ items: getItems() }));
+}
+
+function badRequest(): void {
+  response.status = 400;
+  response.contentType = "text/plain";
+  response.out("Unknown action");
+}
+```
+
+#### Streaming (large responses)
+
+NDJSON pattern for streaming large datasets:
+
+```typescript
+response.contentType = "application/x-ndjson";
+const stream = response.stream();
+for (const record of B.queries.largeQuery.execute()) {
+  stream.write(JSON.stringify({ id: record.id, name: record.name.val() }) + "\n");
+}
+stream.close();
+```
+
+#### Redirect
+
+```typescript
+response.redirect("/some/path");
+```
+
+### MergeReport
+
+Backend logic in `scripts/`; **frontend in `static/`** (R3). Inject content into pages via `pageContent()`:
+
+```typescript
+export function run(): void {
+  pageContent("main").write(renderMain());
+  HEADER_SCRIPTS_BOTTOM().write(`<script src="${staticUrl("client.js")}"></script>`);
+  BODY().write(`<div class="footer">...</div>`);
+}
+```
+
+### OnDemand / Field Formula
+
+```typescript
+export function run(): void {
+  const result = runFormula();
+  B.message.info(`Result: ${result}`);
+}
+```
+
+### Scheduled / cron
+
+`B.user` is null. Use stored credentials or hardcoded service identities, and guard accordingly.
+
+```typescript
+export function run(): void {
+  if (B.user) {
+    log.warn("Scheduled script should not have a user context");
+    return;
+  }
+  doScheduledWork();
+}
+```
+
+### WebSocket push
+
+```typescript
+B.io.sendMessage(channelId, JSON.stringify({ type: "update", payload: data }));
+```
+
+## `info/` configuration
+
+### `config.json` (required)
+
+```json
+{
+  "language": "BsJs",
+  "entryPoint": "scripts/app.ts"
+}
+```
+
+### `metadata.json`
+
+Identifies the component type. Examples:
+
+- `"triggerType": "POST_SAVE"` — post-save
+- `"triggerType": "ENDPOINT"` — endpoint
+- `"triggerType": "ON_DEMAND"` — on-demand
+- `"triggerType": "SCHEDULED"` — scheduled
+
+### `permissions.json`
+
+Defines who can execute / view this component. Managed on the platform; usually pulled, rarely hand-edited.
+
+## Imports — never fabricate
+
+Query, form, and field references must exist in `imports.ts` (older modules) or `declarations.d.ts` (newer modules) **before** you reference them in code. If a name is missing:
+
+1. Add it on the platform.
+2. Run `wsl bash -lc 'b6p pull "<DAV URL>"'` to update declarations.
+3. Then reference it in TypeScript.
+
+Hallucinating an import name silently passes type-check locally if the file is missing, but will fail at platform compile.
+
+## Error handling
+
+The platform surfaces uncaught exceptions in the script log. Patterns:
+
+```typescript
+try {
+  const response = B.net.fetch(url, { timeout: 5000 });
+  if (!response.ok) {
+    log.error(`Upstream returned ${response.status}`);
+    return;
+  }
+  process(response.body);
+} catch (err) {
+  log.error(`Fetch failed: ${err.message}`);
+}
+```
+
+For endpoints, prefer explicit status codes over throwing:
+
+```typescript
+if (!validInput) {
+  response.status = 400;
+  response.contentType = "application/json";
+  response.out(JSON.stringify({ error: "invalid input" }));
+  return;
+}
+```

@@ -1,0 +1,147 @@
+---
+description: BlueStep Platform workflow and lifecycle reference. Read when working with the b6p CLI, pulling/pushing, or troubleshooting sync issues.
+applyTo: "**/.b6p_metadata.json"
+---
+
+# B6P Platform Workflow
+
+Workflow reference for sync, lifecycle, and the b6p CLI. Critical rules live in `CLAUDE.md`.
+
+## Workspace model
+
+The workspace is a **local copy** of components that live on the BlueStep platform. The platform is the source of truth.
+
+- New B6P components (MergeReport, Endpoint, Formula) are created **on the platform**, never locally.
+- Inside an existing component, creating new `.ts` files locally is fine — they ship to the platform on `push`.
+- The platform handles compilation. Local `tsc` is forbidden (enforced by hook).
+
+## Data hierarchy
+
+```
+Organization
+└── Unit (folder: U######)
+    └── BaseRecord
+        └── Form
+            └── Entry
+                └── Field
+```
+
+Queries, scripts, and permissions are scoped per Unit by default. A local project may pull components from multiple Units; each lives under its own `U######/` folder created by `b6p pull` on first pull.
+
+## Script types
+
+| Type           | `B.user` available | Notes                                              |
+|----------------|--------------------|----------------------------------------------------|
+| Post-Save      | Yes                | Runs after a record is saved                       |
+| MergeReport    | Yes                | Page renderer; frontend in `static/`               |
+| Endpoint       | Yes                | HTTP-style request handler                         |
+| OnDemand       | Yes                | User-triggered formula                             |
+| Field Formula  | Yes                | Computes a field's value                           |
+| Scheduled      | **No (null)**      | Runs on cron; guard `B.user` accordingly           |
+| Section Script | Yes                | Page section logic                                 |
+
+## b6p CLI workflow
+
+All `b6p` commands run inside WSL through a **login shell**. The shape is:
+
+```
+wsl bash -lc 'b6p <subcommand> ...'
+```
+
+### Why `bash -lc` and not plain `wsl b6p ...`
+
+`b6p` is installed under nvm (`~/.nvm/versions/node/vXX/bin/b6p`). nvm adds itself to PATH via `~/.zshrc` / `~/.bashrc`, which only runs in a login shell. Plain `wsl b6p ...` spawns a non-login shell, skips the profile, and fails with `command not found: b6p`. `bash -lc '...'` is a login shell — it loads the profile, nvm sets PATH, and b6p is found.
+
+The `require-wsl-for-b6p.sh` hook enforces this shape and rejects bare `wsl b6p ...`.
+
+### Pull a component
+
+```
+wsl bash -lc 'b6p pull "<DAV URL>"'
+```
+
+**`b6p pull` takes a DAV URL, not a display name.** The URL is copied from the component's page in the BlueStep platform UI. There is no name-based lookup; the CLI has no way to find a component by its label.
+
+`b6p pull --help` reference:
+
+```
+Usage: b6p pull [options] [formula-url]
+
+Pull a script from a WebDAV location
+
+Options:
+  --file <path>       Derive source from local file metadata
+  --workspace <path>  Target workspace folder (default: cwd)
+```
+
+A successful first pull:
+
+- Creates the `U######/` folder (if not present) and the `<ComponentName>/` subfolder under it
+- Populates `draft/scripts/`, `draft/info/`, `draft/objects/` (older modules) or `declarations/declarations.d.ts` (newer modules)
+- Populates `declarations/` with the platform-generated `.d.ts` files
+- Writes `.b6p_metadata.json` at the component root for future pulls/pushes
+
+Subsequent pulls verify per-file integrity and only rewrite files whose content changed.
+
+### Push a component
+
+The cleanest way to push an already-pulled component is `--file`, which lets the CLI derive the destination DAV URL from local `.b6p_metadata.json`:
+
+```
+wsl bash -lc 'b6p push --file "U######/<Component>/draft/scripts/app.ts"'
+```
+
+Any file inside the component works as the `--file` argument; the CLI walks up to find `.b6p_metadata.json`. Same per-file integrity check applies — only changed files are uploaded. The platform compiles after receiving the push.
+
+### Fallback: VS Code extension
+
+If the `b6p` CLI fails (network, lock, auth), the VS Code **b6p extension** is an equivalent fallback for pull/push operations.
+
+## `.b6p_metadata.json`
+
+Auto-managed by the CLI. Tracks WebDAV IDs, last-pull / last-push timestamps, file hashes, and script keys. **Never edit manually.**
+
+## Files Claude must never edit
+
+Enforced by the `block-generated-files` hook:
+
+- Anything under `declarations/`
+- `B.d.ts`, `scriptlibrary.d.ts`, `Globals.d.ts`
+- (Treat `imports.ts` and `declarations.d.ts` as platform-generated as well — they regenerate on pull.)
+
+If declarations are wrong, fix it on the platform and pull, not by editing locally.
+
+## Imports — verification flow
+
+Before referencing a query/form/field in code:
+
+1. Open `draft/objects/imports.ts` (older modules) or `declarations/declarations.d.ts` (newer modules).
+2. Confirm the name exists.
+3. If missing:
+   - Add it on the platform.
+   - `wsl bash -lc 'b6p pull "<DAV URL>"'` to regenerate the declarations.
+   - Then write the TypeScript reference.
+
+Hallucinated names pass local edits but fail on platform compile after push.
+
+## When the CLI fails
+
+Common causes:
+
+- `b6p` not installed in WSL (only on Windows). Install in WSL.
+- Network/auth issue with the platform. Re-authenticate.
+- Local file lock. Close VS Code, retry.
+
+Fallbacks:
+
+1. The VS Code b6p extension provides the same pull/push operations through the editor UI.
+2. As a last resort, the platform UI lets you download/upload component files manually — but losing `.b6p_metadata.json` consistency makes future CLI sync fragile.
+
+## When `B.commit()` is required
+
+The platform commits automatically when a script finishes. Call `B.commit()` manually only when:
+
+- A new entry's `id` is needed before the script ends.
+- A subsequent read in the same script must see writes that haven't fired post-saves yet.
+
+In most scripts, manual `B.commit()` is unnecessary.

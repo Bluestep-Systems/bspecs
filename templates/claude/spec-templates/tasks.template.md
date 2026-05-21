@@ -1,0 +1,37 @@
+# Tasks — [Feature Name]
+
+**Status:** Drafting | Approved | In progress | Complete
+
+Each task must reference specific file paths or platform artifacts and be small enough to ship as one coherent unit. Tasks must NOT involve:
+
+- Running `tsc` locally
+- Editing `declarations/` or any `.d.ts` file
+- Creating new B6P components locally (those go on the platform first)
+
+## Task prefix convention
+
+Every task starts with one of two prefixes that says **where** the work happens:
+
+- `[PLATFORM]` — done in the BlueStep UI (creating a field, query, formula, component-level config, permissions, etc.). **Not executable by `/spec-execute`** — the user does these manually. Must be listed before any `[CODE]` task that depends on them, so the ordering encodes the dependency.
+- `[CODE]` — done in this workspace (TypeScript, static assets, README updates). **Executable by `/spec-execute`**.
+
+If the design says "no platform-side changes needed," every task is `[CODE]` and the prefix is still required (no implicit type).
+
+## Tasks
+
+- [ ] **1. [PLATFORM]** [Short description, e.g. "Create field `appointment_end_time` on form `Appointment`"]
+- [ ] **2. [CODE]** [Short description] — files: `U######/Component/draft/scripts/foo.ts`
+- [ ] **3. [CODE]** [Short description] — files: `U######/Component/draft/scripts/bar.ts`, `U######/Component/draft/README.md`
+
+(Repeat as needed. Keep tasks small enough that one `/spec-execute` invocation covers exactly one.)
+
+## Deployment
+
+Once all `[CODE]` tasks above are checked, push the affected components back to the platform. Use `/b6p-push` or run manually:
+
+- `U######/<ComponentName>` — `wsl bash -lc 'b6p push --file "U######/<ComponentName>/draft/scripts/app.ts"'`
+- (List every component touched by `[CODE]` tasks. One push per component.)
+
+## Verification
+
+How to confirm the feature works once deployed (UI flow to exercise, expected log output, query to run on the platform, etc.).

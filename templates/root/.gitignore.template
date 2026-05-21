@@ -1,0 +1,17 @@
+# MCP server config contains API keys
+.vscode/mcp.json
+
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo

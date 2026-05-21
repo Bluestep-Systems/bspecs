@@ -1,0 +1,32 @@
+{
+  "name": "@bluestep/init",
+  "version": "0.2.0",
+  "description": "Scaffolding CLI for BlueStep Platform projects",
+  "type": "module",
+  "bin": {
+    "bluestep-init": "./cli.js",
+    "b6p-init": "./cli.js"
+  },
+  "files": [
+    "cli.js",
+    "src/",
+    "templates/"
+  ],
+  "scripts": {
+    "start": "node cli.js"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.9.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com",
+    "access": "restricted"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bluestep/bluestep-init.git"
+  }
+}

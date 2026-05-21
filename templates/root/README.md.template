@@ -1,0 +1,45 @@
+# {{CLIENT_NAME}} — {{PROJECT_NAME}}
+
+{{PROJECT_DESCRIPTION}}
+
+## Layout
+
+A project is a collection of B6P components, organised by Unit. `b6p pull "<DAV URL>"` creates the `U######/` folder and the component skeleton on first pull — you do not create Unit folders by hand. A single project commonly spans multiple Unit folders, and each Unit folder holds components of different types (Endpoint, MergeReport, Formula, etc.).
+
+## Prerequisites
+
+- `b6p` CLI installed in **WSL** under nvm (typical install path).
+- Always invoke b6p through a WSL **login shell** so nvm/PATH load:
+  - `wsl bash -lc 'b6p pull "<DAV URL>"'`
+  - `wsl bash -lc 'b6p push --file "U######/<Component>/draft/scripts/app.ts"'`
+- Plain `wsl b6p ...` fails with `command not found` because it skips the profile. The `require-wsl-for-b6p` hook enforces the correct shape.
+- The DAV URL is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
+- If the b6p CLI fails, use the **VS Code b6p extension** as a fallback.
+
+## Daily workflow
+
+1. **Pull a component:** `/b6p-pull <DAV URL>` (Claude skill — also scaffolds `draft/README.md` from metadata + code when missing) or `wsl bash -lc 'b6p pull "<DAV URL>"'`. The Unit folder is created automatically if it does not exist yet.
+2. **Read the component's `draft/README.md`** before editing.
+3. **Edit code** under `U######/<component>/draft/scripts/` — never `declarations/`.
+4. **Push back:** `/b6p-push <component>` (Claude skill) or `wsl bash -lc 'b6p push --file "U######/<component>/draft/scripts/app.ts"'`.
+
+## New feature workflow
+
+Use Claude skills for spec-driven development:
+
+- `/spec-create <feature>` — generate requirements/design/tasks with approval gates.
+- `/spec-execute <feature> <task#>` — implement one task.
+- `/spec-status` — see progress.
+- `/bug-fix` — shorter workflow for bug fixes.
+
+## Configuration
+
+- `CLAUDE.md` — main Claude context (critical rules, workspace model, API summary).
+- `.claude/instructions/` — deep technical reference.
+- `.claude/hooks/` — automatic guardrails (block edits to `declarations/`, require `wsl` prefix, block `tsc`, auto-format).
+- `.claude/skills/` — slash commands you can invoke (`/b6p-pull`, `/spec-create`, etc.).
+- `.github/instructions/` — mirror of `.claude/instructions/` for GitHub Copilot.
+
+## Secrets
+
+`.vscode/mcp.json` contains the Context7 API key and is **gitignored**. Do not remove it from `.gitignore`.
