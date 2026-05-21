@@ -54,13 +54,14 @@ function checkPrettierOnPath() {
 function checkB6pInstalled() {
   try {
     execSync('wsl bash -lc "command -v b6p"', { stdio: 'ignore' });
+    log.info('b6p CLI detected. Run "wsl bash -lc \'b6p auth set\'" once if you have not configured credentials yet.');
     return;
   } catch {
     // fall through to the warning
   }
   log.warn(
     [
-      'b6p CLI not found in WSL. The /b6p-pull and /b6p-push skills will not work without it.',
+      'b6p CLI not found in WSL. The /b6p-pull, /b6p-push, and /b6p-audit skills will not work without it.',
       '',
       'Install it by cloning the upstream monorepo and linking the CLI package:',
       '',
@@ -72,6 +73,9 @@ function checkB6pInstalled() {
       '    npm link',
       '',
       'Verify with: wsl bash -lc "b6p --help"',
+      '',
+      'Then configure your platform credentials (one-time):',
+      '    wsl bash -lc "b6p auth set"',
       '',
       'If the git clone fails with a permissions error, you need access to the',
       'Bluestep-Systems GitHub org. Ask in your team channel or contact a maintainer.',

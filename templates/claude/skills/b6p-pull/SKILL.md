@@ -46,10 +46,12 @@ Run `uname -s` once and remember the result. Use it to decide between `bash -lc 
 Using the shell-prefix decided in step 0:
 
 ```
-<prefix> 'b6p pull "<DAV URL>"'
+<prefix> 'b6p --yes pull "<DAV URL>"'
 ```
 
-(So either `bash -lc 'b6p pull "<DAV URL>"'` or `wsl bash -lc 'b6p pull "<DAV URL>"'`.)
+(So either `bash -lc 'b6p --yes pull "<DAV URL>"'` or `wsl bash -lc 'b6p --yes pull "<DAV URL>"'`.)
+
+The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call will hang. Always include it.
 
 Capture the output — it prints the local path where the component landed.
 

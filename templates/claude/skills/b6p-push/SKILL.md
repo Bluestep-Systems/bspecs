@@ -52,10 +52,12 @@ Do not push without explicit confirmation.
 ### 4. Run the push
 
 ```
-<prefix> 'b6p push --file "U######/<ComponentName>/draft/scripts/app.ts"'
+<prefix> 'b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"'
 ```
 
 Where `<prefix>` is `bash -lc` (inside WSL) or `wsl bash -lc` (from Windows). Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
+
+The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call will hang. Always include it.
 
 ### 5. Report
 

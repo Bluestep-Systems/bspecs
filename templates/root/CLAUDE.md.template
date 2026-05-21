@@ -84,17 +84,51 @@ Two distinct artifacts, separated by lifecycle:
 - **`<Component>/draft/README.md`** — what the module **does today**. Read at session start (see above). Update only when documented behavior changes. Ships to the platform on push, so other devs who pull the module get the doc.
 - **`.claude/specs/<feature>/`** — what we're about to **change or add** (requirements → design → tasks). Per feature, not per component. Created by `/spec-create`. Archived/deleted when the feature is done.
 
-Workflows:
+## Skill quick reference
 
-- **New feature:** `/spec-create <feature-name>` → requirements → design → tasks (with approval gates) → `/spec-execute <feature> <task#>` one task at a time.
-- **Bug fix:** `/bug-fix` (shorter, no full 3-phase spec).
+Available skills (full docs in `.claude/skills/<name>/SKILL.md`):
 
-## Sync workflow (b6p CLI)
+| Skill | When the user wants to… |
+|---|---|
+| `/b6p-pull <DAV URL>` | Bring a component down from the platform (first pull or re-sync) |
+| `/b6p-push <component>` | Send local changes back to the platform |
+| `/b6p-audit <component>` | Compare local vs. platform, see what diverged (read-only) |
+| `/spec-create <feature-name>` | Plan a new feature (requirements → design → tasks) |
+| `/spec-execute <feature> <task#>` | Implement one specific task from a spec |
+| `/spec-status` | Show progress across all in-flight specs |
+| `/bug-fix` | Quick workflow for clearly-scoped bugs (no full 3-phase spec) |
 
-- **Pull (DAV URL required):** `wsl bash -lc 'b6p pull "<DAV URL>"'`. The DAV URL is copied from the component's page in the BlueStep platform UI — `b6p pull` does not accept display names. First pull creates the `U######/` folder and the component skeleton.
-- **Push (file-driven):** `wsl bash -lc 'b6p push --file "U######/<Component>/draft/scripts/app.ts"'`. `--file` lets the CLI derive the destination from local metadata.
-- Both verify per-file integrity and only transfer files whose content changed.
-- If the b6p CLI fails, the VS Code b6p extension is an equivalent fallback.
+### Mandatory routing rule (spec-driven changes)
+
+**Before editing any TypeScript or static file under `U######/<Component>/draft/`**, you MUST route through one of these workflows — never edit directly because the user asked "change X":
+
+1. If the user describes a **feature** (new behavior, anything that requires designing): require `/spec-create` first. If a spec already exists for it (`.claude/specs/<feature>/tasks.md`), use `/spec-execute`.
+2. If the user describes a **bug** (incorrect existing behavior): require `/bug-fix` first.
+3. If the user explicitly says "this is trivial, just do it" or similar (typo fix, log message, comment, rename of a local variable): you may skip the workflow, but say what you're about to do and wait for "ok" before touching files.
+
+The point: the spec/bug workflow exists so changes are reviewed and traceable. Skipping it loses the value of the system. Ask once if a request is ambiguous; never assume.
+
+### Soft routing (everything else)
+
+For sync, status, and audit operations, infer naturally from what the user asks and propose the matching skill. Examples:
+
+- "pulleamelo" / "trae el módulo X" → suggest `/b6p-pull <URL>` (ask for URL if not provided).
+- "pushea esto" / "subilo" → `/b6p-push <component>`.
+- "¿cambió algo en la plataforma?" / "¿esto está sincronizado?" → `/b6p-audit <component>`.
+- "¿cómo van los specs?" / "¿qué tengo en curso?" → `/spec-status`.
+
+You don't need explicit confirmation to invoke these — they're either read-only or already have their own internal confirmation steps.
+
+## Sync workflow (b6p CLI internals)
+
+The skills above wrap these commands. You can run them directly if you need to, but prefer the skills for guidance and consistency.
+
+- **Pull (DAV URL required):** `wsl bash -lc 'b6p --yes pull "<DAV URL>"'`. The DAV URL is copied from the component's page in the BlueStep platform UI — `b6p pull` does not accept display names. First pull creates the `U######/` folder and the component skeleton.
+- **Push (file-driven):** `wsl bash -lc 'b6p --yes push --file "U######/<Component>/draft/scripts/app.ts"'`. `--file` lets the CLI derive the destination from local metadata.
+- **Audit (read-only):** `wsl bash -lc 'b6p --yes --json audit --file "U######/<Component>/draft/scripts/app.ts"'`. Lists files that differ between local and platform.
+- Always pass `--yes` so the CLI does not show interactive prompts that Claude cannot answer.
+- Both pull and push verify per-file integrity and only transfer files whose content changed.
+- If the b6p CLI fails with `command not found`, see the "Install the b6p CLI" section of the project's `README.md`. For other errors, the VS Code b6p extension is an equivalent fallback.
 
 ## Self-improvement
 

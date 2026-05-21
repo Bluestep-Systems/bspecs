@@ -44,6 +44,7 @@ const expected = [
   '.claude/instructions/b6p-platform.md',
   '.claude/skills/b6p-pull/SKILL.md',
   '.claude/skills/b6p-push/SKILL.md',
+  '.claude/skills/b6p-audit/SKILL.md',
   '.claude/skills/spec-create/SKILL.md',
   '.claude/skills/spec-execute/SKILL.md',
   '.claude/skills/spec-status/SKILL.md',

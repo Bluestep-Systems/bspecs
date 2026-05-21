@@ -15,10 +15,20 @@ For deeper context behind any decision, see `docs/decisions/`.
 
 ## Flow improvements
 
-- [ ] **`/b6p-pull` should handle re-pulls of existing modules.** Today the skill assumes first pull. For subsequent pulls (to sync platform-side changes), it should surface a diff of what changed in `declarations/`, `draft/info/metadata.json`, etc., so the user knows what to react to.
-- [ ] **`/b6p-push` should warn if the user is pushing against stale local state.** If the platform has changed since the last pull, pushing local edits can overwrite other devs' work. The skill should check and warn before pushing.
 - [ ] **`/spec-status` should split `[PLATFORM]` vs `[CODE]` task counts.** Today it just counts `[x]` vs `[ ]`. A spec at 3/5 means very different things if the 2 pending tasks are `[PLATFORM]` (blocking) vs `[CODE]` (just unimplemented).
 - [ ] **Spec consistency validation.** If `design.md` says "no platform-side changes" but `tasks.md` has `[PLATFORM]` tasks, nothing catches it. Could be a `/spec-validate` skill or a check inside `/spec-execute`.
+
+### Resolved by 0.3.0 (audit skill)
+
+- ~~`/b6p-pull` should handle re-pulls of existing modules~~ — `/b6p-audit` covers the "what changed on the platform" need on demand. Subsequent pulls still work; if the user wants the diff first, they run `/b6p-audit` then `/b6p-pull`.
+- ~~`/b6p-push` should warn if the user is pushing against stale local state~~ — kept as on-demand `/b6p-audit` instead of automatic pre-flight, per design decision: most sessions push multiple times and the user knows whether parallel work is likely; b6p's server-side conflict detection covers the worst case. Reopen if real-world use shows lost work.
+
+## b6p CLI integration — wave 2 (defer)
+
+The full b6p CLI audit (see git history for the conversation) surfaced two more capabilities worth considering, both deferred until we have a concrete use case:
+
+- [ ] **`--snapshot` + `--message` in push.** b6p supports pushing as a snapshot with a commit-style message for server-side history. Could be tied to `/spec-execute` task completion: "push task N as snapshot with message `feat(spec/FEATURE): task N done`". Needs a convention decision first — when does a push become a snapshot vs. a plain draft push?
+- [ ] **`/b6p-deploy <feature>` skill.** Wrap `b6p deploy <config>` for multi-target deployment using the `## Deployment` section of a spec's `tasks.md`. Useful when a feature touches multiple components that all need to ship together to one or more environments. Defer until the multi-environment story for B6P is clearer.
 
 ## Polish / nice-to-have
 
@@ -27,6 +37,19 @@ For deeper context behind any decision, see `docs/decisions/`.
 - [ ] **Skill messages in mixed languages.** The hard-coded "STOP" messages in `SKILL.md` files are in English; Claude sometimes reads them literally and breaks the Spanish flow the user is in. Consider whether SKILL.md should be language-neutral or have a localisation hook.
 - [ ] **`block-tsc` hook does not catch `tsc -p tsconfig.json`.** The pattern matches `tsc*` at start, so `tsc -p ...` is blocked correctly. But verify edge cases like `./node_modules/.bin/tsc`, `yarn tsc`, etc.
 - [ ] **`/bug-fix` could use the `[PLATFORM]/[CODE]` distinction too.** Today it doesn't generate a structured task list, but for bugs that need both a platform change and a code change, the lack of structure makes the handoff vague.
+
+## Done in 0.3.0
+
+- [x] `--yes` flag on all `b6p` invocations to prevent interactive prompts hanging Claude.
+- [x] `/b6p-audit` skill wrapping `b6p audit --json` for on-demand local-vs-platform comparison.
+- [x] `auth set` reminder in scaffolder pre-flight and project README.
+- [x] CLAUDE.md "Skill quick reference" with mandatory routing rule for spec-driven changes.
+
+## Done in 0.2.1
+
+- [x] Pre-flight check for missing `b6p` CLI with install instructions.
+- [x] Decision record at `docs/decisions/b6p-cli-distribution.md`.
+- [x] `TODO.md` established as living pending-work list.
 
 ## Done in 0.2.0
 
