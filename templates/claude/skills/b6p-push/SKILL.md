@@ -16,21 +16,15 @@ b6p push --file <path-inside-component>
 
 Any file inside the component works as the `--file` argument; the CLI walks up to find `.b6p_metadata.json`.
 
-## Detecting the shell environment
+## Where `b6p` lives in this project
 
-Same rule as `/b6p-pull`:
-
-1. Run `uname -s`.
-2. If `Linux` → invoke as `bash -lc 'b6p ...'`.
-3. Otherwise → invoke as `wsl bash -lc 'b6p ...'`.
-
-The `-lc` is required so nvm/PATH load — the `require-wsl-for-b6p` hook enforces this.
+Read `.claude/b6p-env.json` and use its `shellPrefix` for every b6p invocation. See `/b6p-pull`'s SKILL.md for the full description of accepted prefix shapes and the auto-detect / persist / fallback procedure.
 
 ## Steps
 
-### 0. Detect environment
+### 0. Resolve the b6p shell prefix
 
-Run `uname -s` once; use the result to choose between `bash -lc` and `wsl bash -lc` for the push command.
+Read `.claude/b6p-env.json` and use its `shellPrefix` for the push command. If the file does not exist, auto-detect and persist (see the section above).
 
 ### 1. Identify the component
 
@@ -52,10 +46,10 @@ Do not push without explicit confirmation.
 ### 4. Run the push
 
 ```
-<prefix> 'b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"'
+<shellPrefix> 'b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"'
 ```
 
-Where `<prefix>` is `bash -lc` (inside WSL) or `wsl bash -lc` (from Windows). Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
+Where `<shellPrefix>` is whatever `.claude/b6p-env.json` resolved to in step 0. Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
 
 The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call will hang. Always include it.
 

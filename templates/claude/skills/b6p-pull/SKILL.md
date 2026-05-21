@@ -18,21 +18,49 @@ The user copies the DAV URL from the component's page in the BlueStep platform U
 
 A first pull creates the `U######/<ComponentName>/` folder (creating the U-folder if it does not exist) and populates `declarations/`, `draft/`, and `.b6p_metadata.json`.
 
-## Detecting the shell environment
+## Where `b6p` lives in this project
 
-Before invoking b6p, determine where you are running:
+`bluestep-init` scaffolds `.claude/b6p-env.json` with the install location it found at scaffold time. Read that file once at the start of the skill — its `shellPrefix` is the prefix you must prepend to every `b6p` invocation:
 
-1. Run `uname -s` (in the Bash tool).
-2. If output is `Linux` → you are already inside WSL. Invoke b6p as: `bash -lc 'b6p ...'`
-3. Otherwise (Darwin/MINGW/etc., or any non-Linux) → you are on Windows. Invoke b6p as: `wsl bash -lc 'b6p ...'`
+```json
+{
+  "shellPrefix": "/usr/bin/zsh -ic",
+  "location": "native",
+  "detectedAt": "..."
+}
+```
 
-The `-lc` is required either way: it forces a **login shell** so that nvm (which is where b6p lives) populates PATH. Plain `b6p ...` or `wsl b6p ...` will fail with "command not found" because the login profile never loads. The `require-wsl-for-b6p` hook enforces this shape.
+`shellPrefix` can be any of these shapes (depending on where `b6p` was found):
+
+- `bash -lc` / `bash -ic` — `b6p` in the host bash.
+- `zsh -lc` / `zsh -ic` (or with an absolute path like `/usr/bin/zsh -ic`) — `b6p` in the host zsh.
+- `wsl bash -lc`, `wsl zsh -ic`, etc. — `b6p` lives inside WSL, called from a Windows host.
+- An empty string `""` — `b6p` is on the native Windows PATH (e.g. an `npx`-shimmed install).
+
+The `-lc` vs `-ic` distinction matters because nvm (where b6p typically lives) is usually configured in `.zshrc` / `.bashrc`, which only loads in interactive shells (`-ic`). `-lc` is the cleaner option when it works.
+
+The `require-wsl-for-b6p` hook accepts any of these shapes.
+
+### If `.claude/b6p-env.json` does NOT exist
+
+The scaffolder did not find `b6p` at scaffold time (maybe the user installed it after). Auto-detect once and persist by probing this ordered list of candidates until one succeeds:
+
+1. `<user-shell> -lc "command -v b6p"`  ← cleanest if it works
+2. `<user-shell> -ic "command -v b6p"`  ← needed when nvm lives in .zshrc/.bashrc
+3. `/bin/bash -lc "command -v b6p"`  ← fallback if user-shell is unusual
+4. `/bin/bash -ic "command -v b6p"`
+
+Where `<user-shell>` is `$SHELL` if it looks like bash/zsh/sh/fish, else `/bin/bash`. On Windows, prepend `wsl ` to each of those (and also try the plain command first, since b6p may be on the Windows PATH directly).
+
+If all probes fail → STOP and tell the user: `b6p` is not installed. Point them at the "Install the b6p CLI" section of the project's `README.md`.
+
+On success, write `.claude/b6p-env.json` with the detected shape so subsequent skill invocations skip the probe. If the user wants to redo this detection (e.g. they reinstalled `b6p` in a different location), they run `/b6p-detect`.
 
 ## Steps
 
-### 0. Detect environment
+### 0. Resolve the b6p shell prefix
 
-Run `uname -s` once and remember the result. Use it to decide between `bash -lc 'b6p ...'` (inside WSL) and `wsl bash -lc 'b6p ...'` (on Windows) for every b6p invocation below.
+Read `.claude/b6p-env.json` and remember its `shellPrefix`. If the file does not exist, follow the auto-detect procedure described in the "Where `b6p` lives in this project" section above.
 
 ### 1. Get the DAV URL
 
@@ -43,13 +71,13 @@ Run `uname -s` once and remember the result. Use it to decide between `bash -lc 
 
 ### 2. Run the pull
 
-Using the shell-prefix decided in step 0:
+Using the `shellPrefix` resolved in step 0:
 
 ```
-<prefix> 'b6p --yes pull "<DAV URL>"'
+<shellPrefix> 'b6p --yes pull "<DAV URL>"'
 ```
 
-(So either `bash -lc 'b6p --yes pull "<DAV URL>"'` or `wsl bash -lc 'b6p --yes pull "<DAV URL>"'`.)
+(For example: `bash -lc 'b6p --yes pull "<DAV URL>"'` or `wsl bash -lc 'b6p --yes pull "<DAV URL>"'`.)
 
 The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call will hang. Always include it.
 

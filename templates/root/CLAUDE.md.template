@@ -93,6 +93,7 @@ Available skills (full docs in `.claude/skills/<name>/SKILL.md`):
 | `/b6p-pull <DAV URL>` | Bring a component down from the platform (first pull or re-sync) |
 | `/b6p-push <component>` | Send local changes back to the platform |
 | `/b6p-audit <component>` | Compare local vs. platform, see what diverged (read-only) |
+| `/b6p-detect` | Re-detect where `b6p` is installed and refresh `.claude/b6p-env.json`. Rarely needed — only after re-installing b6p in a different location. |
 | `/spec-create <feature-name>` | Plan a new feature (requirements → design → tasks) |
 | `/spec-execute <feature> <task#>` | Implement one specific task from a spec |
 | `/spec-status` | Show progress across all in-flight specs |
@@ -123,11 +124,23 @@ You don't need explicit confirmation to invoke these — they're either read-onl
 
 The skills above wrap these commands. You can run them directly if you need to, but prefer the skills for guidance and consistency.
 
-- **Pull (DAV URL required):** `wsl bash -lc 'b6p --yes pull "<DAV URL>"'`. The DAV URL is copied from the component's page in the BlueStep platform UI — `b6p pull` does not accept display names. First pull creates the `U######/` folder and the component skeleton.
-- **Push (file-driven):** `wsl bash -lc 'b6p --yes push --file "U######/<Component>/draft/scripts/app.ts"'`. `--file` lets the CLI derive the destination from local metadata.
-- **Audit (read-only):** `wsl bash -lc 'b6p --yes --json audit --file "U######/<Component>/draft/scripts/app.ts"'`. Lists files that differ between local and platform.
+The exact invocation prefix depends on **where `b6p` is installed** on this machine and **which shell + flags load the user's PATH**. The scaffolder writes the detected prefix to `.claude/b6p-env.json` — read the `shellPrefix` field and prepend it to every `b6p` call. Examples:
+
+- `bash -lc` / `bash -ic` — host bash (login or interactive).
+- `zsh -lc` / `/usr/bin/zsh -ic` — host zsh; `-ic` is needed when nvm is configured in `.zshrc` (common).
+- `wsl bash -lc` / `wsl zsh -ic` — `b6p` lives inside WSL, invoked from Windows.
+- `""` (empty) — `b6p` is on the native Windows PATH.
+
+The `-lc` / `-ic` distinction matters: nvm-installed binaries (like `b6p`) usually require an interactive shell (`-ic`) because nvm is configured in `.zshrc` / `.bashrc`, not in `.zprofile`.
+
+Examples below use `<shellPrefix>` as a placeholder:
+
+- **Pull (DAV URL required):** `<shellPrefix> 'b6p --yes pull "<DAV URL>"'`. The DAV URL is copied from the component's page in the BlueStep platform UI — `b6p pull` does not accept display names. First pull creates the `U######/` folder and the component skeleton.
+- **Push (file-driven):** `<shellPrefix> 'b6p --yes push --file "U######/<Component>/draft/scripts/app.ts"'`. `--file` lets the CLI derive the destination from local metadata.
+- **Audit (read-only):** `<shellPrefix> 'b6p --yes --json audit --file "U######/<Component>/draft/scripts/app.ts"'`. Lists files that differ between local and platform.
 - Always pass `--yes` so the CLI does not show interactive prompts that Claude cannot answer.
 - Both pull and push verify per-file integrity and only transfer files whose content changed.
+- If `.claude/b6p-env.json` is missing, the skills auto-detect on first use. To redo detection (after re-installing `b6p` in a different location), run `/b6p-detect`.
 - If the b6p CLI fails with `command not found`, see the "Install the b6p CLI" section of the project's `README.md`. For other errors, the VS Code b6p extension is an equivalent fallback.
 
 ## Self-improvement

@@ -1,6 +1,6 @@
 import { execSync } from 'child_process';
 import { join } from 'path';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync } from 'fs';
 import { log } from '@clack/prompts';
 import { ensureDir, copyTemplateTree, writeFile, applyTemplate, TEMPLATES_DIR } from './utils.js';
 
@@ -26,7 +26,11 @@ export async function scaffold(answers) {
   log.success('Files generated.');
 
   checkPrettierOnPath();
-  checkB6pInstalled();
+  const b6pEnv = detectB6pEnvironment();
+  reportB6pStatus(b6pEnv);
+  if (b6pEnv) {
+    writeB6pEnvFile(projectDir, b6pEnv);
+  }
 
   if (answers.initGit) {
     try {
@@ -43,48 +47,94 @@ export async function scaffold(answers) {
   }
 }
 
-// Wrap a `command -v X` lookup based on where Node is running.
-//
-// - Linux (including WSL): the user's PATH is the one to inspect. Run `bash -lc`
-//   directly so nvm/profile load and we see the same PATH the user sees.
-// - Anywhere else (Windows-native Node, macOS): assume we need to reach into
-//   WSL to find Linux-only tools. Use `wsl bash -lc`.
-//
-// Calling `wsl ...` from inside WSL is the bug this avoids — it either fails
-// outright (no `wsl` binary in Linux) or invokes the Windows-side interop,
-// which evaluates against the wrong PATH.
-function loginShellPrefix() {
-  return process.platform === 'linux' ? 'bash -lc' : 'wsl bash -lc';
-}
-
-function commandAvailable(name) {
+// Probe whether `command -v <name>` succeeds when invoked with the given
+// shell prefix (e.g. "bash -lc" or "wsl zsh -ic" or "" for raw exec).
+// Stderr is silenced because interactive shells often emit banners/warnings.
+function probeCommand(name, shellPrefix) {
   try {
-    execSync(`${loginShellPrefix()} "command -v ${name}"`, { stdio: 'ignore' });
+    const cmd = shellPrefix
+      ? `${shellPrefix} "command -v ${name}"`
+      : (process.platform === 'win32' ? `where ${name}` : `command -v ${name}`);
+    execSync(cmd, { stdio: ['ignore', 'ignore', 'ignore'] });
     return true;
   } catch {
     return false;
   }
 }
 
-function checkPrettierOnPath() {
-  if (commandAvailable('prettier')) return;
-  const installCmd = process.platform === 'linux'
-    ? 'npm i -g prettier'
-    : 'wsl bash -lc "npm i -g prettier"';
-  log.warn(`prettier not found in the login-shell PATH. The prettier-on-save hook will be a no-op until you run: ${installCmd}`);
+// Pick the user's preferred shell binary on Linux/macOS based on $SHELL,
+// falling back to /bin/bash if $SHELL is unset or unrecognised.
+function userShell() {
+  const shell = process.env.SHELL && /\/(bash|zsh|sh|fish)$/.test(process.env.SHELL)
+    ? process.env.SHELL
+    : '/bin/bash';
+  return shell;
 }
 
-function checkB6pInstalled() {
-  if (commandAvailable('b6p')) {
-    const authCmd = process.platform === 'linux'
-      ? "b6p auth set"
-      : "wsl bash -lc 'b6p auth set'";
-    log.info(`b6p CLI detected. Run "${authCmd}" once if you have not configured credentials yet.`);
+// Build the list of shell prefixes worth probing for a binary on this host.
+// Order matters — first match wins.
+//
+// Two flag variants are tried per shell:
+//   -lc → login shell. Loads ~/.zprofile or ~/.bash_profile. Clean (no banners)
+//         but does NOT load .zshrc/.bashrc — and nvm typically lives there,
+//         so this often misses node-installed binaries like b6p.
+//   -ic → interactive shell. Loads .zshrc/.bashrc, so nvm works. May print
+//         banners or warnings to stderr (silenced).
+//
+// On Linux/macOS we try the user's shell with both flags. On Windows we try
+// native PATH first (where x.exe), then probe WSL zsh and bash with both
+// flags (the WSL default shell isn't visible from this side).
+function shellPrefixCandidates() {
+  if (process.platform === 'win32') {
+    return [
+      '',                 // native install on Windows PATH
+      'wsl zsh -lc',
+      'wsl zsh -ic',
+      'wsl bash -lc',
+      'wsl bash -ic',
+    ];
+  }
+  const shell = userShell();
+  const result = [`${shell} -lc`, `${shell} -ic`];
+  if (!shell.endsWith('/bash')) result.push('/bin/bash -lc', '/bin/bash -ic');
+  return result;
+}
+
+function classifyPrefix(prefix) {
+  return prefix.startsWith('wsl ') ? 'wsl' : 'native';
+}
+
+function detectEnvironmentFor(name) {
+  for (const prefix of shellPrefixCandidates()) {
+    if (probeCommand(name, prefix)) {
+      return { location: classifyPrefix(prefix), shellPrefix: prefix };
+    }
+  }
+  return null;
+}
+
+function checkPrettierOnPath() {
+  if (detectEnvironmentFor('prettier')) return;
+  const installCmd = process.platform === 'linux' || process.platform === 'darwin'
+    ? 'npm i -g prettier'
+    : 'npm i -g prettier  (in PowerShell)  or  wsl bash -lc "npm i -g prettier"  (in WSL)';
+  log.warn(`prettier not found in either the native or WSL PATH. The prettier-on-save hook will be a no-op until you run: ${installCmd}`);
+}
+
+function detectB6pEnvironment() {
+  return detectEnvironmentFor('b6p');
+}
+
+function reportB6pStatus(env) {
+  if (env) {
+    const authCmd = env.shellPrefix ? `${env.shellPrefix} 'b6p auth set'` : 'b6p auth set';
+    log.info(`b6p CLI detected (location: ${env.location}). Run "${authCmd}" once if you have not configured credentials yet.`);
     return;
   }
   log.warn(
     [
-      'b6p CLI not found in the login-shell PATH. The /b6p-pull, /b6p-push, and /b6p-audit skills will not work without it.',
+      'b6p CLI not found in the native PATH' + (process.platform === 'win32' ? ' or WSL' : '') + '.',
+      'The /b6p-pull, /b6p-push, and /b6p-audit skills will not work without it.',
       '',
       'Install it by cloning the upstream monorepo and linking the CLI package:',
       '',
@@ -95,15 +145,28 @@ function checkB6pInstalled() {
       '    cd packages/b6p-cli',
       '    npm link',
       '',
-      'Verify with: b6p --help  (or: wsl bash -lc "b6p --help" from Windows)',
+      'Verify with: b6p --help  (or: wsl bash -lc "b6p --help" from Windows if installed in WSL)',
       '',
       'Then configure your platform credentials (one-time):',
-      '    b6p auth set       (or: wsl bash -lc "b6p auth set" from Windows)',
+      '    b6p auth set',
+      '',
+      'After installing, run `/b6p-detect` in Claude Code to register the install location for this project.',
       '',
       'If the git clone fails with a permissions error, you need access to the',
       'Bluestep-Systems GitHub org. Ask in your team channel or contact a maintainer.',
     ].join('\n')
   );
+}
+
+function writeB6pEnvFile(projectDir, env) {
+  const file = join(projectDir, '.claude', 'b6p-env.json');
+  const payload = {
+    shellPrefix: env.shellPrefix,
+    location: env.location,
+    detectedAt: new Date().toISOString(),
+    detectedBy: 'bluestep-init scaffold',
+  };
+  writeFileSync(file, JSON.stringify(payload, null, 2) + '\n', 'utf8');
 }
 
 // Generate .github/instructions/<name>.instructions.md from the same content

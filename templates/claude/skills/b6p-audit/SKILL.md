@@ -20,19 +20,15 @@ For a push that immediately follows, the user can ask you to chain `/b6p-audit` 
 
 ## How to invoke b6p
 
-Same detection rule as the other b6p skills:
+Read `.claude/b6p-env.json` and use its `shellPrefix` for every b6p invocation. See `/b6p-pull`'s SKILL.md for the full description of accepted prefix shapes and the auto-detect / persist / fallback procedure.
 
-1. Run `uname -s`.
-2. If `Linux` → invoke as `bash -lc 'b6p ...'`.
-3. Otherwise → invoke as `wsl bash -lc 'b6p ...'`.
-
-The `-lc` is required so nvm/PATH load. Always pass `--yes` so b6p does not show interactive prompts.
+Always pass `--yes` so b6p does not show interactive prompts that Claude cannot answer.
 
 ## Steps
 
-### 0. Detect environment
+### 0. Resolve the b6p shell prefix
 
-Run `uname -s` once; use the result for the b6p invocation below.
+Read `.claude/b6p-env.json` and use its `shellPrefix` for the audit command. If the file does not exist, auto-detect and persist (see the section above).
 
 ### 1. Identify the component
 
@@ -45,7 +41,7 @@ Confirm `.b6p_metadata.json` exists at the component root — without it, audit 
 Pass `--json` so the result is parseable, and `--file` to specify a file inside the component:
 
 ```
-<prefix> 'b6p --yes --json audit --file "U######/<ComponentName>/draft/scripts/app.ts"'
+<shellPrefix> 'b6p --yes --json audit --file "U######/<ComponentName>/draft/scripts/app.ts"'
 ```
 
 The CLI walks up from `--file` to find the component root, then compares each file against the platform.

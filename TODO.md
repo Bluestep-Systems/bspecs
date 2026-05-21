@@ -37,6 +37,14 @@ The full b6p CLI audit (see git history for the conversation) surfaced two more 
 - [ ] **`block-tsc` hook does not catch `tsc -p tsconfig.json`.** The pattern matches `tsc*` at start, so `tsc -p ...` is blocked correctly. But verify edge cases like `./node_modules/.bin/tsc`, `yarn tsc`, etc.
 - [ ] **`/bug-fix` could use the `[PLATFORM]/[CODE]` distinction too.** Today it doesn't generate a structured task list, but for bugs that need both a platform change and a code change, the lack of structure makes the handoff vague.
 
+## Done in 0.3.2
+
+- [x] Shell-prefix detection: probe `<user-shell> -lc` then `-ic`, fall back to bash, then WSL on Windows. Handles nvm-in-.zshrc setups.
+- [x] Persist detected prefix to `.claude/b6p-env.json`; skills read it instead of re-detecting per call.
+- [x] New `/b6p-detect` skill to redo detection when the user re-installs b6p elsewhere.
+- [x] Hook `require-wsl-for-b6p.sh` updated to accept any of bash/zsh/sh/fish with -lc or -ic, with or without a `wsl` prefix.
+- [x] ADR `docs/decisions/b6p-cli-distribution.md` updated with a "Cleanup once b6p-cli is published" section listing exactly what to remove.
+
 ## Done in 0.3.1
 
 - [x] Fix false-negative pre-flight checks for `prettier` and `b6p` when scaffolding from WSL.

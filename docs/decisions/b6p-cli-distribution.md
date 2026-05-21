@@ -99,9 +99,34 @@ Later, once upstream publishes:
 
 ## Action items
 
-- [ ] **Now:** Implement Option C (tracked in `TODO.md` under "Pre-flight check for b6p").
-- [ ] **Now:** Open upstream issue at `Bluestep-Systems/vscode-extension` requesting publish (tracked in `TODO.md` under "Upstream issue for b6p-cli publish").
-- [ ] **When upstream publishes:** Remove Option C code, add `peerDependencies` entry, version bump (likely minor).
+- [x] Implement Option C (done in 0.2.1: pre-flight check in scaffolder + install instructions in README + "command not found" handling in skills).
+- [x] Add shell-prefix detection and persistence so skills work across bash/zsh, login/interactive, native/WSL (done in 0.3.0 → 0.3.2, including `/b6p-detect` and `.claude/b6p-env.json`).
+- [ ] **Open upstream issue** at `Bluestep-Systems/vscode-extension` requesting publish of `@bluestep-systems/b6p-core` and `@bluestep-systems/b6p-cli` (tracked in `TODO.md` under "Upstream issue for b6p-cli publish").
+- [ ] **When upstream publishes:** see "Cleanup once b6p-cli is published" below.
+
+## Cleanup once `b6p-cli` is published
+
+Everything we built between 0.2.1 and 0.3.2 to work around the missing publish is **disposable scaffolding**. When `b6p-cli` ships to a registry, we replace all of it with a `peerDependencies` declaration and `npx`-style invocation.
+
+What gets removed:
+
+- `.claude/b6p-env.json` (the persisted shell-prefix file)
+- `/b6p-detect` skill (no environment to detect anymore — npm resolves the binary)
+- Shell-prefix detection logic in `scaffold.js` (`probeCommand`, `shellPrefixCandidates`, `detectEnvironmentFor`)
+- The complex regex in `require-wsl-for-b6p.sh` (probably the whole hook goes — npx handles PATH)
+- "Install the b6p CLI" section from the scaffolded project's `README.md`
+- The "shellPrefix" prose from `/b6p-pull`, `/b6p-push`, `/b6p-audit`, and `CLAUDE.md`
+
+What replaces them:
+
+- `package.json` in the scaffolded project gets `"@bluestep-systems/b6p-cli": "^X.Y.Z"` under `devDependencies`.
+- Scaffolder runs `npm install` (or instructs the user to) so `node_modules/.bin/b6p` exists.
+- Skills invoke b6p as `npx b6p ...` — npm resolves `node_modules/.bin/` automatically, cross-platform, no shells involved.
+- Done. ~200 lines of code and docs evaporate.
+
+This is the standard Node.js way of distributing CLIs. Our current solution is a workaround, not a design choice — knowing the planned end state helps future maintainers avoid mistaking the workaround for an intentional architecture.
+
+The CHANGELOG entry for whichever release does this cleanup should be a `### Removed` section the size of a Sunday paper. Looking forward to it.
 
 ## References
 
