@@ -1,4 +1,4 @@
-# ADR: How `bluestep-init` handles the `b6p` CLI dependency
+# ADR: How `bspecs` handles the `b6p` CLI dependency
 
 **Status:** Accepted (interim). Will be revisited once `@bluestep-systems/b6p-cli` is published.
 
@@ -6,7 +6,7 @@
 
 ## Context
 
-Projects scaffolded by `bluestep-init` rely on the `b6p` CLI for the only way to sync code with the BlueStep platform. The `/b6p-pull` and `/b6p-push` Claude skills, the `require-wsl-for-b6p` hook, and the entire workflow documented in `CLAUDE.md` all assume `b6p` is available.
+Projects scaffolded by `bspecs` rely on the `b6p` CLI for the only way to sync code with the BlueStep platform. The `/b6p-pull` and `/b6p-push` Claude skills, the `require-wsl-for-b6p` hook, and the entire workflow documented in `CLAUDE.md` all assume `b6p` is available.
 
 When this CLI was first designed, we assumed (incorrectly) that every BlueStep dev already had `b6p` installed because the project we work from is the same one used for `wsl b6p`. That assumption was Fernando's personal setup, not a team standard. Most devs use the VS Code extension `bsjs-push-pull` instead — they have never installed the CLI.
 

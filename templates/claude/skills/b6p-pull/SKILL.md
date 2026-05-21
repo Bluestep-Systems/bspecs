@@ -20,7 +20,7 @@ A first pull creates the `U######/<ComponentName>/` folder (creating the U-folde
 
 ## Where `b6p` lives in this project
 
-`bluestep-init` scaffolds `.claude/b6p-env.json` with the install location it found at scaffold time. Read that file once at the start of the skill — its `shellPrefix` is the prefix you must prepend to every `b6p` invocation:
+`bspecs` scaffolds `.claude/b6p-env.json` with the install location it found at scaffold time. Read that file once at the start of the skill — its `shellPrefix` is the prefix you must prepend to every `b6p` invocation:
 
 ```json
 {
@@ -114,7 +114,7 @@ a. **Check if it already exists and is substantive.** Read `<Component>/draft/RE
    - If file exists with > 200 characters AND contains at least one `##` heading that is not literally `## Title` → it is substantive. **Leave it alone.** Tell the user: "draft/README.md already exists and looks substantive — leaving it. Read it before editing code."
    - Otherwise (empty, only `# Title`, only boilerplate) → proceed to scaffold (step b), overwriting.
 
-b. **Scaffold from the template.** Read `.claude/templates/README.md` (the module README template scaffolded by bluestep-init). Fill it in using inference from the code:
+b. **Scaffold from the template.** Read `.claude/templates/README.md` (the module README template scaffolded by bspecs). Fill it in using inference from the code:
 
    - **Title (`# [Component displayName]`):** use `displayName` from `draft/info/metadata.json`.
    - **Type section:** use what you identified in step 4, plus the type-specific details listed in the template's commented hints (paths/methods for Endpoint, etc.).

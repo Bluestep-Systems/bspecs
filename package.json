@@ -1,11 +1,10 @@
 {
-  "name": "@bluestep/init",
-  "version": "0.3.2",
-  "description": "Scaffolding CLI for BlueStep Platform projects",
+  "name": "@bluestep/bspecs",
+  "version": "0.4.0",
+  "description": "Spec-driven BlueStep development with AI agents — scaffolder and project conventions for Claude Code and GitHub Copilot",
   "type": "module",
   "bin": {
-    "bluestep-init": "./cli.js",
-    "b6p-init": "./cli.js"
+    "bspecs": "./cli.js"
   },
   "files": [
     "cli.js",
@@ -27,6 +26,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bluestep/bluestep-init.git"
+    "url": "https://github.com/bluestep/bspecs.git"
   }
 }

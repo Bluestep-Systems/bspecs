@@ -8,11 +8,11 @@ allowed-tools: Bash(bash -lc *) Bash(wsl bash -lc *)
 
 ## When to use this
 
-You normally do NOT need to invoke this. `bluestep-init` runs the same detection at scaffold time and writes `.claude/b6p-env.json`. The other `/b6p-*` skills also auto-detect on first use if the file is missing.
+You normally do NOT need to invoke this. `bspecs` runs the same detection at scaffold time and writes `.claude/b6p-env.json`. The other `/b6p-*` skills also auto-detect on first use if the file is missing.
 
 Use `/b6p-detect` only when:
 
-- You installed `b6p` after running `bluestep-init` and the other skills are still failing for some reason.
+- You installed `b6p` after running `bspecs` and the other skills are still failing for some reason.
 - You re-installed `b6p` in a different location (e.g. moved from WSL nvm to a Windows-native install, or vice versa) and want to refresh the registered prefix.
 - You're debugging and want to confirm which `b6p` Claude is actually using.
 

@@ -1,4 +1,4 @@
-# Rule Audit — bluestep-init Template Sources
+# Rule Audit — bspecs Template Sources
 
 Working document. Every rule in the old template (`~/Custom Client Summary/CLAUDE.md` + `.github/instructions/*.md`) must be reviewed before being included in the new templates.
 
@@ -96,7 +96,7 @@ Working document. Every rule in the old template (`~/Custom Client Summary/CLAUD
 
 - **R17** (D1) — NEVER create new B6P **components** (MergeReport, Endpoint, Formula) locally. They must be created on the platform first, then `wsl b6p pull`. Inside an existing component, creating new `.ts` files locally is fine.
 - **R18** (D2) — The workspace is a local copy. The BlueStep platform is the source of truth.
-- **R18a** (project shape) — A local project is a folder; it has no unit or type of its own. Unit folders (`U######/`) are created by `wsl b6p pull` when a component from a new unit is first pulled. A single project commonly spans multiple Unit folders, each containing components of mixed types (Endpoint, MergeReport, Formula, etc.). Component type is encoded in `draft/info/metadata.json` (`triggerType`), not in folder names. `bluestep-init` therefore does not prompt for unit ID or project type — those are determined by what you pull.
+- **R18a** (project shape) — A local project is a folder; it has no unit or type of its own. Unit folders (`U######/`) are created by `wsl b6p pull` when a component from a new unit is first pulled. A single project commonly spans multiple Unit folders, each containing components of mixed types (Endpoint, MergeReport, Formula, etc.). Component type is encoded in `draft/info/metadata.json` (`triggerType`), not in folder names. `bspecs` therefore does not prompt for unit ID or project type — those are determined by what you pull.
 - **R18c** (task prefixes in specs) — Every task in `.claude/specs/<feature>/tasks.md` starts with one of two prefixes that says *where* the work happens:
   - `[PLATFORM]` — done in the BlueStep UI (creating a field, query, formula, component, permissions). **Not executable by `/spec-execute`**; the user does it manually and asks Claude to mark it `[x]`.
   - `[CODE]` — done in this workspace. Executable by `/spec-execute`.

@@ -14,7 +14,7 @@ if (existsSync(PROJECT_PATH)) {
 await scaffold({
   projectName: PROJECT_NAME,
   clientName: 'Acme Corp',
-  projectDescription: 'Smoke test for bluestep-init verifying generated context layout.',
+  projectDescription: 'Smoke test for bspecs verifying generated context layout.',
   context7Key: 'test-key-123',
   initGit: false,
 });
@@ -91,7 +91,7 @@ check('.gitignore covers .vscode/mcp.json', gi.includes('.vscode/mcp.json'));
 
 // CLAUDE.md contains the description and unit id
 const claudeMd = readFileSync(join(PROJECT_PATH, 'CLAUDE.md'), 'utf8');
-check('CLAUDE.md has project description', claudeMd.includes('Smoke test for bluestep-init'));
+check('CLAUDE.md has project description', claudeMd.includes('Smoke test for bspecs'));
 check('CLAUDE.md has client name', claudeMd.includes('Acme Corp'));
 check('CLAUDE.md explicitly forbids .writable()', /NEVER\*\*?\s+use\s+`?\.writable\(\)/i.test(claudeMd));
 check('CLAUDE.md explicitly forbids tsc', /NEVER\*\*?\s+run\s+`?tsc/i.test(claudeMd));

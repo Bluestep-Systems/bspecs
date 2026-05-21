@@ -1,6 +1,6 @@
 # TODO
 
-Living list of pending work for `@bluestep/init`. Items roughly ordered by priority within each section. Cross off (`[x]`) when done; remove entries that are no longer relevant rather than letting them rot.
+Living list of pending work for `@bluestep/bspecs`. Items roughly ordered by priority within each section. Cross off (`[x]`) when done; remove entries that are no longer relevant rather than letting them rot.
 
 For deeper context behind any decision, see `docs/decisions/`.
 
@@ -9,8 +9,8 @@ For deeper context behind any decision, see `docs/decisions/`.
 - [ ] **Pre-flight check for `b6p` CLI.** Detect at scaffold time whether `b6p` is reachable; if not, print install instructions from the upstream README plus a note about SSH access requirements. Also surface the same info in the scaffolded project's `README.md` and add guidance to `/b6p-pull` and `/b6p-push` skills for "command not found" errors. See `docs/decisions/b6p-cli-distribution.md`.
 - [ ] **Upstream issue for `b6p-cli` publish.** Open an issue in `Bluestep-Systems/vscode-extension` requesting that `@bluestep-systems/b6p-core` and `@bluestep-systems/b6p-cli` be published to GitHub Packages (or npm public). This unblocks moving from detect-and-guide to a proper `peerDependencies` declaration. Cite our CLI as a concrete consumer. See `docs/decisions/b6p-cli-distribution.md`.
 - [ ] **`b6p` peer-dependency migration (depends on upstream publish).** Once `b6p-cli` is published, remove the pre-flight check code and add `"@bluestep-systems/b6p-cli": "^X.Y.Z"` under `peerDependencies` in our `package.json`. Note the change in `CHANGELOG.md`.
-- [ ] **GitHub Actions publish workflow.** Create `.github/workflows/publish.yml` that publishes `@bluestep/init` to GitHub Packages on `v*` tags. Same pattern as we'll need for the upstream b6p publish.
-- [ ] **Push to GitHub.** Create `github.com/bluestep/bluestep-init` (private) and push `main` + tags.
+- [ ] **GitHub Actions publish workflow.** Create `.github/workflows/publish.yml` that publishes `@bluestep/bspecs` to GitHub Packages on `v*` tags. Same pattern as we'll need for the upstream b6p publish.
+- [ ] **Push to GitHub.** Create `github.com/bluestep/bspecs` (private) and push `main` + tags.
 - [ ] **Consumer auth docs.** Document the `npm login --scope=@bluestep --registry=https://npm.pkg.github.com` flow and the `~/.npmrc` config a dev needs to install our CLI from GitHub Packages. Probably goes in our top-level `README.md` (which we don't have yet for the CLI repo).
 
 ## Flow improvements

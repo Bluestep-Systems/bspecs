@@ -2,9 +2,29 @@
 
 # Changelog
 
-All notable changes to `@bluestep/init` are documented here.
+All notable changes to `@bluestep/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
+
+## [0.4.0] — 2026-05-21
+
+**Breaking change:** package renamed from `@bluestep/init` (command `bluestep-init`) to `@bluestep/bspecs` (command `bspecs`). Uninstall the old global before installing the new one:
+
+```sh
+npm uninstall -g @bluestep/init
+npm install -g @bluestep/bspecs   # once published, or: npm install -g .
+```
+
+### Changed
+
+- **Package renamed** from `@bluestep/init` to `@bluestep/bspecs`. The CLI command is now `bspecs` instead of `bluestep-init`. All internal references and generated project files updated.
+- **Scaffolded projects** now reference `bspecs` in their generated `CLAUDE.md` and `README.md` (no functional change to the generated workspace structure).
+
+### Why
+
+The original name `bluestep-init` implied the tool's only job is project initialisation. The real purpose is spec-driven development with normalised rules for AI agents — scaffolding is just the entry point. `bspecs` (BlueStep + specs) names the actual goal.
+
+---
 
 ## [0.3.2] — 2026-05-21
 

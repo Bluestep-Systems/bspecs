@@ -9,14 +9,15 @@ import { scaffold } from './src/scaffold.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
 
-const HELP = `bluestep-init — BlueStep Platform project scaffolding
+const HELP = `bspecs — spec-driven BlueStep development with AI agents
+
+Scaffold a new BlueStep project with Claude Code skills, hooks, and
+project conventions for spec-driven development.
 
 Usage:
-  bluestep-init           Run the interactive scaffolder in the current directory.
-  bluestep-init -v        Print version.
-  bluestep-init -h        Print this help.
-
-Aliases: b6p-init
+  bspecs           Run the interactive scaffolder in the current directory.
+  bspecs -v        Print version.
+  bspecs -h        Print this help.
 `;
 
 function parseArgs(argv) {
@@ -39,7 +40,7 @@ async function main() {
     return;
   }
 
-  intro('bluestep-init — BlueStep Platform project scaffolding');
+  intro('bspecs — spec-driven BlueStep development with AI agents');
 
   const answers = await runPrompts();
   if (!answers) {

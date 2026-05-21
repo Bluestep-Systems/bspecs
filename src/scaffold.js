@@ -36,7 +36,7 @@ export async function scaffold(answers) {
     try {
       execSync('git init', { cwd: projectDir, stdio: 'ignore' });
       execSync('git add -A', { cwd: projectDir, stdio: 'ignore' });
-      execSync('git commit -m "chore: initial scaffold via bluestep-init"', {
+      execSync('git commit -m "chore: initial scaffold via bspecs"', {
         cwd: projectDir,
         stdio: 'ignore',
       });
@@ -164,7 +164,7 @@ function writeB6pEnvFile(projectDir, env) {
     shellPrefix: env.shellPrefix,
     location: env.location,
     detectedAt: new Date().toISOString(),
-    detectedBy: 'bluestep-init scaffold',
+    detectedBy: 'bspecs scaffold',
   };
   writeFileSync(file, JSON.stringify(payload, null, 2) + '\n', 'utf8');
 }
