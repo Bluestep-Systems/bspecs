@@ -43,25 +43,48 @@ export async function scaffold(answers) {
   }
 }
 
-function checkPrettierOnPath() {
+// Wrap a `command -v X` lookup based on where Node is running.
+//
+// - Linux (including WSL): the user's PATH is the one to inspect. Run `bash -lc`
+//   directly so nvm/profile load and we see the same PATH the user sees.
+// - Anywhere else (Windows-native Node, macOS): assume we need to reach into
+//   WSL to find Linux-only tools. Use `wsl bash -lc`.
+//
+// Calling `wsl ...` from inside WSL is the bug this avoids — it either fails
+// outright (no `wsl` binary in Linux) or invokes the Windows-side interop,
+// which evaluates against the wrong PATH.
+function loginShellPrefix() {
+  return process.platform === 'linux' ? 'bash -lc' : 'wsl bash -lc';
+}
+
+function commandAvailable(name) {
   try {
-    execSync('wsl bash -lc "command -v prettier"', { stdio: 'ignore' });
+    execSync(`${loginShellPrefix()} "command -v ${name}"`, { stdio: 'ignore' });
+    return true;
   } catch {
-    log.warn('prettier not found in WSL PATH. The prettier-on-save hook will be a no-op until you run: wsl bash -lc "npm i -g prettier"');
+    return false;
   }
 }
 
+function checkPrettierOnPath() {
+  if (commandAvailable('prettier')) return;
+  const installCmd = process.platform === 'linux'
+    ? 'npm i -g prettier'
+    : 'wsl bash -lc "npm i -g prettier"';
+  log.warn(`prettier not found in the login-shell PATH. The prettier-on-save hook will be a no-op until you run: ${installCmd}`);
+}
+
 function checkB6pInstalled() {
-  try {
-    execSync('wsl bash -lc "command -v b6p"', { stdio: 'ignore' });
-    log.info('b6p CLI detected. Run "wsl bash -lc \'b6p auth set\'" once if you have not configured credentials yet.');
+  if (commandAvailable('b6p')) {
+    const authCmd = process.platform === 'linux'
+      ? "b6p auth set"
+      : "wsl bash -lc 'b6p auth set'";
+    log.info(`b6p CLI detected. Run "${authCmd}" once if you have not configured credentials yet.`);
     return;
-  } catch {
-    // fall through to the warning
   }
   log.warn(
     [
-      'b6p CLI not found in WSL. The /b6p-pull, /b6p-push, and /b6p-audit skills will not work without it.',
+      'b6p CLI not found in the login-shell PATH. The /b6p-pull, /b6p-push, and /b6p-audit skills will not work without it.',
       '',
       'Install it by cloning the upstream monorepo and linking the CLI package:',
       '',
@@ -72,10 +95,10 @@ function checkB6pInstalled() {
       '    cd packages/b6p-cli',
       '    npm link',
       '',
-      'Verify with: wsl bash -lc "b6p --help"',
+      'Verify with: b6p --help  (or: wsl bash -lc "b6p --help" from Windows)',
       '',
       'Then configure your platform credentials (one-time):',
-      '    wsl bash -lc "b6p auth set"',
+      '    b6p auth set       (or: wsl bash -lc "b6p auth set" from Windows)',
       '',
       'If the git clone fails with a permissions error, you need access to the',
       'Bluestep-Systems GitHub org. Ask in your team channel or contact a maintainer.',

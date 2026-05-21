@@ -33,10 +33,13 @@ The full b6p CLI audit (see git history for the conversation) surfaced two more 
 ## Polish / nice-to-have
 
 - [ ] **`design.template.md` line 13 lint warning.** The `**Does this change require modifying the component on the BlueStep platform? (Yes / No)**` line is rendered as bold but the markdown linter flags it as "emphasis used instead of heading". Either rewrite as a heading or accept the warning permanently. Cosmetic only.
-- [ ] **`checkPrettierOnPath` assumes WSL exists.** If a dev runs `bluestep-init` on a pure Linux/Mac box, the check tries `wsl bash -lc ...` and warns spuriously. Detect platform first.
 - [ ] **Skill messages in mixed languages.** The hard-coded "STOP" messages in `SKILL.md` files are in English; Claude sometimes reads them literally and breaks the Spanish flow the user is in. Consider whether SKILL.md should be language-neutral or have a localisation hook.
 - [ ] **`block-tsc` hook does not catch `tsc -p tsconfig.json`.** The pattern matches `tsc*` at start, so `tsc -p ...` is blocked correctly. But verify edge cases like `./node_modules/.bin/tsc`, `yarn tsc`, etc.
 - [ ] **`/bug-fix` could use the `[PLATFORM]/[CODE]` distinction too.** Today it doesn't generate a structured task list, but for bugs that need both a platform change and a code change, the lack of structure makes the handoff vague.
+
+## Done in 0.3.1
+
+- [x] Fix false-negative pre-flight checks for `prettier` and `b6p` when scaffolding from WSL.
 
 ## Done in 0.3.0
 
