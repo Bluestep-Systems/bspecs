@@ -1,97 +1,97 @@
 # @bluestep/bspecs
 
-CLI para scaffoldear proyectos BlueStep con convenciones de desarrollo spec-driven para Claude Code y GitHub Copilot.
+CLI for scaffolding BlueStep projects with spec-driven development conventions for Claude Code and GitHub Copilot.
 
-## ¿Qué hace?
+## What it does
 
-`bspecs` genera un directorio de proyecto listo para usar con:
+`bspecs` generates a project directory ready to use with:
 
-- Skills de Claude Code (`/spec-create`, `/spec-execute`, `/b6p-pull`, `/b6p-push`, y más)
-- Hooks automáticos (prettier on save, bloqueo de archivos generados, integración con `b6p`)
-- Instructions para Claude Code y GitHub Copilot (fuente única de verdad)
-- Templates de specs (`requirements.md`, `design.md`, `tasks.md`)
-- Detección automática del entorno `b6p`
+- Claude Code skills (`/spec-create`, `/spec-execute`, `/b6p-pull`, `/b6p-push`, and more)
+- Automatic hooks (prettier on save, generated-file blocking, `b6p` integration)
+- Instructions for Claude Code and GitHub Copilot (single source of truth)
+- Spec templates (`requirements.md`, `design.md`, `tasks.md`)
+- Automatic `b6p` environment detection
 
-## Instalación
+## Installation
 
-Requiere acceso al GitHub Packages de la organización Bluestep. Configurá tu `.npmrc` una sola vez:
+Requires access to the Bluestep GitHub Packages registry. Configure your `.npmrc` once:
 
 ```sh
 echo "@bluestep:registry=https://npm.pkg.github.com" >> ~/.npmrc
 npm login --scope=@bluestep --registry=https://npm.pkg.github.com
 ```
 
-Luego instalá el CLI globalmente:
+Then install the CLI globally:
 
 ```sh
 npm install -g @bluestep/bspecs
 ```
 
-## Uso
+## Usage
 
-### Scaffoldear un proyecto nuevo
+### Scaffold a new project
 
-Desde el directorio padre donde querés crear el proyecto:
+From the parent directory where you want to create the project:
 
 ```sh
 bspecs
 ```
 
-El wizard interactivo pregunta nombre del proyecto, cliente, descripción y API key de Context7. Al terminar genera el directorio del proyecto con toda la estructura lista y hace `git init`.
+The interactive wizard asks for the project name, client, description, and Context7 API key. When done, it generates the project directory with the full structure and runs `git init`.
 
-### Mantener un proyecto actualizado
+### Keep a project up to date
 
-Cuando se publica una nueva versión de `bspecs` con mejoras en skills, hooks o instrucciones, actualizá tu instalación global y luego sincronizá el proyecto:
+When a new version of `bspecs` is published with improvements to skills, hooks, or instructions, update your global install and sync the project:
 
 ```sh
 npm update -g @bluestep/bspecs
-cd mi-proyecto
+cd my-project
 bspecs sync
 ```
 
-`bspecs sync` compara cada archivo de infraestructura con el estado en que fue scaffoldeado. Los archivos que no modificaste localmente se actualizan; los que sí editaste se dejan intactos con un aviso.
+`bspecs sync` compares each infrastructure file against the state it was in when scaffolded. Files you have not modified locally are updated; files you have edited are left untouched with a warning.
 
-Los proyectos scaffoldeados con `bspecs 0.5.0` o posterior corren `bspecs sync` automáticamente cada vez que Claude Code abre el workspace — no necesitás hacer nada manualmente.
+Projects scaffolded with `bspecs 0.5.0` or later run `bspecs sync` automatically every time Claude Code opens the workspace — no manual action needed.
 
-## Prerrequisitos
+## Prerequisites
 
 - **Node.js 18+**
-- **`b6p` CLI** — necesario para las skills `/b6p-pull`, `/b6p-push` y `/b6p-audit`. Si no está instalado, `bspecs` avisa con instrucciones al hacer el scaffold.
-- **prettier** — necesario para el hook de formateo automático. `bspecs` avisa si no lo encuentra.
+- **`b6p` CLI** — required for the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills. If not installed, `bspecs` prints install instructions during scaffold.
+- **prettier** — required for the auto-format hook. `bspecs` warns if it is not found.
 
-## Estructura generada
+## Generated structure
 
 ```
-mi-proyecto/
-├── CLAUDE.md                          ← instrucciones del proyecto para Claude
-├── README.md                          ← documentación del proyecto
+my-project/
+├── CLAUDE.md                          ← project instructions for Claude
+├── README.md                          ← project documentation
 ├── .prettierrc
 ├── .gitignore
 ├── .claude/
-│   ├── bspecs.lock                    ← lock file para bspecs sync
-│   ├── b6p-env.json                   ← entorno b6p detectado
-│   ├── settings.json                  ← permisos y hooks de Claude Code
-│   ├── hooks/                         ← 4 scripts ejecutados por Claude Code
+│   ├── bspecs.lock                    ← lock file for bspecs sync
+│   ├── b6p-env.json                   ← detected b6p environment
+│   ├── settings.json                  ← Claude Code permissions and hooks
+│   ├── hooks/                         ← 4 scripts executed by Claude Code
 │   ├── skills/                        ← 8 skills (/spec-create, /b6p-pull, etc.)
-│   ├── instructions/                  ← reglas de desarrollo para Claude
-│   ├── spec-templates/                ← plantillas de specs
-│   └── templates/                     ← templates de componentes
+│   ├── instructions/                  ← development rules for Claude
+│   ├── spec-templates/                ← spec file templates
+│   └── templates/                     ← component scaffolding templates
 ├── .github/
-│   └── instructions/                  ← mirrors para GitHub Copilot
+│   └── instructions/                  ← mirrors for GitHub Copilot
 └── .vscode/
     └── mcp.json                       ← Context7 MCP
 ```
 
-## Proponer cambios
+## Proposing changes
 
-### Cambios globales (mejoras para todos los proyectos)
+### Global changes (improvements for all projects)
 
-Si encontrás algo que debería mejorar en las skills, hooks, instrucciones o templates — algo que sería útil para todos los proyectos BlueStep — abrí un issue o PR en este repo. Una vez mergeado y publicada una nueva versión, `bspecs sync` propaga el cambio a todos los proyectos existentes.
+If you find something that should be improved in the skills, hooks, instructions, or templates — something useful across all BlueStep projects — open an issue or PR in this repo. Once merged and published as a new version, `bspecs sync` propagates the change to all existing projects automatically.
 
-### Cambios locales (específicos de tu proyecto)
+### Local changes (specific to your project)
 
-Si necesitás ajustar algo solo para tu proyecto (un permiso extra en `settings.json`, una skill custom, cambios en tu `CLAUDE.md`), hacélo directamente en tu repo. `bspecs sync` detecta que esos archivos fueron editados y los deja intactos en futuras sincronizaciones.
+If you need to adjust something only for your project (an extra permission in `settings.json`, a custom skill, changes to your `CLAUDE.md`), edit it directly in your repo. `bspecs sync` detects that those files were locally modified and leaves them untouched on future syncs.
 
-## Publicación
+## Publishing
 
-El paquete se publica en GitHub Packages (`https://npm.pkg.github.com`) bajo la organización `@bluestep`. Solo los archivos `cli.js`, `src/` y `templates/` se incluyen en el paquete publicado.
+The package is published to GitHub Packages (`https://npm.pkg.github.com`) under the `@bluestep` organization. Only `cli.js`, `src/`, and `templates/` are included in the published package.
