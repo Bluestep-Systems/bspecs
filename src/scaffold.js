@@ -1,8 +1,38 @@
 import { execSync } from 'child_process';
-import { join } from 'path';
-import { readFileSync, writeFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { log } from '@clack/prompts';
-import { ensureDir, copyTemplateTree, writeFile, applyTemplate, TEMPLATES_DIR } from './utils.js';
+import { ensureDir, copyTemplateTree, writeFile, applyTemplate, TEMPLATES_DIR, sha256 } from './utils.js';
+import { SYNC_TARGETS } from './sync.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+
+function writeBspecsLock(projectDir, vars) {
+  const files = {};
+  for (const target of SYNC_TARGETS) {
+    const templatePath = join(TEMPLATES_DIR, target.templateSrc);
+    if (!existsSync(templatePath)) continue;
+    const rendered = applyTemplate(readFileSync(templatePath, 'utf8'), vars);
+    files[target.destRel] = sha256(rendered);
+  }
+
+  const lock = {
+    bspecs_version: pkg.version,
+    synced_at: new Date().toISOString().split('T')[0],
+    vars: {
+      PROJECT_NAME: vars.PROJECT_NAME,
+      CLIENT_NAME: vars.CLIENT_NAME,
+      PROJECT_DESCRIPTION: vars.PROJECT_DESCRIPTION,
+      SCAFFOLD_DATE: vars.SCAFFOLD_DATE,
+      // CONTEXT7_API_KEY omitido: es una API key, no necesaria para re-renderizar templates
+    },
+    files,
+  };
+
+  writeFileSync(join(projectDir, '.claude', 'bspecs.lock'), JSON.stringify(lock, null, 2) + '\n', 'utf8');
+}
 
 export async function scaffold(answers) {
   const projectDir = join(process.cwd(), answers.projectName);
@@ -22,6 +52,7 @@ export async function scaffold(answers) {
   copyTemplateTree('vscode', join(projectDir, '.vscode'), vars);
 
   mirrorInstructionsToGithub(projectDir, vars);
+  writeBspecsLock(projectDir, vars);
 
   log.success('Files generated.');
 

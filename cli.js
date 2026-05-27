@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { runPrompts } from './src/prompts.js';
 import { scaffold } from './src/scaffold.js';
+import { sync } from './src/sync.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
@@ -16,20 +17,25 @@ project conventions for spec-driven development.
 
 Usage:
   bspecs           Run the interactive scaffolder in the current directory.
+  bspecs sync      Sync infrastructure files in the current project.
   bspecs -v        Print version.
   bspecs -h        Print this help.
+
+Options for bspecs sync:
+  --silent         Suppress all output (used by the SessionStart hook).
 `;
 
 function parseArgs(argv) {
-  for (const a of argv) {
-    if (a === '-v' || a === '--version') return { mode: 'version' };
-    if (a === '-h' || a === '--help') return { mode: 'help' };
-  }
+  const flags = new Set(argv.filter(a => a.startsWith('-')));
+  const positional = argv.filter(a => !a.startsWith('-'));
+  if (flags.has('-v') || flags.has('--version')) return { mode: 'version' };
+  if (flags.has('-h') || flags.has('--help'))    return { mode: 'help' };
+  if (positional[0] === 'sync') return { mode: 'sync', silent: flags.has('--silent') };
   return { mode: 'interactive' };
 }
 
 async function main() {
-  const { mode } = parseArgs(process.argv.slice(2));
+  const { mode, silent } = parseArgs(process.argv.slice(2));
 
   if (mode === 'version') {
     console.log(pkg.version);
@@ -37,6 +43,10 @@ async function main() {
   }
   if (mode === 'help') {
     console.log(HELP);
+    return;
+  }
+  if (mode === 'sync') {
+    await sync({ silent });
     return;
   }
 

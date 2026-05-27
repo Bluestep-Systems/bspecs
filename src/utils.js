@@ -1,4 +1,5 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync, chmodSync, readdirSync, statSync } from 'fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -54,4 +55,8 @@ function walk(rootSrc, src, dest, vars, opts) {
 
 export function exists(path) {
   return existsSync(path);
+}
+
+export function sha256(str) {
+  return createHash('sha256').update(str, 'utf8').digest('hex');
 }

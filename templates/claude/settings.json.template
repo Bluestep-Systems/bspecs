@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Edit(**/*.md)",
       "Bash(git:*)",
       "Bash(wsl bash -lc *)",
       "Bash(ls:*)",
@@ -31,6 +32,13 @@
         "matcher": "Edit|Write",
         "hooks": [
           { "type": "command", "command": ".claude/hooks/prettier-on-save.sh" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bspecs sync --silent" }
         ]
       }
     ]
