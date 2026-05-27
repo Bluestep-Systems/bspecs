@@ -1,0 +1,70 @@
+# bspecs — scaffolder for spec-driven BlueStep projects
+
+`@bluestep/bspecs` is an interactive CLI (`bspecs`) that scaffolds a new BlueStep project with Claude Code skills, hooks, and conventions for spec-driven development. It generates a complete project directory from templates and detects the local `b6p` environment.
+
+## Architecture
+
+```text
+cli.js                    ← entry point, arg parsing
+src/
+  prompts.js              ← @clack/prompts interactive wizard (5 questions)
+  scaffold.js             ← file generation, b6p detection, git init
+  utils.js                ← template engine ({{VAR}} substitution), fs helpers
+templates/
+  root/                   → project root files (CLAUDE.md, .gitignore, .prettierrc, README)
+  claude/                 → .claude/ tree (settings, skills, hooks, instructions, spec-templates)
+  module/                 → .claude/templates/ (per-component scaffolding)
+  vscode/                 → .vscode/mcp.json (Context7 MCP)
+```
+
+`scaffold()` calls `copyTemplateTree()` four times (root, claude, module, vscode), then `mirrorInstructionsToGithub()` to copy the two `.claude/instructions/*.md` files into `.github/instructions/` as `*.instructions.md` — single source of truth for both Claude Code and GitHub Copilot.
+
+Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTEXT7_API_KEY`, `SCAFFOLD_DATE`. Applied via `{{VAR}}` substitution in `utils.applyTemplate()`. Files ending in `.template` have that extension stripped on copy.
+
+## Key behaviors
+
+**b6p detection** (`scaffold.js:detectEnvironmentFor`): probes `command -v b6p` through a prioritized list of shell prefixes (`''`, `wsl zsh -lc`, `wsl zsh -ic`, `wsl bash -lc`, `wsl bash -ic` on Windows; user shell with `-lc`/`-ic` on Linux/macOS). First match wins. Result written to `.claude/b6p-env.json` in the generated project.
+
+**Shell prefix list** matters: `-lc` (login) loads `~/.zprofile` but not `.zshrc`; `-ic` (interactive) loads `.zshrc` so nvm-installed binaries work. Both are tried per shell.
+
+**prettier detection**: same probe logic, but only warns — doesn't write anything.
+
+**`mirrorInstructionsToGithub`**: reads `templates/claude/instructions/*.md.template`, applies vars, writes to `.github/instructions/`. Must stay in sync when instruction templates are edited.
+
+## What gets scaffolded into every project
+
+- `CLAUDE.md`, `.prettierrc`, `.gitignore`, `README.md` (from `templates/root/`)
+- `.claude/settings.json` — permissions + hooks (block-generated-files, require-wsl-for-b6p, block-tsc, prettier-on-save)
+- `.claude/skills/` — `b6p-audit`, `b6p-detect`, `b6p-pull`, `b6p-push`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`
+- `.claude/hooks/` — four shell scripts (run in WSL; must use WSL-native toolchain)
+- `.claude/instructions/` — `bsjs-development.md`, `b6p-platform.md`
+- `.claude/spec-templates/` — `requirements.template.md`, `design.template.md`, `tasks.template.md`
+- `.claude/templates/` — per-component scaffolding (module README template)
+- `.vscode/mcp.json` — Context7 MCP with the API key
+
+## Editing templates
+
+- Skills live in `templates/claude/skills/<name>/SKILL.md` — no vars, plain markdown.
+- Instruction files live in `templates/claude/instructions/*.md.template` — support `{{VAR}}` and are mirrored to `.github/instructions/` on scaffold.
+- `templates/claude/settings.json.template` controls hooks and permissions for generated projects.
+- Hook scripts are in `templates/claude/hooks/*.sh` — marked executable on copy (no-op on Windows).
+
+## Running / testing
+
+```bash
+node cli.js          # interactive scaffold in cwd
+node cli.js -v       # print version
+node cli.js -h       # print help
+```
+
+No test suite. Manual testing: run `node cli.js` and verify the generated project has the expected structure.
+
+## Working on tasks
+
+Before substantive changes (implement / add / fix / refactor), skim `TODO.md` (open `[ ]` items) and the latest 3 `## [x.y.z]` blocks of `CHANGELOG.md`. Report any match — already planned, already shipped, or covered by an ADR in `docs/decisions/` — before starting. Skip for questions, exploration, or trivial edits.
+
+When a task is done and the user confirms, propose a commit message (title + body) based on the diff. Do not run `git commit` unless the user says so.
+
+## Publishing
+
+Package name `@bluestep/bspecs`, registry `https://npm.pkg.github.com` (GitHub Packages, `access: restricted`). Repo: `github.com/bluestep/bspecs`. Only `cli.js`, `src/`, and `templates/` are included in the published package.
