@@ -284,6 +284,58 @@ Query, form, and field references must exist in `imports.ts` (older modules) or 
 
 Hallucinating an import name silently passes type-check locally if the file is missing, but will fail at platform compile.
 
+## TS narrowing pitfalls (Graal/Java types)
+
+Some TypeScript patterns fail silently with the Java types exposed by `B` (especially `Java.Time.Instant`, `Java.Time.ZonedDateTime`, and any `Optional`-like interface). Avoiding them upfront saves edit → diagnostic → fix cycles.
+
+### Narrowing broken in closures
+
+**Anti-pattern:**
+
+```typescript
+let latest: Java.Time.Instant | null = null;
+collection.forEach((item) => {
+  const inst = item.getInstant();
+  if (!latest || inst.isAfter(latest)) {  // ❌ TS narrowing collapses to `never`
+    latest = inst;
+  }
+});
+```
+
+TypeScript cannot guarantee that the captured variable is still non-null when the next line of the callback executes, so it collapses the type to `never` and `.isAfter()` stops existing.
+
+**Solutions, in order of preference:**
+
+1. **Compare primitive values** (best): avoid the nullable union entirely by using epoch millis, ISO strings, or a sentinel value.
+
+   ```typescript
+   let latestMs = -1;
+   collection.forEach((item) => {
+     const ms = item.getInstant().toEpochMilli();
+     if (ms > latestMs) latestMs = ms;
+   });
+   ```
+
+2. **Local alias with explicit type** (when the Java type must be kept): capture the variable in a `const` with the declared type before the comparison, forcing TS to re-narrow within the local scope.
+
+   ```typescript
+   let latest: Java.Time.Instant | null = null;
+   collection.forEach((item) => {
+     const inst = item.getInstant();
+     const prev: Java.Time.Instant | null = latest;  // explicit alias
+     if (prev === null || inst.isAfter(prev)) {
+       latest = inst;
+     }
+   });
+   ```
+
+3. **Accumulate then reduce**: when the above feels forced, `forEach` into an array and sort/reduce outside the loop.
+
+### Symptoms to recognize
+
+- `Property '<x>' does not exist on type 'never'.` inside a callback that captures a nullable `let`: 99% of the time this is this pitfall.
+- "Works the first time but breaks after refactoring to multi-step": suspect broken narrowing.
+
 ## Error handling
 
 The platform surfaces uncaught exceptions in the script log. Patterns:

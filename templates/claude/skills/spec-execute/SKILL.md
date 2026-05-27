@@ -26,6 +26,10 @@ description: Execute one task from a feature spec. Updates the task checkbox whe
    - Touch only the files the task references
    - Do not start the next task
    - Apply rules from `CLAUDE.md` (no `tsc`, no `.writable()`, no editing `declarations/`, no new components locally)
+5.5. **Verify IDE diagnostics.** Before marking the task done, check the most recent `ide_diagnostics` blocks injected by the `PostToolUse` hook after each `Edit`/`Write`.
+   - If any entry has `severity: "Error"` in a file this task touched: **STOP.** Fix the error and re-verify before continuing. Do not mark the task done with pending errors.
+   - `Warning` / `Information` entries (including spell-checker) can be ignored **unless** they point to a real problem — review before dismissing.
+   - If an `Error` cannot be reproduced or looks like a false positive, report it explicitly: "The IDE reports `<error>` but I think it's a false positive because `<reason>` — should I continue?"
 6. **Mark the task done:** update `.claude/specs/<feature>/tasks.md` — change `[ ]` to `[x]` for the completed task.
 7. **Check the affected module's `draft/README.md`:**
    - If this task changed behavior that the README describes (Overview, Behavior, Fields used, External dependencies), update the README in the same change so the platform doc stays in sync.
