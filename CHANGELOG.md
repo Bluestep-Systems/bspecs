@@ -6,6 +6,24 @@ All notable changes to `@bluestep/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.5.0] — 2026-05-26
+
+Adds `bspecs sync` to keep scaffolded projects up to date when `bspecs` templates change, without requiring a re-scaffold.
+
+### Added
+
+- **`bspecs sync` subcommand.** Updates infrastructure files (skills, hooks, settings, instructions, spec-templates) in an existing project. Files the user edited locally are detected via SHA-256 hash comparison against a lock file and skipped — local edits are never overwritten.
+- **`.claude/bspecs.lock`.** Written by the scaffolder at project creation time. Contains the `bspecs` version, scaffold date, project vars (excluding `CONTEXT7_API_KEY`), and a hash of every infrastructure file at scaffold time. `bspecs sync` reads and updates this file on each run.
+- **`SessionStart` hook in generated projects.** The scaffolded `.claude/settings.json` now includes a `SessionStart` hook that runs `bspecs sync --silent` automatically on every workspace open, resume, and compaction — no manual intervention needed.
+- **`--silent` flag for `bspecs sync`.** Suppresses all output and swallows errors with exit 0, so the hook never blocks Claude Code startup.
+
+### Changed
+
+- **`bsjs-development.md` instruction template** — new section "TS narrowing pitfalls (Graal/Java types)" documenting patterns that collapse to `never` in closures with Java types, with three solutions ordered by preference.
+- **`/spec-execute` skill** — new step 5.5 requires verifying IDE diagnostics before marking a task done. Errors in touched files must be fixed; warnings can be dismissed with justification.
+
+---
+
 ## [0.4.0] — 2026-05-21
 
 **Breaking change:** package renamed from `@bluestep/init` (command `bluestep-init`) to `@bluestep/bspecs` (command `bspecs`). Uninstall the old global before installing the new one:
