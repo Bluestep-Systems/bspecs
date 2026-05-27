@@ -49,7 +49,7 @@ cd my-project
 bspecs sync
 ```
 
-`bspecs sync` compares each infrastructure file against the state it was in when scaffolded. Files you have not modified locally are updated; files you have edited are left untouched with a warning.
+`bspecs sync` compares each infrastructure file against the state it was in when scaffolded. Files you have not modified locally are updated; files you have edited are left untouched with a warning. If you believe your local changes would be useful across all BlueStep projects, open an issue in this repo so they can be incorporated into the scaffolder.
 
 Projects scaffolded with `bspecs 0.5.0` or later run `bspecs sync` automatically every time Claude Code opens the workspace — no manual action needed.
 
