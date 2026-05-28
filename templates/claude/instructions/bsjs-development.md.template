@@ -17,13 +17,13 @@ Deep reference for BlueStep TypeScript development. Critical rules live in `CLAU
         │   ├── B.d.ts
         │   ├── scriptlibrary.d.ts
         │   ├── Globals.d.ts
-        │   └── declarations.d.ts  ← newer modules: imports declared here
+        │   └── index.d.ts         ← platform-generated field/query/form declarations
         └── draft/
             ├── scripts/           ← TypeScript source
             │   ├── app.ts         ← entry point
             │   └── <feature>.ts   ← split modules
             ├── objects/
-            │   └── imports.ts     ← older modules: imports declared here (see R2)
+            │   └── imports.ts     ← legacy artifact in older modules; not updated on pull
             ├── static/            ← MergeReport only: HTML, CSS, client JS
             └── info/
                 ├── config.json
@@ -62,7 +62,7 @@ const parsed = B.time.parse("2026-05-15", "yyyy-MM-dd");
 
 ### `B.queries` — query objects
 
-Queries are defined on the platform and exposed in `imports.ts` (older modules) or `declarations.d.ts` (newer modules). Reference them only after pulling.
+Queries are defined on the platform and exposed in `declarations/index.d.ts` (platform-generated). Reference them only after pulling.
 
 ```typescript
 const results = B.queries.activeClients.execute();
@@ -276,10 +276,10 @@ Defines who can execute / view this component. Managed on the platform; usually 
 
 ## Imports — never fabricate
 
-Query, form, and field references must exist in `imports.ts` (older modules) or `declarations.d.ts` (newer modules) **before** you reference them in code. If a name is missing:
+Query, form, and field references must exist in **the component you are editing**'s `declarations/index.d.ts` **before** you reference them in code. Form-field imports are per-component — another component's declarations file tells you nothing about this one. If a name is missing:
 
-1. Add it on the platform.
-2. Run `wsl bash -lc 'b6p pull "<DAV URL>"'` to update declarations.
+1. Add it to **this component's** form-import config on the platform.
+2. Run `wsl bash -lc 'b6p pull "<DAV URL>"'` to update this component's declarations.
 3. Then reference it in TypeScript.
 
 Hallucinating an import name silently passes type-check locally if the file is missing, but will fail at platform compile.

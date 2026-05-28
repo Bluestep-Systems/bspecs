@@ -77,8 +77,8 @@ Options:
 A successful first pull:
 
 - Creates the `U######/` folder (if not present) and the `<ComponentName>/` subfolder under it
-- Populates `draft/scripts/`, `draft/info/`, `draft/objects/` (older modules) or `declarations/declarations.d.ts` (newer modules)
-- Populates `declarations/` with the platform-generated `.d.ts` files
+- Populates `draft/scripts/`, `draft/info/`, and (in older modules) `draft/objects/`
+- Populates `declarations/` with the platform-generated `.d.ts` files, including `declarations/index.d.ts` (field/query/form declarations)
 - Writes `.b6p_metadata.json` at the component root for future pulls/pushes
 
 Subsequent pulls verify per-file integrity and only rewrite files whose content changed.
@@ -107,20 +107,24 @@ Enforced by the `block-generated-files` hook:
 
 - Anything under `declarations/`
 - `B.d.ts`, `scriptlibrary.d.ts`, `Globals.d.ts`
-- (Treat `imports.ts` and `declarations.d.ts` as platform-generated as well — they regenerate on pull.)
+- (Treat `declarations/index.d.ts` as platform-generated — it regenerates on pull. `draft/objects/imports.ts` is a legacy artifact in older modules; do not edit it either.)
 
 If declarations are wrong, fix it on the platform and pull, not by editing locally.
 
 ## Imports — verification flow
 
+Form-field imports are **per-component**. Each component independently declares which fields of a form it imports. A field present in component A's `declarations/index.d.ts` is not visible to component B unless B's import config was updated on the platform and B was pulled separately.
+
 Before referencing a query/form/field in code:
 
-1. Open `draft/objects/imports.ts` (older modules) or `declarations/declarations.d.ts` (newer modules).
-2. Confirm the name exists.
+1. Open **the component you are editing**'s `declarations/index.d.ts` and confirm the name exists. Another component's declarations file tells you nothing.
+2. In older modules, `draft/objects/imports.ts` may also exist as a legacy artifact — ignore it for verification; new declarations land in `declarations/index.d.ts`.
 3. If missing:
-   - Add it on the platform.
-   - `wsl bash -lc 'b6p pull "<DAV URL>"'` to regenerate the declarations.
+   - Add the field to **this component's** form-import config on the platform.
+   - `wsl bash -lc 'b6p pull "<DAV URL>"'` to regenerate this component's declarations.
    - Then write the TypeScript reference.
+
+If N components all need the same new field, each one needs its own import-config update on the platform and a separate pull.
 
 Hallucinated names pass local edits but fail on platform compile after push.
 
