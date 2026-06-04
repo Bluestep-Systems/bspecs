@@ -8,7 +8,9 @@
       "Bash(cat:*)",
       "Bash(node:*)",
       "Bash(npm:*)",
-      "Bash(npx:*)"
+      "Bash(npx:*)",
+      "Edit(.claude/specs/**)",
+      "Write(.claude/specs/**)"
     ]
   },
   "hooks": {
