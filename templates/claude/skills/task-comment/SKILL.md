@@ -8,17 +8,19 @@ description: Draft a standardized implementation comment for a ClickUp task afte
 ## Steps
 
 1. **Ask the user to paste the ClickUp task link or ID.**
-   - Use the ClickUp MCP to fetch the task (`clickup_get_task`) and read its name, list, and status.
+   - Use the ClickUp MCP to fetch the task (`clickup_get_task`) and read its name, description, list, and status.
 
 2. **Infer the change type from the task name prefix:**
    - Starts with `Bug -` or `Bug —` → type = **Fix**
    - Starts with `Feature -` or `Feature —` → type = **Feature**
    - Anything else → type = **Update**
 
-3. **Ask one question:**
+3. **Derive the summary** from the task name and description — one sentence capturing what the bug/issue/feature was. Do not ask the user for this.
+
+4. **Ask one question:**
    > Does this change need to be propagated to other orgs? (yes / no)
 
-4. **Collect the remaining details based on the answer:**
+5. **Collect the remaining details based on the answer:**
 
    **If yes (propagated — component change):**
    - Component name (e.g. `Audits`, `Appointments`)
@@ -32,37 +34,42 @@ description: Draft a standardized implementation comment for a ClickUp task afte
    - Net effect / user-visible outcome (1 sentence)
    - Any caveats or known limitations (optional)
 
-5. **Produce the formatted comment. Do not post it — print it directly in your response (NOT in a code block) so the user can copy the rich text and paste it into ClickUp with formatting intact.**
+6. **Produce the formatted comment. Do not post it — print it directly in your response (NOT in a code block) so the user can copy the rich text and paste it into ClickUp with bold formatting intact.**
 
 ---
 
 ## Output formats
 
-ClickUp renders markdown. Use `**bold**` for structural labels as shown below — body text stays plain.
+ClickUp does not render markdown. Use `**bold**` only for structural labels — ClickUp will receive the bold formatting when the user copies and pastes rich text from the response. Body text stays plain.
+
+The comment always has three sections separated by blank lines: **Summary**, **Change**, and (if propagated) **Components**.
 
 ### Propagated (yes)
 
-```
-**<Type> implemented — Component: <ComponentName>**
+**Summary:** <one sentence derived from the task name/description>
+
+**<Type> implemented**
 
 <What changed and why>
 
-**Affected file:**
+**Component:** <ComponentName>
 
 <ComponentName>
 <file/path.ts>
 
 **Deployed to:** <Org1>, <Org2>, <Org3>.
-```
+
+---
 
 - `<Type>` = Fix / Feature / Update (from step 2)
-- If multiple files, list each on its own line under "Affected file:"
+- If multiple files, list each on its own line under the component name
 - If only one org, write "**Deployed to:** <Org>." (no comma)
 
 ### Direct (no)
 
-```
-**<Type> shipped (<YYYY-MM-DD>).**
+**Summary:** <one sentence derived from the task name/description>
+
+**<Type> shipped (<YYYY-MM-DD>)**
 
 <What changed mechanically>
 
@@ -71,7 +78,8 @@ ClickUp renders markdown. Use `**bold**` for structural labels as shown below �
 **Net effect:** <user-visible outcome>
 
 **Caveat:** <caveat, if provided>
-```
+
+---
 
 - `<Type>` = Fix / Feature / Update (from step 2)
 - Omit the **Root cause:** line if the user said N/A
