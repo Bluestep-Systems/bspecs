@@ -63,25 +63,27 @@ Component type is encoded in `draft/info/metadata.json` (and the matching `confi
 | `B.user`      | Current user (null in scheduled/cron scripts) |
 | `B.commit()`  | Force a mid-script transaction commit         |
 
-Full API patterns: @.claude/instructions/bsjs-development.md
+Full API patterns: read `.claude/instructions/bsjs-development.md` when writing or reviewing BsJs (load on demand — it is not auto-imported).
 
 ## MCP servers
 
 - **Context7** (`.vscode/mcp.json`) — fetch up-to-date docs for external libraries when a script depends on one.
 
-## Session start — read this once per conversation
+## Reading module context — scoped to the task
 
-**At the start of every session, before suggesting or implementing anything, read `draft/README.md` of every component pulled under any `U######/` directory.**
+**Read `draft/README.md` only for the component(s) the current task touches** — not every component in the workspace. A workspace can hold dozens of components totalling thousands of lines of README; loading all of them into every session is wasteful and slow.
 
-That's the context you need to be useful in this project. Each module's `draft/README.md` describes what the module does today. They were scaffolded by `/b6p-pull` from the code; treat them as the source of truth for current behavior. Do this once at session start, not per task — the READMEs are stable across a session.
+When a task names (or clearly implies) one or more components, read those READMEs before suggesting or implementing anything. Each module's `draft/README.md` describes what the module does today; it was scaffolded by `/b6p-pull` from the code, so treat it as the source of truth for current behavior. If you're unsure which component a request maps to, ask — don't pre-load everything to be safe.
 
-If a module has no `draft/README.md` (or it's empty boilerplate), ask the user to run `/b6p-pull <DAV URL>` against that component to scaffold one. Don't proceed to edit code in a module whose README is missing.
+To discover which components exist without reading their READMEs, list the `U######/*/` directories or read a single `draft/info/metadata.json`.
+
+If the component a task touches has no `draft/README.md` (or it's empty boilerplate), ask the user to run `/b6p-pull <DAV URL>` against that component to scaffold one. Don't proceed to edit code in a module whose README is missing.
 
 ## Documentation and planning workflow
 
 Two distinct artifacts, separated by lifecycle:
 
-- **`<Component>/draft/README.md`** — what the module **does today**. Read at session start (see above). Update only when documented behavior changes. Ships to the platform on push, so other devs who pull the module get the doc.
+- **`<Component>/draft/README.md`** — what the module **does today**. Read it for the component(s) a task touches (see "Reading module context" above). Update only when documented behavior changes. Ships to the platform on push, so other devs who pull the module get the doc.
 - **`.claude/specs/<feature>/`** — what we're about to **change or add** (requirements → design → tasks). Per feature, not per component. Created by `/spec-create`. Archived/deleted when the feature is done.
 
 ## Skill quick reference
@@ -157,5 +159,9 @@ If you discover a B6P rule or pattern that is not documented here:
 
 ## Deep reference
 
-@.claude/instructions/bsjs-development.md
-@.claude/instructions/b6p-platform.md
+These files hold the deep platform and BsJs reference. They are **not** auto-imported — read them on demand, only when the task needs them, so they don't sit in context every session:
+
+- `.claude/instructions/bsjs-development.md` — BsJs/TypeScript patterns, the `B` API, TS narrowing pitfalls. Read when writing or reviewing component code.
+- `.claude/instructions/b6p-platform.md` — platform concepts (component types, sync model, declarations). Read when a task hinges on platform behavior.
+
+The critical rules above (declarations, `.writable()`, `tsc`, WSL prefix, per-component imports) are the must-always-apply subset — you don't need the deep files to honor them.

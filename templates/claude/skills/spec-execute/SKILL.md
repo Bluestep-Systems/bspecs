@@ -14,7 +14,7 @@ description: Execute one task from a feature spec. Updates the task checkbox whe
    - Read `.claude/specs/<feature>/tasks.md`
    - Identify the task at the given number
 
-   (Module-level READMEs were read at session start — don't re-read them here.)
+   - Read the `draft/README.md` of the component(s) this task touches, if not already in context. (Don't pre-load READMEs for unrelated components.)
 3. **Check the task's prefix:**
    - **`[PLATFORM]`** — STOP, do NOT touch code. Tell the user:
      > Task <N> is a `[PLATFORM]` task: <description>. It must be done in the BlueStep UI. When it's complete, tell me and I'll mark it `[x]`, or call `/spec-execute <feature> <N+1>` to skip to the next task.
