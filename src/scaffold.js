@@ -3,7 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { log } from '@clack/prompts';
-import { ensureDir, copyTemplateTree, writeFile, applyTemplate, TEMPLATES_DIR, sha256 } from './utils.js';
+import { ensureDir, copyTemplateTree, applyTemplate, TEMPLATES_DIR, sha256 } from './utils.js';
 import { SYNC_TARGETS } from './sync.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -51,7 +51,6 @@ export async function scaffold(answers) {
   copyTemplateTree('module', join(projectDir, '.claude', 'templates'), vars);
   copyTemplateTree('vscode', join(projectDir, '.vscode'), vars);
 
-  mirrorInstructionsToGithub(projectDir, vars);
   writeBspecsLock(projectDir, vars);
 
   log.success('Files generated.');
@@ -198,18 +197,4 @@ function writeB6pEnvFile(projectDir, env) {
     detectedBy: 'bspecs scaffold',
   };
   writeFileSync(file, JSON.stringify(payload, null, 2) + '\n', 'utf8');
-}
-
-// Generate .github/instructions/<name>.instructions.md from the same content
-// rendered into .claude/instructions/<name>.md. Single source of truth.
-function mirrorInstructionsToGithub(projectDir, vars) {
-  const sources = [
-    { src: 'claude/instructions/bsjs-development.md.template', dest: 'bsjs-development.instructions.md' },
-    { src: 'claude/instructions/b6p-platform.md.template', dest: 'b6p-platform.instructions.md' },
-  ];
-  for (const { src, dest } of sources) {
-    const raw = readFileSync(join(TEMPLATES_DIR, src), 'utf8');
-    const rendered = applyTemplate(raw, vars);
-    writeFile(join(projectDir, '.github', 'instructions', dest), rendered);
-  }
 }
