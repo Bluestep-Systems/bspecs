@@ -1,6 +1,6 @@
 # @bluestep/bspecs
 
-CLI for scaffolding BlueStep projects with spec-driven development conventions for Claude Code and GitHub Copilot.
+CLI for scaffolding BlueStep projects with spec-driven development conventions for Claude Code.
 
 ## What it does
 
@@ -8,7 +8,7 @@ CLI for scaffolding BlueStep projects with spec-driven development conventions f
 
 - Claude Code skills (`/spec-create`, `/spec-execute`, `/b6p-pull`, `/b6p-push`, and more)
 - Automatic hooks (prettier on save, generated-file blocking, `b6p` integration)
-- Instructions for Claude Code and GitHub Copilot (single source of truth)
+- Instructions for Claude Code (the template tree is the single source of truth)
 - Spec templates (`requirements.md`, `design.md`, `tasks.md`)
 - Automatic `b6p` environment detection
 
@@ -76,8 +76,6 @@ my-project/
 │   ├── instructions/                  ← development rules for Claude
 │   ├── spec-templates/                ← spec file templates
 │   └── templates/                     ← component scaffolding templates
-├── .github/
-│   └── instructions/                  ← mirrors for GitHub Copilot
 └── .vscode/
     └── mcp.json                       ← Context7 MCP
 ```

@@ -54,7 +54,7 @@ Report any match — already planned, already shipped, or covered by an ADR — 
    - Reference specific file paths (e.g. `src/scaffold.js`, `templates/claude/skills/.../SKILL.md`).
    - Be small enough that one `/spec-execute` invocation covers exactly one.
 3. **Order matters** — a task that depends on another must come after it.
-4. Note in the tasks any docs that must stay in sync: `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `TODO.md`. Remember `mirrorInstructionsToGithub` — instruction templates have a mirrored copy in `.github/instructions/`.
+4. Note in the tasks any docs that must stay in sync: `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `TODO.md`. When adding a file under `templates/claude/instructions/`, remember to add a matching `index.md` entry (Claude-only — there is no `.github/` mirror to keep in sync).
 5. **STOP. Ask the user to approve tasks before implementation begins.**
 
 ## After approval

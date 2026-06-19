@@ -25,4 +25,4 @@ No test suite — how to confirm this works manually:
 - Keep `CLAUDE.md` / `README.md` in sync if behavior changed.
 - Tick the relevant `TODO.md` item.
 - Note the change in `CHANGELOG.md` if applicable.
-- If instruction templates were edited, confirm the `.github/instructions/` mirror.
+- If an instruction file was added under `templates/claude/instructions/`, confirm it has a matching `index.md` entry.

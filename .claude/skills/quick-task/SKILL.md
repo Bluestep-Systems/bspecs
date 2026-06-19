@@ -17,7 +17,7 @@ The lightweight counterpart to `/spec-create`. No requirements/design/tasks file
    - `grep` for the symbols, strings, or behavior named in the request to find the function(s) involved.
    - Read only the relevant functions/sections, targeting lines around each hit. Don't load entire files when a few functions suffice.
    - For broad "where does X happen across the repo" questions, delegate to the Explore agent so file bulk stays out of this conversation.
-   - Remember: instruction templates under `templates/claude/instructions/*.md.template` are mirrored to `.github/instructions/` by `mirrorInstructionsToGithub`.
+   - Remember: instruction templates live under `templates/claude/instructions/**` (overviews + `index.md` + `reference/`/`conventions/`/`gotchas/`); the template tree → `.claude/` is the single source of truth (Claude-only, no `.github/` mirror).
 3. **Propose:**
    - For a bug: root-cause hypothesis (one or two sentences).
    - Minimal change (which files, what change).

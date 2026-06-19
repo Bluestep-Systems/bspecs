@@ -72,7 +72,6 @@ Use Claude skills for spec-driven development:
 - `.claude/instructions/` — deep technical reference.
 - `.claude/hooks/` — automatic guardrails (block edits to `declarations/`, require `wsl` prefix, block `tsc`, auto-format).
 - `.claude/skills/` — slash commands you can invoke (`/b6p-pull`, `/spec-create`, etc.).
-- `.github/instructions/` — mirror of `.claude/instructions/` for GitHub Copilot.
 
 ## Secrets
 

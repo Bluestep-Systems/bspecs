@@ -54,11 +54,19 @@ const expected = [
   '.claude/spec-templates/design.template.md',
   '.claude/spec-templates/tasks.template.md',
   '.vscode/mcp.json',
-  '.github/instructions/bsjs-development.instructions.md',
-  '.github/instructions/b6p-platform.instructions.md',
+  '.claude/instructions/index.md',
 ];
 for (const rel of expected) {
   check(`exists: ${rel}`, existsSync(join(PROJECT_PATH, rel)));
+}
+
+// Claude-only: no GitHub Copilot mirror is scaffolded.
+check('no .github/ mirror generated', !existsSync(join(PROJECT_PATH, '.github')));
+
+// Instruction subfolders land (reference/conventions/gotchas).
+for (const dir of ['reference', 'conventions', 'gotchas']) {
+  const p = join(PROJECT_PATH, '.claude/instructions', dir);
+  check(`instructions/${dir}/ scaffolded`, existsSync(p) && statSync(p).isDirectory());
 }
 
 // No unsubstituted placeholders
@@ -106,15 +114,9 @@ check('tasks template defines [PLATFORM] prefix', tasksTpl.includes('[PLATFORM]'
 check('tasks template defines [CODE] prefix', tasksTpl.includes('[CODE]'));
 check('tasks template has Deployment section', /^## Deployment/m.test(tasksTpl));
 
-// RelateScript fully absent
-const filesWithRelate = allFiles.filter((f) => /relatescript/i.test(readFileSync(f, 'utf8')));
-check('No RelateScript mention anywhere', filesWithRelate.length === 0);
-if (filesWithRelate.length > 0) console.log('     mentioned in:', filesWithRelate);
-
-// .claude/instructions and .github/instructions content equal
-const claudeInstr = readFileSync(join(PROJECT_PATH, '.claude/instructions/bsjs-development.md'), 'utf8');
-const githubInstr = readFileSync(join(PROJECT_PATH, '.github/instructions/bsjs-development.instructions.md'), 'utf8');
-check('.claude and .github instruction copies are identical', claudeInstr === githubInstr);
+// (The old "no RelateScript mention anywhere" invariant was retired with the
+// rules consolidation: the migrated reference tree intentionally documents
+// RelateScript↔BSJS API equivalences and RelateScript-typed merge reports.)
 
 // Settings.json valid + has all 4 hooks
 const settings = JSON.parse(readFileSync(join(PROJECT_PATH, '.claude/settings.json'), 'utf8'));
