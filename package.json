@@ -1,6 +1,6 @@
 {
-  "name": "@bluestep/bspecs",
-  "version": "0.7.0",
+  "name": "@bluestep-systems/bspecs",
+  "version": "0.8.0",
   "description": "Spec-driven BlueStep development with AI agents — scaffolder and project conventions for Claude Code",
   "type": "module",
   "bin": {
@@ -15,6 +15,7 @@
     "start": "node cli.js"
   },
   "dependencies": {
+    "@bluestep-systems/b6p-cli": "^0.1.0",
     "@clack/prompts": "^0.9.0"
   },
   "engines": {
@@ -26,6 +27,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/bluestep/bspecs.git"
+    "url": "https://github.com/Bluestep-Systems/bspecs.git"
   }
 }

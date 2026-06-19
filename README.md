@@ -1,4 +1,4 @@
-# @bluestep/bspecs
+# @bluestep-systems/bspecs
 
 CLI for scaffolding BlueStep projects with spec-driven development conventions for Claude Code.
 
@@ -15,18 +15,32 @@ CLI for scaffolding BlueStep projects with spec-driven development conventions f
 
 ## Installation
 
-Requires access to the Bluestep GitHub Packages registry. Configure your `.npmrc` once:
+Both `bspecs` and the `b6p` CLI it depends on are published to the Bluestep GitHub Packages
+registry (restricted access), so you need a Personal Access Token before installing.
 
-```sh
-echo "@bluestep:registry=https://npm.pkg.github.com" >> ~/.npmrc
-npm login --scope=@bluestep --registry=https://npm.pkg.github.com
-```
+1. **Create a classic PAT** (GitHub → Settings → Developer settings → Personal access tokens →
+   Tokens (classic)) with the `read:packages` scope. If the `Bluestep-Systems` org enforces SSO,
+   authorize the token for it.
+2. **Configure `~/.npmrc`** once — map the scope to the registry and reference the token from your
+   environment:
 
-Then install the CLI globally:
+   ```ini
+   @bluestep-systems:registry=https://npm.pkg.github.com
+   //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+   ```
 
-```sh
-npm install -g @bluestep/bspecs
-```
+   ```sh
+   export GITHUB_TOKEN=ghp_your_read_packages_token   # add to your shell rc to persist
+   ```
+
+3. **Install the CLI globally:**
+
+   ```sh
+   npm install -g @bluestep-systems/bspecs
+   ```
+
+   This transitively installs `@bluestep-systems/b6p-cli`, so the `b6p` binary comes with it — no
+   separate install step.
 
 ## Usage
 
@@ -45,7 +59,7 @@ The interactive wizard asks for the project name, client, description, and Conte
 When a new version of `bspecs` is published with improvements to skills, hooks, or instructions, update your global install and sync the project:
 
 ```sh
-npm update -g @bluestep/bspecs
+npm update -g @bluestep-systems/bspecs
 cd my-project
 bspecs sync
 ```
@@ -57,7 +71,9 @@ Projects scaffolded with `bspecs 0.5.0` or later run `bspecs sync` automatically
 ## Prerequisites
 
 - **Node.js 18+**
-- **`b6p` CLI** — required for the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills. If not installed, `bspecs` prints install instructions during scaffold.
+- **`b6p` CLI** — required for the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills. Installed
+  automatically as a dependency (`@bluestep-systems/b6p-cli`); `bspecs` still detects it at scaffold
+  time and prints guidance if it is not reachable on your `PATH`.
 - **prettier** — required for the auto-format hook. `bspecs` warns if it is not found.
 
 ## Generated structure
@@ -94,4 +110,6 @@ If you need to adjust something only for your project (an extra permission in `s
 
 ## Publishing
 
-The package is published to GitHub Packages (`https://npm.pkg.github.com`) under the `@bluestep` organization. Only `cli.js`, `src/`, and `templates/` are included in the published package.
+The package is published to GitHub Packages (`https://npm.pkg.github.com`) under the
+`@bluestep-systems` organization (restricted access). Only `cli.js`, `src/`, and `templates/` are
+included in the published package. Publishing requires a PAT with `write:packages`.

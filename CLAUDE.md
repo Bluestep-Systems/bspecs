@@ -1,6 +1,6 @@
 # bspecs — scaffolder for spec-driven BlueStep projects
 
-`@bluestep/bspecs` is an interactive CLI (`bspecs`) that scaffolds a new BlueStep project with Claude Code skills, hooks, and conventions for spec-driven development. It generates a complete project directory from templates and detects the local `b6p` environment.
+`@bluestep-systems/bspecs` is an interactive CLI (`bspecs`) that scaffolds a new BlueStep project with Claude Code skills, hooks, and conventions for spec-driven development. It generates a complete project directory from templates and detects the local `b6p` environment. It depends on `@bluestep-systems/b6p-cli`, so installing `bspecs` brings the `b6p` binary transitively.
 
 ## Architecture
 
@@ -71,4 +71,4 @@ When a task is done and the user confirms, propose a commit message (title + bod
 
 ## Publishing
 
-Package name `@bluestep/bspecs`, registry `https://npm.pkg.github.com` (GitHub Packages, `access: restricted`). Repo: `github.com/bluestep/bspecs`. Only `cli.js`, `src/`, and `templates/` are included in the published package.
+Package name `@bluestep-systems/bspecs`, registry `https://npm.pkg.github.com` (GitHub Packages, `access: restricted`). Repo: `github.com/Bluestep-Systems/bspecs`. Only `cli.js`, `src/`, and `templates/` are included in the published package. It declares a runtime dependency on `@bluestep-systems/b6p-cli` (published from the `Bluestep-Systems/vscode-extension` monorepo), so a consumer needs a `~/.npmrc` mapping `@bluestep-systems` → GitHub Packages plus a PAT (`read:packages` to install, `write:packages` to publish). See `docs/decisions/b6p-cli-distribution.md`.

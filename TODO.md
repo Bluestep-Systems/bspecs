@@ -7,11 +7,11 @@ For deeper context behind any decision, see `docs/decisions/`. Completed work is
 ## Blocking publication / cross-machine use
 
 - [ ] **Pre-flight check for `b6p` CLI.** Detect at scaffold time whether `b6p` is reachable; if not, print install instructions from the upstream README plus a note about SSH access requirements. Also surface the same info in the scaffolded project's `README.md` and add guidance to `/b6p-pull` and `/b6p-push` skills for "command not found" errors. See `docs/decisions/b6p-cli-distribution.md`.
-- [ ] **Upstream issue for `b6p-cli` publish.** Open an issue in `Bluestep-Systems/vscode-extension` requesting that `@bluestep-systems/b6p-core` and `@bluestep-systems/b6p-cli` be published to GitHub Packages (or npm public). This unblocks moving from detect-and-guide to a proper `peerDependencies` declaration. Cite our CLI as a concrete consumer. See `docs/decisions/b6p-cli-distribution.md`.
-- [ ] **`b6p` peer-dependency migration (depends on upstream publish).** Once `b6p-cli` is published, remove the pre-flight check code and add `"@bluestep-systems/b6p-cli": "^X.Y.Z"` under `peerDependencies` in our `package.json`. Note the change in `CHANGELOG.md`.
+- [x] **Upstream issue for `b6p-cli` publish.** ~~Open an issue…~~ Resolved without an issue: `@bluestep-systems/b6p-cli@0.1.0` was **published directly** to GitHub Packages from the monorepo (2026-06-19, via the `publish-chain` spec). `b6p-core` stays unpublished (cli bundles it). See `.claude/specs/publish-chain/` and `docs/decisions/b6p-cli-distribution.md`.
+- [ ] **`b6p` `npx` migration + shell-detection removal (the "A5" fast-follow).** Now that `b6p-cli` is published and bspecs depends on it (0.8.0, plain `dependencies`), the disposable scaffolding can go: remove `detectEnvironmentFor` / `.claude/b6p-env.json` / `/b6p-detect` / the `require-wsl-for-b6p` regex and switch skills to `npx b6p`. This also resolves the confirmed PATH conflict (stale `npm link` of `b6p@0.0.1` + `prefix`-vs-nvm divergence). Stage as a separate release. See `.claude/specs/publish-chain/` (task 3 finding) and the ADR.
 - [ ] **GitHub Actions publish workflow.** Create `.github/workflows/publish.yml` that publishes `@bluestep/bspecs` to GitHub Packages on `v*` tags. Same pattern as we'll need for the upstream b6p publish.
 - [ ] **Push to GitHub.** Create `github.com/bluestep/bspecs` (private) and push `main` + tags.
-- [ ] **Consumer auth docs.** Document the `npm login --scope=@bluestep --registry=https://npm.pkg.github.com` flow and the `~/.npmrc` config a dev needs to install our CLI from GitHub Packages. Probably goes in our top-level `README.md` (which we don't have yet for the CLI repo).
+- [x] **Consumer auth docs.** Documented in `README.md` "Installation" (0.8.0): the `~/.npmrc` scope mapping + `${GITHUB_TOKEN}` placeholder and a `read:packages` PAT a dev needs to install from GitHub Packages.
 
 ## Scaffold setup (`bspecs` wizard)
 

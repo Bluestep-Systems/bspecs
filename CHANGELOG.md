@@ -2,9 +2,42 @@
 
 # Changelog
 
-All notable changes to `@bluestep/bspecs` are documented here.
+All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
+
+## [0.8.0] — 2026-06-19
+
+Makes `bspecs` the single tool BlueStep builders install: it now depends on the freshly-published
+`@bluestep-systems/b6p-cli`, so a global install brings the `b6p` binary transitively. The package
+is renamed and moved to the `Bluestep-Systems` org for consistency with the rest of the toolchain.
+
+### Changed
+
+- **Package renamed** `@bluestep/bspecs` → `@bluestep-systems/bspecs`, matching the
+  `@bluestep-systems` scope used by `b6p-cli` and `b6p-core`. Uninstall the old global before
+  installing the new one: `npm rm -g @bluestep/bspecs && npm i -g @bluestep-systems/bspecs`.
+- **Repository moved** to `github.com/Bluestep-Systems/bspecs` (off the personal account); the
+  `repository.url` field is corrected to match.
+
+### Added
+
+- **Runtime dependency on `@bluestep-systems/b6p-cli` `^0.1.0`.** Installing `bspecs` now installs
+  `b6p` automatically — no separate source checkout. Requires a `~/.npmrc` mapping
+  `@bluestep-systems` → GitHub Packages and a PAT (`read:packages` to install). See the README
+  "Installation" section.
+- **Repo-root `.npmrc`** mapping the `@bluestep-systems` scope to GitHub Packages (token via the
+  `${GITHUB_TOKEN}` env placeholder — no secret committed).
+
+### Note
+
+- The detect-and-guide shell-detection workaround (`detectEnvironmentFor`, `.claude/b6p-env.json`,
+  `/b6p-detect`, the `require-wsl-for-b6p` regex) is **not** removed in this release. Switching skills
+  to `npx b6p` and deleting that ~200 lines is staged as a separate fast-follow (the "A5" spec) to
+  keep this publish small and reversible. See `docs/decisions/b6p-cli-distribution.md` and
+  `.claude/specs/publish-chain/`.
+
+---
 
 ## [0.7.0] — 2026-06-19
 

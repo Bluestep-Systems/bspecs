@@ -1,8 +1,29 @@
 # ADR: How `bspecs` handles the `b6p` CLI dependency
 
-**Status:** Accepted (interim). Will be revisited once `@bluestep-systems/b6p-cli` is published.
+**Status:** Superseded by direct publish (2026-06-19). The interim detect-and-guide workaround
+(Option E) is being retired now that `@bluestep-systems/b6p-cli` is published.
 
-**Date:** 2026-05-21
+**Date:** 2026-05-21 (updated 2026-06-19)
+
+## Update — 2026-06-19 (publish chain shipped)
+
+The end state this ADR anticipated is now partly real (see `.claude/specs/publish-chain/`):
+
+- **`@bluestep-systems/b6p-cli@0.1.0` was published directly** to GitHub Packages (restricted) from
+  the `Bluestep-Systems/vscode-extension` monorepo — *not* via the upstream-issue route (Option D).
+  PR #14 had already made the package publish-ready; publishing was a one-liner once auth was sorted.
+  `b6p-core` was **not** published — the cli esbuild-bundles it, so the tarball is self-contained.
+- **bspecs declares it as a plain `dependencies` entry** (`"@bluestep-systems/b6p-cli": "^0.1.0"`),
+  not `peerDependencies`. Installing bspecs brings `b6p` transitively. The `peerDependencies` form
+  (Option A) and the `npx b6p` invocation are deferred to the **A5 fast-follow** so the first publish
+  stays small.
+- **bspecs was renamed `@bluestep/bspecs` → `@bluestep-systems/bspecs`** for scope consistency with
+  the monorepo, and moved to the `Bluestep-Systems` org. (Flagged human call; decided before first
+  publish since a rename is cheap pre-publish.)
+- **Open A5 risk confirmed real:** the dev environment has a stale `npm link` of `b6p@0.0.1` on the
+  interactive PATH, the published `0.1.0` installs to a `prefix` dir that conflicts with nvm, and the
+  two global dirs diverge. The A5 switch to `npx b6p` sidesteps all of it. Tracked in
+  `.claude/specs/publish-chain/tasks.md` (task 3 finding) and the A5 follow-up.
 
 ## Context
 
