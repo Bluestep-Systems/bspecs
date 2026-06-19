@@ -17,7 +17,7 @@ templates/
   vscode/                 → .vscode/mcp.json (Context7 MCP)
 ```
 
-`scaffold()` calls `copyTemplateTree()` four times (root, claude, module, vscode), then `mirrorInstructionsToGithub()` to copy the two `.claude/instructions/*.md` files into `.github/instructions/` as `*.instructions.md` — single source of truth for both Claude Code and GitHub Copilot.
+`scaffold()` calls `copyTemplateTree()` four times (root, claude, module, vscode). Claude-only: no GitHub Copilot mirror is generated — the template tree → `.claude/` is the single source of truth. See `docs/decisions/instruction-tree-and-claude-only.md`.
 
 Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTEXT7_API_KEY`, `SCAFFOLD_DATE`. Applied via `{{VAR}}` substitution in `utils.applyTemplate()`. Files ending in `.template` have that extension stripped on copy.
 
@@ -29,7 +29,7 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTE
 
 **prettier detection**: same probe logic, but only warns — doesn't write anything.
 
-**`mirrorInstructionsToGithub`**: reads `templates/claude/instructions/*.md.template`, applies vars, writes to `.github/instructions/`. Must stay in sync when instruction templates are edited.
+**`SYNC_TARGETS` (dynamic)**: `src/sync.js` derives the synced-file list by walking `templates/claude/**` via `enumerateClaudeTargets(SYNC_EXCLUDE)` (`src/utils.js`) — one `.claude/**` target per file, with a trailing `.template` stripped (same transform as `copyTemplateTree`). Add a skill, hook, or instruction file and `bspecs sync` / `bspecs.lock` pick it up automatically; there is no hardcoded list. `SYNC_EXCLUDE` (empty today) opts a scaffold-once file out of sync. See `docs/decisions/instruction-tree-and-claude-only.md`.
 
 ## What gets scaffolded into every project
 
@@ -37,7 +37,7 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTE
 - `.claude/settings.json` — permissions + hooks (block-generated-files, require-wsl-for-b6p, block-tsc, prettier-on-save)
 - `.claude/skills/` — `b6p-audit`, `b6p-detect`, `b6p-pull`, `b6p-push`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`
 - `.claude/hooks/` — four shell scripts (run in WSL; must use WSL-native toolchain)
-- `.claude/instructions/` — `bsjs-development.md`, `b6p-platform.md`
+- `.claude/instructions/` — Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`), the `index.md` manifest, and atomic single-topic files under `reference/`, `conventions/`, `gotchas/` (read on demand, not `@`-imported). No `.github/` Copilot mirror.
 - `.claude/spec-templates/` — `requirements.template.md`, `design.template.md`, `tasks.template.md`
 - `.claude/templates/` — per-component scaffolding (module README template)
 - `.vscode/mcp.json` — Context7 MCP with the API key
@@ -45,7 +45,7 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTE
 ## Editing templates
 
 - Skills live in `templates/claude/skills/<name>/SKILL.md` — no vars, plain markdown.
-- Instruction files live in `templates/claude/instructions/*.md.template` — support `{{VAR}}` and are mirrored to `.github/instructions/` on scaffold.
+- Instruction files live in `templates/claude/instructions/` — the two overviews plus `index.md` and the `reference/`/`conventions/`/`gotchas/` subfolders, all `*.md.template` (support `{{VAR}}`). Claude-only: no `.github/` mirror. When adding a file under a subfolder, add a matching one-line entry to `index.md.template` (it links one hop to every file).
 - `templates/claude/settings.json.template` controls hooks and permissions for generated projects.
 - Hook scripts are in `templates/claude/hooks/*.sh` — marked executable on copy (no-op on Windows).
 

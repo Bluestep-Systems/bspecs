@@ -6,6 +6,30 @@ All notable changes to `@bluestep/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.6.0] — 2026-06-19
+
+Consolidates four team members' separate BlueStep rule kits into one canonical, deduplicated instruction tree that ships with every scaffolded project, and makes scaffolding Claude-only (the GitHub Copilot mirror is removed).
+
+### Added
+
+- **`.claude/instructions/` rule tree.** Every scaffolded project now ships an `index.md` manifest plus atomic single-topic files under `reference/`, `conventions/`, and `gotchas/`, alongside the existing Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`). All read on demand (not `@`-imported); the `index.md` manifest lists every file with a "load when…" trigger and links one hop to each. Sources merged: Brandon's `01-Platform-Reference`/`02-Workflow-Conventions`/`bluestep-knowledge`, Brendan's `BSJS_GOTCHAS.md`, and Brian's `agents-support/*` (the shared docs were reconciled, not duplicated).
+- **`index.md` "Unresolved conflicts" roll-up.** Genuine cross-source disagreements are flagged inline with `<!-- CONFLICT: … -->` comments and rolled up in `index.md` for human resolution, rather than silently picked.
+
+### Changed
+
+- **`SYNC_TARGETS` is now derived dynamically** by walking `templates/claude/**` (`enumerateClaudeTargets(SYNC_EXCLUDE)` in `src/utils.js`), replacing the hand-maintained array in `src/sync.js`. New skills, hooks, and instruction files flow into `bspecs sync` and `bspecs.lock` automatically — no list to keep in step. A documented (empty) `SYNC_EXCLUDE` is the escape hatch for future scaffold-once files. See `docs/decisions/instruction-tree-and-claude-only.md`.
+- **`b6p-platform.md` / `bsjs-development.md` overviews** gained a `## Contents` TOC and folded-in deltas from the reconciled `platform-overview` / `typescript-guide`; they summarize and link to the atomic files instead of restating them.
+
+### Removed
+
+- **GitHub Copilot mirror.** `mirrorInstructionsToGithub` and its call site are deleted; scaffolding no longer writes a `.github/instructions/` tree, and the `.github` entries are gone from the sync list. Scaffolded projects are Claude-only. This repo's docs no longer claim dual Claude Code + Copilot support.
+
+### Note for existing projects
+
+`bspecs sync` never deletes files, so a project scaffolded by an older `bspecs` keeps its now-orphaned `.github/instructions/` mirror. It is harmless and no longer updated; delete `.github/instructions/` by hand if you want it gone.
+
+---
+
 ## [0.5.0] — 2026-05-26
 
 Adds `bspecs sync` to keep scaffolded projects up to date when `bspecs` templates change, without requiring a re-scaffold.
