@@ -2,39 +2,23 @@ import { readFileSync, writeFileSync, existsSync, chmodSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { log } from '@clack/prompts';
-import { TEMPLATES_DIR, applyTemplate, writeFile, sha256 } from './utils.js';
+import { TEMPLATES_DIR, applyTemplate, writeFile, sha256, enumerateClaudeTargets } from './utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
 
-export const SYNC_TARGETS = [
-  // Skills (8)
-  { templateSrc: 'claude/skills/b6p-audit/SKILL.md',    destRel: '.claude/skills/b6p-audit/SKILL.md' },
-  { templateSrc: 'claude/skills/b6p-detect/SKILL.md',   destRel: '.claude/skills/b6p-detect/SKILL.md' },
-  { templateSrc: 'claude/skills/b6p-pull/SKILL.md',     destRel: '.claude/skills/b6p-pull/SKILL.md' },
-  { templateSrc: 'claude/skills/b6p-push/SKILL.md',     destRel: '.claude/skills/b6p-push/SKILL.md' },
-  { templateSrc: 'claude/skills/bug-fix/SKILL.md',      destRel: '.claude/skills/bug-fix/SKILL.md' },
-  { templateSrc: 'claude/skills/spec-create/SKILL.md',  destRel: '.claude/skills/spec-create/SKILL.md' },
-  { templateSrc: 'claude/skills/spec-execute/SKILL.md', destRel: '.claude/skills/spec-execute/SKILL.md' },
-  { templateSrc: 'claude/skills/spec-status/SKILL.md',  destRel: '.claude/skills/spec-status/SKILL.md' },
-  // Hooks (4)
-  { templateSrc: 'claude/hooks/block-generated-files.sh',  destRel: '.claude/hooks/block-generated-files.sh' },
-  { templateSrc: 'claude/hooks/block-tsc.sh',              destRel: '.claude/hooks/block-tsc.sh' },
-  { templateSrc: 'claude/hooks/prettier-on-save.sh',       destRel: '.claude/hooks/prettier-on-save.sh' },
-  { templateSrc: 'claude/hooks/require-wsl-for-b6p.sh',   destRel: '.claude/hooks/require-wsl-for-b6p.sh' },
-  // Settings (1)
-  { templateSrc: 'claude/settings.json.template', destRel: '.claude/settings.json' },
-  // Instructions — .claude/ (2)
-  { templateSrc: 'claude/instructions/bsjs-development.md.template', destRel: '.claude/instructions/bsjs-development.md' },
-  { templateSrc: 'claude/instructions/b6p-platform.md.template',     destRel: '.claude/instructions/b6p-platform.md' },
-  // Instructions — .github/ mirrors (2)
-  { templateSrc: 'claude/instructions/bsjs-development.md.template', destRel: '.github/instructions/bsjs-development.instructions.md' },
-  { templateSrc: 'claude/instructions/b6p-platform.md.template',     destRel: '.github/instructions/b6p-platform.instructions.md' },
-  // Spec templates (3)
-  { templateSrc: 'claude/spec-templates/design.template.md',       destRel: '.claude/spec-templates/design.template.md' },
-  { templateSrc: 'claude/spec-templates/requirements.template.md', destRel: '.claude/spec-templates/requirements.template.md' },
-  { templateSrc: 'claude/spec-templates/tasks.template.md',        destRel: '.claude/spec-templates/tasks.template.md' },
-];
+// Files the scaffolder writes once but sync must NOT manage afterwards.
+// Empty today; add a templateSrc path (forward-slashed, e.g.
+// 'claude/skills/foo/SKILL.md') to opt a future scaffold-once file out of sync.
+const SYNC_EXCLUDE = [];
+
+// Every file under templates/claude/** is synced infrastructure (skills, hooks,
+// settings, spec-templates, instructions). Derived by walking the tree rather
+// than a hardcoded list, so new files flow into `bspecs sync` and bspecs.lock
+// automatically — no hand-maintained array to drift. templates/root/ (user-owned
+// CLAUDE.md/README) and templates/module/ (scaffold-once) live outside this tree
+// and are excluded by construction. Claude-only: no .github mirror.
+export const SYNC_TARGETS = enumerateClaudeTargets(SYNC_EXCLUDE);
 
 function findProjectRoot(startDir) {
   let dir = startDir;

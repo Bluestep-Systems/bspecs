@@ -53,6 +53,39 @@ function walk(rootSrc, src, dest, vars, opts) {
   }
 }
 
+// Walk templates/claude/** and return one sync target per file:
+//   { templateSrc, destRel }
+// templateSrc is relative to TEMPLATES_DIR (forward-slashed, e.g.
+//   'claude/instructions/reference/foo.md.template'); destRel maps it into the
+// scaffolded project ('.claude/instructions/reference/foo.md') — leading
+// 'claude/' becomes '.claude/', a trailing '.template' is stripped, subfolders
+// preserved. This is the same transform copyTemplateTree applies, so it
+// reproduces the formerly-hardcoded skills/hooks/settings/spec-template entries
+// exactly and picks up the instructions tree automatically. Claude-only: no
+// .github mirror target is emitted. `exclude` lists templateSrc paths to skip —
+// the escape hatch for any future scaffold-once file under claude/.
+export function enumerateClaudeTargets(exclude = []) {
+  const root = join(TEMPLATES_DIR, 'claude');
+  if (!existsSync(root)) return [];
+  const skip = new Set(exclude);
+  const targets = [];
+  walkClaude(root, 'claude', skip, targets);
+  return targets;
+}
+
+function walkClaude(absDir, relDir, skip, targets) {
+  for (const entry of readdirSync(absDir).sort()) {
+    const abs = join(absDir, entry);
+    const rel = `${relDir}/${entry}`;
+    if (statSync(abs).isDirectory()) {
+      walkClaude(abs, rel, skip, targets);
+    } else if (!skip.has(rel)) {
+      const destRel = '.claude/' + rel.slice('claude/'.length).replace(/\.template$/, '');
+      targets.push({ templateSrc: rel, destRel });
+    }
+  }
+}
+
 export function exists(path) {
   return existsSync(path);
 }
