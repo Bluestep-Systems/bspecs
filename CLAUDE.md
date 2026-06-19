@@ -12,7 +12,7 @@ src/
   utils.js                ← template engine ({{VAR}} substitution), fs helpers
 templates/
   root/                   → project root files (CLAUDE.md, .gitignore, .prettierrc, README)
-  claude/                 → .claude/ tree (settings, skills, hooks, instructions, spec-templates)
+  claude/                 → .claude/ tree (settings, skills, agents, hooks, instructions, spec-templates)
   module/                 → .claude/templates/ (per-component scaffolding)
   vscode/                 → .vscode/mcp.json (Context7 MCP)
 ```
@@ -29,13 +29,16 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTE
 
 **prettier detection**: same probe logic, but only warns — doesn't write anything.
 
-**`SYNC_TARGETS` (dynamic)**: `src/sync.js` derives the synced-file list by walking `templates/claude/**` via `enumerateClaudeTargets(SYNC_EXCLUDE)` (`src/utils.js`) — one `.claude/**` target per file, with a trailing `.template` stripped (same transform as `copyTemplateTree`). Add a skill, hook, or instruction file and `bspecs sync` / `bspecs.lock` pick it up automatically; there is no hardcoded list. `SYNC_EXCLUDE` (empty today) opts a scaffold-once file out of sync. See `docs/decisions/instruction-tree-and-claude-only.md`.
+**`SYNC_TARGETS` (dynamic)**: `src/sync.js` derives the synced-file list by walking `templates/claude/**` via `enumerateClaudeTargets(SYNC_EXCLUDE)` (`src/utils.js`) — one `.claude/**` target per file, with a trailing `.template` stripped (same transform as `copyTemplateTree`). Add a skill, agent, hook, or instruction file and `bspecs sync` / `bspecs.lock` pick it up automatically; there is no hardcoded list. `SYNC_EXCLUDE` (empty today) opts a scaffold-once file out of sync. See `docs/decisions/instruction-tree-and-claude-only.md`.
+
+**Delegated `/spec-execute` (default)**: the scaffolded `/spec-execute` skill implements a `[CODE]` task by delegating to the `b6p-task-implementer` subagent, which reads declarations/source and the relevant `instructions/` in its own context and returns a summary — keeping that bulk out of the main session. The approval gate stays in the main session (review the diff, mark `[x]`, STOP). `--inline` implements in-session for trivial tasks. The `b6p-commenter` and `b6p-code-review` subagents are on-demand only (suggested at the STOP, never auto-fired). See `docs/decisions/subagents-and-delegated-execution.md`.
 
 ## What gets scaffolded into every project
 
 - `CLAUDE.md`, `.prettierrc`, `.gitignore`, `README.md` (from `templates/root/`)
 - `.claude/settings.json` — permissions + hooks (block-generated-files, require-wsl-for-b6p, block-tsc, prettier-on-save)
-- `.claude/skills/` — `b6p-audit`, `b6p-detect`, `b6p-pull`, `b6p-push`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`
+- `.claude/skills/` — `b6p-audit`, `b6p-detect`, `b6p-pull`, `b6p-push`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`, `task-comment`
+- `.claude/agents/` — three BlueStep subagents: `b6p-task-implementer` (implements one spec task in an isolated context; `/spec-execute` delegates to it), `b6p-commenter` (fills in a component `draft/README.md`), `b6p-code-review` (BlueStep-aware, report-only review)
 - `.claude/hooks/` — four shell scripts (run in WSL; must use WSL-native toolchain)
 - `.claude/instructions/` — Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`), the `index.md` manifest, and atomic single-topic files under `reference/`, `conventions/`, `gotchas/` (read on demand, not `@`-imported). No `.github/` Copilot mirror.
 - `.claude/spec-templates/` — `requirements.template.md`, `design.template.md`, `tasks.template.md`
@@ -45,6 +48,7 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTE
 ## Editing templates
 
 - Skills live in `templates/claude/skills/<name>/SKILL.md` — no vars, plain markdown.
+- Subagents live in `templates/claude/agents/<name>.md` — plain markdown like skills (no vars), with `name`/`description`/`tools` frontmatter. They reference the `instructions/` tree on demand rather than restating platform rules, to preserve the no-duplication invariant. See `docs/decisions/subagents-and-delegated-execution.md`.
 - Instruction files live in `templates/claude/instructions/` — the two overviews plus `index.md` and the `reference/`/`conventions/`/`gotchas/` subfolders, all `*.md.template` (support `{{VAR}}`). Claude-only: no `.github/` mirror. When adding a file under a subfolder, add a matching one-line entry to `index.md.template` (it links one hop to every file).
 - `templates/claude/settings.json.template` controls hooks and permissions for generated projects.
 - Hook scripts are in `templates/claude/hooks/*.sh` — marked executable on copy (no-op on Windows).

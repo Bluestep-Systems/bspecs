@@ -6,6 +6,24 @@ All notable changes to `@bluestep/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.7.0] — 2026-06-19
+
+Adds three BlueStep subagents and makes `/spec-execute` delegate task implementation to one of them by default, so a large feature's heavy declaration/source reads stay out of the main session. Resolves the B4 follow-up from the rules consolidation.
+
+### Added
+
+- **`.claude/agents/` subagents.** Every scaffolded project now ships three BlueStep-aware subagents: `b6p-task-implementer` (implements exactly one approved spec task in an isolated context and returns a structured summary), `b6p-commenter` (fills in a component's `draft/README.md` from the code), and `b6p-code-review` (BlueStep-aware review grouped Critical/Warnings/Suggestions, **report-only by default**). Each references the `instructions/` tree on demand rather than restating platform rules. They ride the existing `templates/claude/**` walk, so `copyTemplateTree` and `SYNC_TARGETS`/`bspecs.lock` pick them up with no `src/` change.
+
+### Changed
+
+- **`/spec-execute` delegates by default.** A `[CODE]` task is implemented by spawning `b6p-task-implementer` in its own context; the main session surfaces the git diff and keeps the approval gate (review, mark `[x]`, README sync, STOP). A new `--inline` flag implements in-session for trivial tasks. The "task done" STOP now offers the optional, user-invoked `@b6p-commenter` and `@b6p-code-review` — never auto-fired. See `docs/decisions/subagents-and-delegated-execution.md`.
+
+### Note
+
+- `bluestep-dev` was **not** ported as an artifact — its platform knowledge already lives in `instructions/` (0.6.0); only its workflow became the implementer's prompt. The implementer never runs `tsc` (hook-blocked; the platform compiles on push) — it verifies via `ide_diagnostics`.
+
+---
+
 ## [0.6.0] — 2026-06-19
 
 Consolidates four team members' separate BlueStep rule kits into one canonical, deduplicated instruction tree that ships with every scaffolded project, and makes scaffolding Claude-only (the GitHub Copilot mirror is removed).

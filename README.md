@@ -7,6 +7,7 @@ CLI for scaffolding BlueStep projects with spec-driven development conventions f
 `bspecs` generates a project directory ready to use with:
 
 - Claude Code skills (`/spec-create`, `/spec-execute`, `/b6p-pull`, `/b6p-push`, and more)
+- BlueStep subagents — `b6p-task-implementer` (isolated task execution; `/spec-execute` delegates to it), `b6p-commenter` (component README), `b6p-code-review` (report-only review)
 - Automatic hooks (prettier on save, generated-file blocking, `b6p` integration)
 - Instructions for Claude Code (the template tree is the single source of truth)
 - Spec templates (`requirements.md`, `design.md`, `tasks.md`)
@@ -72,7 +73,8 @@ my-project/
 │   ├── b6p-env.json                   ← detected b6p environment
 │   ├── settings.json                  ← Claude Code permissions and hooks
 │   ├── hooks/                         ← 4 scripts executed by Claude Code
-│   ├── skills/                        ← 8 skills (/spec-create, /b6p-pull, etc.)
+│   ├── skills/                        ← 9 skills (/spec-create, /b6p-pull, etc.)
+│   ├── agents/                        ← 3 BlueStep subagents (implementer, commenter, reviewer)
 │   ├── instructions/                  ← development rules for Claude
 │   ├── spec-templates/                ← spec file templates
 │   └── templates/                     ← component scaffolding templates

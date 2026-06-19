@@ -13,6 +13,12 @@ For deeper context behind any decision, see `docs/decisions/`. Completed work is
 - [ ] **Push to GitHub.** Create `github.com/bluestep/bspecs` (private) and push `main` + tags.
 - [ ] **Consumer auth docs.** Document the `npm login --scope=@bluestep --registry=https://npm.pkg.github.com` flow and the `~/.npmrc` config a dev needs to install our CLI from GitHub Packages. Probably goes in our top-level `README.md` (which we don't have yet for the CLI repo).
 
+## Scaffold setup (`bspecs` wizard)
+
+- [ ] **Make git initialization non-optional (or warn loudly).** The implementer agent relies on `git diff` to produce its summary, so a project without a repo breaks that flow. Either drop the "Initialize a git repository?" confirm in `src/prompts.js` and always init, or keep the prompt but warn clearly that skipping degrades the implementer agent. Also check whether the target directory (or a parent) already contains a `.git` repo and surface that to the user before initializing — avoid nesting a new repo inside an existing one. See `src/prompts.js:62` and `src/scaffold.js` git init.
+- [ ] **Make project description optional or remove it.** The "Project description (min 20 chars)" prompt in `src/prompts.js:44` is currently required. Decide whether `PROJECT_DESCRIPTION` is actually used anywhere meaningful (it's a template var) — if not, remove the prompt and the variable; if marginally useful, make it optional (allow empty, drop the 20-char minimum).
+- [ ] **Remove the Context7 dependency entirely.** bspecs targets BlueStep items and doesn't need external library docs. Drop the Context7 API key prompt (`src/prompts.js:55`), the `CONTEXT7_API_KEY` template variable, the `.vscode/mcp.json` Context7 MCP scaffolding (`templates/vscode/`), and the `copyTemplateTree` call for the vscode tree in `src/scaffold.js`. Update `CLAUDE.md` (architecture + "what gets scaffolded") and any docs that mention Context7.
+
 ## Template staleness
 
 - [ ] **`bspecs sync` command.** Add a `bspecs sync` subcommand that updates infrastructure files (skills, hooks, settings, instructions, spec-templates) in an existing project. Uses a `.claude/bspecs.lock` file (written at scaffold time) with SHA-256 hashes of each file to detect user edits — files the user modified locally are skipped. The `SessionStart` hook in generated projects runs `bspecs sync --silent` automatically on every workspace open, resume, and compaction, so projects stay up to date without manual intervention.
@@ -44,7 +50,9 @@ The full b6p CLI audit (see git history for the conversation) surfaced two more 
 
 ## Rules consolidation follow-ups
 
-- [ ] **Convert Brandon's `03-Agents/` role files into bspecs skills (B4).** The `consolidate-rules` spec (0.6.0) ingested only the `bluestep-knowledge/` *content* as on-demand reference material; the agent-role definitions (`bluestep-code-review`, `bluestep-commenter`, `bluestep-dev`) were explicitly left out of scope. Evaluate turning each into a `templates/claude/skills/<name>/SKILL.md`. See `.claude/specs/consolidate-rules/requirements.md` (Out of scope).
+- [x] **Convert Brandon's `03-Agents/` role files into bspecs skills (B4).** Shipped in 0.7.0 as **subagents**, not skills: `b6p-commenter` and `b6p-code-review` (report-only) under `templates/claude/agents/`, plus `b6p-task-implementer` (the reframed workflow layer of `bluestep-dev` — its knowledge was already in `instructions/` from 0.6.0). `/spec-execute` delegates to the implementer by default (`--inline` escape hatch). See `.claude/specs/bluestep-subagents/` and `docs/decisions/subagents-and-delegated-execution.md`.
+
+- [ ] **Delegate-to-subagent for this repo's own `/spec-execute`.** The scaffolded `/spec-execute` now delegates BlueStep task implementation to `b6p-task-implementer` to keep context lean on large features (0.7.0). This repo's own `.claude/skills/spec-execute` does **not** delegate — it has no BlueStep components, so the BlueStep implementer doesn't fit. Consider a *generic* implementer subagent (read spec + scoped files in an isolated context, implement one task, return a summary) that this repo's `/spec-execute` delegates to, for the same context-isolation benefit on large bspecs specs. Mirror the `--inline` escape hatch. See `docs/decisions/subagents-and-delegated-execution.md`.
 
 ## Done
 
