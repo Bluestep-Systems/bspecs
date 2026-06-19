@@ -11,7 +11,7 @@ CLI for scaffolding BlueStep projects with spec-driven development conventions f
 - Automatic hooks (prettier on save, generated-file blocking, `b6p` integration)
 - Instructions for Claude Code (the template tree is the single source of truth)
 - Spec templates (`requirements.md`, `design.md`, `tasks.md`)
-- Automatic `b6p` environment detection
+- The `b6p` CLI wired into each project as a devDependency, invoked via `npx b6p` (no global install or shell/PATH detection)
 
 ## Installation
 
@@ -39,8 +39,12 @@ registry (restricted access), so you need a Personal Access Token before install
    npm install -g @bluestep-systems/bspecs
    ```
 
-   This transitively installs `@bluestep-systems/b6p-cli`, so the `b6p` binary comes with it — no
-   separate install step.
+   This gives you the `bspecs` command for scaffolding projects. It does **not** put a `b6p` binary
+   on your global `PATH` — a dependency's bin is never globally reachable. Instead, every project you
+   scaffold declares `@bluestep-systems/b6p-cli` as a devDependency and the skills invoke it via
+   `npx b6p`. After scaffolding, run `npm install` inside the new project (the scaffolder reminds you)
+   to fetch `b6p`. The same `~/.npmrc` + `GITHUB_TOKEN` from steps 1–2 authorizes that per-project
+   install — the scaffolded project also ships an `.npmrc` mapping the scope.
 
 ## Usage
 
