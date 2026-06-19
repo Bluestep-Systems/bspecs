@@ -1,0 +1,11 @@
+---
+description: Merge-report settings UIs render inside the BlueStep form — any HTML control with a name attribute gets submitted and breaks the save
+---
+
+When a BlueStep merge report renders an interactive UI (the JSON-in-memo settings pattern, see tracer audit and the summitridge Visit Setting Display framework), the mount `<div>` lives **inside the BlueStep `<form>`**. On the native form Save, the browser submits every form control that has a `name` attribute. Any control YOU inject with a `name` becomes an unexpected POST field → BlueStep rejects the whole save with the generic **"There was a problem storing the data."**
+
+**Rule: never put a `name` attribute on controls you create in a merge-report UI.** Nameless `<input>`/`<select>`/`<textarea>` are not submitted, so they're safe (the proven reference framework never names any control). Persist state yourself by writing JSON into the one hidden memo field via the `submitForm` hook.
+
+Gotcha that bit us on Tracer Settings (havenwoodslc/1528540): assignment mode radios were given `name="asgn_<id>"` for native radio grouping. Groups (nameless controls) saved fine; adding a subtask injected the named radios and every save failed. Fix: drop the `name` — mutual exclusivity is handled by the onchange→mutate→render loop that re-sets `checked` from state, so native grouping isn't needed. Symptom signature: save works until a specific control type appears, then "problem storing the data" — check for a stray `name`.
+
+**Sibling gotcha — never wrap merge-report UI in your own `<form>` + submit button.** The host `<form>` already wraps your markup, and HTML can't nest `<form>`s, so the browser silently DROPS your inner `<form>` (its element/id vanishes → `getElementById` returns null → your submit handler never attaches). A `<button type="submit">` then submits the HOST form → the page navigates to a generic BlueStep error page. Symptom signature: clicking submit navigates away / shows a generic error, and your JS never ran. Fix (Survey Form beh/1434661): use a plain `<div>` container, `<button type="button">`, attach a click handler, and submit via `fetch()` to your endpoint — never let the host form submit. Combine with the no-`name` rule: build radio-like pickers as nameless buttons whose selected state you manage in JS (`.is-selected`), not native radio inputs.

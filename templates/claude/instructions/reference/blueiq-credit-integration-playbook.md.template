@@ -1,0 +1,31 @@
+---
+description: Step-by-step playbook for wiring any new OpenAI/AI feature on summitridge into the BlueIQ credit gate + ledger — do this every time we build an AI feature
+---
+
+**Whenever we build a new AI feature on summitridge, it MUST be wired into the BlueIQ credit system** (gate + ledger at `/b/aiCredits`, file 1471659 — see blueiq credit system for the endpoint spec). This is the repeatable recipe. Two integration patterns depending on context.
+
+## The contract (both patterns produce the same ledger row)
+Per OpenAI "call" (define the granularity sensibly — e.g. one chat turn that fans out to many internal calls = ONE log with summed usage):
+- **check** before spending → `{ok, allowed, used, limit, remaining, period}`. Proceed ONLY when `ok===true && allowed===true`. **Fail-closed.**
+- **log** after the response → row fields: `function` (Text), `user` (Text), `model` (SingleSelect by export value), `promptTokens`, `cachedInputTokens`, `completionTokens`, `audioInputTokens`, `audioOutputTokens`, `audioSeconds`, `cost`, `credits` (all Number). Endpoint prices from its PRICING table; `credits = cost × 1000` (exact decimal, no rounding).
+- **Token mapping:** `promptTokens` = TOTAL input (cached nested inside); pass `cachedInputTokens` too so cached is priced cheaply. Chat models: audio fields = 0. The model id passed MUST exist in `/b/aiCredits` PRICING or `log` hard-errors.
+
+## Pattern A — user-context consumer (endpoint or merge report with a session)
+Used by `/b/aiAudio` (1471299), the Shift-Note Assistant (1471399), the Patient Record Chatbot (1470299/1470459). **Copy the helpers verbatim from `/b/aiAudio` (1471299) `draft/scripts/app.ts`:** `creditFetch`, `currentUserName`, `CreditCheck` interface, `checkCredits`, `logCredits`.
+- Loopback is **internal `B.net.fetch("/b/aiCredits", {method:"POST", credentials:true, followRedirects:false, enableErrorStream:true, ...})`** — NOT external httpRequester (can't hairpin to the org's own host → `this.in is null`). `credentials:true` carries the caller's session so the login-required endpoint doesn't 403. See [internal loopback fetch](internal-loopback-fetch.md).
+- Gate BEFORE the spend; on `!allowed` return distinct flags: `creditLimitReached:true` (out_of_credits) vs `creditCheckFailed:true` (gate_unreachable/gate_error). `checkCredits` returns a structured `reason` so the UI tells the true story, not a false "out of credits".
+- Log AFTER (best-effort, never block the user's result; return a `creditLogWarning` on failure).
+- Client UX: on `creditLimitReached` show a styled banner + disable input; on `creditCheckFailed` show a softer banner but allow retry.
+
+## Pattern B — scheduled / system-wide formula (NO session)
+Used by the Daily Milieu Summary morning formula (1471599). A scheduled `CurrentRecordB` formula has **no user session and no inbound request**, so it CANNOT authenticate a loopback (would 403). Instead **write the `openAILogs` entry directly**:
+- Prereq: add an `openAILogs` reference path to the formula in the BlueStep UI (multi-entry, writable) — it lives on the Facility/`community` record alongside `openAIIntegration`. Then `openAILogs.newEntry()` works.
+- Price inline (mirror the relevant model's row from `/b/aiCredits` PRICING; comment it as a mirror). gpt-4o = in 2.50 / cached 1.25 / out 10.00 per 1M; `textIn = promptTokens − cached`; `credits = cost × 1000`.
+- Set fields directly: `timestamp.val(B.time.ZonedDateTime.now())` (DateTimeField — use `.val()`, not `.dateTimeVal()`), `function`, `user:"System (scheduled)"`, `model` via `field.optionsByExport()[modelId]`, token fields, `cost`, `credits`, then `B.commit()`. Wrap best-effort (try/catch) AFTER the feature's own commit so logging can't lose the real output. No gate (background job — log only).
+
+## Always also
+- **API key from the form**, never hardcoded: read `openAIIntegration.fields.apiKey` (SecretField) via a memoized `getOpenAiKey()` (endpoints use `community[0].forms.openAIIntegration...`; CurrentRecord formulas access `openAIIntegration` directly).
+- **No "AI" in front-facing text** — brand is always "BlueIQ". The ledger `function` label is admin-facing and feature-named (e.g. "Shift Note Recorder", "Patient Record Chatbot", "Daily Milieu Summary", optionally "– {sub-context}"). See [blueiq no ai branding](../conventions/blueiq-no-ai-branding.md).
+- Build (`tsc --rootDir . --skipLibCheck`) and snapshot every touched component.
+
+Related: blueiq credit system, [internal loopback fetch](internal-loopback-fetch.md), [blueiq no ai branding](../conventions/blueiq-no-ai-branding.md), ai audio, [datetime field write](datetime-field-write.md), [singleselect null copy](singleselect-null-copy.md).

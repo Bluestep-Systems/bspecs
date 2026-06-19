@@ -1,0 +1,17 @@
+---
+description: "Compile BlueStep endpoints with --rootDir . so output mirrors scripts/app.ts → .build/scripts/app.js; --rootDir ./scripts emits to .build/app.js which the runtime ignores"
+---
+
+When compiling a BlueStep endpoint locally, use:
+
+```
+tsc --rootDir . --ignoreDeprecations 6.0 --skipLibCheck
+```
+
+NOT `tsc --rootDir ./scripts ...`.
+
+**Why:** The BlueStep runtime loads `.build/scripts/app.js` (mirroring `scripts/app.ts`). With `--rootDir ./scripts`, tsc emits to `.build/app.js` (one level too high). The push succeeds and the snapshot succeeds, but the runtime keeps serving the old `.build/scripts/app.js`. Symptom: code edits appear to have no effect after pushing and snapshotting — silent staleness, no error, just wrong output.
+
+**How to apply:** Always run tsc from the `draft/` folder with `--rootDir .` (or omit `rootDir` entirely — tsc infers it from `tsconfig`). After compile, verify `.build/scripts/app.js` was updated, not `.build/app.js`. If a stale `.build/app.js` orphan exists from a past mistake, it can be left in place — the runtime ignores it.
+
+Confirmed on alpineacademy `/b/greatHair`, May 2026.

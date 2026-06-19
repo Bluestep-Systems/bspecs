@@ -1,0 +1,10 @@
+---
+description: B.net.request.method is a method (call it), not a property — calling without parens type-checks but returns the Function reference at runtime
+---
+`B.net.request.method` is typed as `method(): string` in B.d.ts — call it as a function: `B.net.request.method()`.
+
+If you write `B.net.request.method` (no parens), TypeScript happily lets it through (the function reference is a truthy value), but at runtime you'll be comparing the Function object against `"GET"` and your method gate will never trigger.
+
+Same pattern likely applies to other `request.*` accessors that look property-shaped — check the .d.ts before assuming.
+
+Confirmed live on alpineacademy `/b/greatHair` endpoint, May 2026.

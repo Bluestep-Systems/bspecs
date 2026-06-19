@@ -7,6 +7,18 @@ applyTo: "**/draft/scripts/**/*.ts"
 
 Deep reference for BlueStep TypeScript development. Critical rules live in `CLAUDE.md`; this file covers patterns, APIs, and conventions that apply when actually writing code.
 
+## Contents
+
+- [Module structure](#module-structure)
+- [The `B` object — full API](#the-b-object--full-api)
+- [Reading and writing fields](#reading-and-writing-fields)
+- [Patterns by script type](#patterns-by-script-type)
+- [`info/` configuration](#info-configuration)
+- [TypeScript configuration & Graal compatibility](#typescript-configuration--graal-compatibility)
+- [Imports — never fabricate](#imports--never-fabricate)
+- [TS narrowing pitfalls (Graal/Java types)](#ts-narrowing-pitfalls-graaljava-types)
+- [Error handling](#error-handling)
+
 ## Module structure
 
 ```
@@ -133,6 +145,15 @@ const value = entry.fieldName.val();                          // current value
 const exportValue = entry.statusField.selectedExportValue();  // dropdown export value
 const all = entry.tagsField.allValues();                       // multi-select
 ```
+
+`.val()` returns the field's value typed loosely (often `any`). When a field may be empty, prefer the Java-optional accessor with a default instead of null-checking the raw value:
+
+```typescript
+const name = entry.nameField.opt().orElse("");   // string, never null
+const score = entry.scoreField.opt().orElse(0);
+```
+
+Because projects compile with `strict: false` (see "TypeScript configuration & Graal compatibility"), `.opt().orElse()` plus explicit annotations are the main defense against silent `null`/`undefined` bugs.
 
 ### Write
 
@@ -287,6 +308,36 @@ Identifies the component type. Examples:
 ### `permissions.json`
 
 Defines who can execute / view this component. Managed on the platform; usually pulled, rarely hand-edited.
+
+## TypeScript configuration & Graal compatibility
+
+### tsconfig and strict mode
+
+Each project root has a `tsconfig.json`. BlueStep projects run with **`strict: false`**, so the compiler will *not* catch every null/type error — compensate with `.opt().orElse()` and explicit type annotations. Typical settings:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "strict": false,
+    "moduleResolution": "node",
+    "types": ["./declarations"]
+  }
+}
+```
+
+Do not run `tsc` locally — the platform compiles on push (a hook blocks local `tsc`). For why local builds / `rootDir` are avoided, see `conventions/tsc-rootdir.md`.
+
+### Graal compatibility (server-side)
+
+Server-side BsJs runs on **GraalVM**, not Node. Avoid relying on the newest language features there:
+
+- Stage-3 / very new ECMAScript proposals
+- Newer `Intl` APIs
+- `WeakRef` and `FinalizationRegistry` (limited support)
+
+Server-side `B.net.fetch` is **synchronous** — no `await`/Promise round-trip (see "`B.net` — outbound HTTP"). The `async`/`await` and browser `fetch().json()` patterns apply only to client JS shipped in a MergeReport's `static/`, which runs in the browser under normal compatibility rules.
 
 ## Imports — never fabricate
 

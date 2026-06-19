@@ -150,7 +150,10 @@ Examples below use `<shellPrefix>` as a placeholder:
 If you discover a B6P rule or pattern that is not documented here:
 
 1. Apply it for the current task.
-2. Update the relevant file (`CLAUDE.md`, `.claude/instructions/bsjs-development.md`, or `.claude/instructions/b6p-platform.md`) to capture the rule.
+2. Capture the rule in the right place:
+   - A must-always rule → the Critical rules list in this `CLAUDE.md`.
+   - High-frequency platform/BsJs material → the matching overview (`.claude/instructions/b6p-platform.md` or `bsjs-development.md`).
+   - A single-topic detail or sharp edge → a new or existing atomic file under `.claude/instructions/{reference,conventions,gotchas}/`, and add (or update) its one-line entry in `.claude/instructions/index.md` so it's discoverable.
 3. Note in your response: "Added rule: <description>".
 
 ## Secrets
@@ -159,9 +162,15 @@ If you discover a B6P rule or pattern that is not documented here:
 
 ## Deep reference
 
-These files hold the deep platform and BsJs reference. They are **not** auto-imported — read them on demand, only when the task needs them, so they don't sit in context every session:
+The deep platform and BsJs reference lives under `.claude/instructions/`. None of it is auto-imported — read on demand, only when the task needs it, so it doesn't sit in context every session.
+
+**For any platform or BsJs detail, consult `.claude/instructions/index.md` first.** The index is the manifest of single-topic files (`reference/`, `conventions/`, `gotchas/`), each with a one-line "load when…" trigger; open it to pick the right file, then read just that file. It also gives a `grep -ri "<term>" .claude/instructions/` route for term-level lookups.
+
+The two on-demand overviews come first for high-frequency material:
 
 - `.claude/instructions/bsjs-development.md` — BsJs/TypeScript patterns, the `B` API, TS narrowing pitfalls. Read when writing or reviewing component code.
-- `.claude/instructions/b6p-platform.md` — platform concepts (component types, sync model, declarations). Read when a task hinges on platform behavior.
+- `.claude/instructions/b6p-platform.md` — platform architecture and concepts (Relate/Connect/Manage, component types, sync model, declarations). Read when a task hinges on platform behavior.
+
+Reach past the overviews into the indexed atomic files when you need a specific topic the overview only summarizes.
 
 The critical rules above (declarations, `.writable()`, `tsc`, WSL prefix, per-component imports) are the must-always-apply subset — you don't need the deep files to honor them.

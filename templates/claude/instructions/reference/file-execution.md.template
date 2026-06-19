@@ -1,0 +1,113 @@
+# File Execution Model
+
+⚠️ **Critical**: understanding which files execute, and when, is essential for BlueStep.js development. The core rule: **a file only runs if it is an automatic entry point or is explicitly imported/referenced.** Files that are neither never execute.
+
+## Contents
+
+- [Merge Reports](#merge-reports)
+- [Endpoints and Formulas](#endpoints-and-formulas)
+- [Workspace Sync](#workspace-sync)
+- [Common Mistakes](#common-mistakes)
+
+## Merge Reports
+
+### Execution entry points
+
+Only two files execute automatically:
+
+1. **`scripts/app.ts`** — server-side only. Executes on the server, can access `B` and BlueStep APIs, cannot access the DOM, and writes to `B.out` (rendered into the page).
+2. **`static/index.html`** — client-side only. Executes in the browser, can access the DOM, cannot access `B`, and must reference other client files explicitly.
+
+### File structure
+
+```
+/scripts/app.ts          ← SERVER-SIDE ONLY - executes on the server
+/static/index.html       ← CLIENT-SIDE ONLY - executes in the browser
+/static/script.js        ← CLIENT-SIDE ONLY - must be referenced by index.html
+/static/styles.css       ← CLIENT-SIDE ONLY - for custom HTML only; component-library output needs no extra CSS
+/objects/*.ts            ← imported by app.ts or other files
+```
+
+All other files must be explicitly imported or referenced. Creating files that aren't imported = wasted code.
+
+### HTML structure
+
+Merge-report HTML (`static/index.html`) is **embedded into an existing BlueStep page**, so it must NOT include `<!DOCTYPE html>`, `<html>`, `<head>`, or `<body>`. Include only external `<script>`/`<link>` references, the content markup, and the application script at the end.
+
+Connect/Manage sites provide the full HTML structure, navigation, branding, user context, and layout framework. Your merge report provides content (via `B.out` from `scripts/app.ts`), client markup (from `static/index.html`), and client scripts/styles. The content is rendered inside the site's content container, not as a standalone page — it is constrained by the site's layout.
+
+```html
+<!-- External libraries (optional) -->
+<link rel="stylesheet" href="styles.css" />
+
+<!-- Your content -->
+<div id="app-container"></div>
+
+<!-- Application script — use type="module" when script.ts uses ES imports (e.g. genericComponents) -->
+<script type="module" src=".build/script.js"></script>
+```
+
+> ⚠️ **`type="module"` is required** whenever `script.ts` uses ES `import` statements (including importing from `genericComponents`). Without it the browser throws `SyntaxError: Cannot use import statement outside a module` and the script will not run.
+
+## Endpoints and Formulas
+
+### Execution entry points
+
+Only one file executes automatically:
+
+1. **`scripts/app.ts`** — server-side only. Executes on the server, handles the request/event, can access `B`, cannot access the DOM.
+
+### File structure
+
+```
+/scripts/app.ts          ← SERVER-SIDE ONLY - handles the request/event
+/objects/*.ts            ← imported by app.ts
+```
+
+### Query access pattern
+
+Which queries are available in `app.ts` is set by the component's **form-import config on the platform**, regenerated into `declarations/index.d.ts` on `b6p pull`. A configured query is a **bare top-level variable** named after the query FID — directly iterable, no `.query()` call:
+
+```typescript
+// app.ts — query is a top-level variable (no .query() needed)
+const unit = topLevelUnit[0];
+const unitName = unit.forms.unitInformation.fields.unitName.opt().orElse('');
+topLevelUnit.forEach((record) => { /* ... */ });
+```
+
+The legacy `objects/imports.ts` `.require()` registration did this in code; it is not used in current modules. For full query patterns (writable context, ad-hoc queries) plus the legacy detail, see [api-patterns](api-patterns.md#query-access-patterns) and [code-patterns](code-patterns.md#query-patterns).
+
+## Workspace Sync
+
+Each project has a `.b6p_metadata.json` file tracking sync state between the local workspace and the BlueStep server: script metadata (name, org ID, WebDAV ID), per-file last-sync timestamps, and build state. The `draft/` directory holds the working version of the code; the `.build/` directories hold the compiled JavaScript output from the TypeScript source.
+
+## Common Mistakes
+
+### Creating files that aren't imported
+
+```typescript
+// ❌ Wrong - objects/helpers.ts exists but is never imported → it never executes
+// ✅ Correct - import it (in app.ts)
+import { helperFunction } from './objects/helpers';
+```
+
+### Mixing server and client code
+
+```typescript
+// ❌ Wrong - DOM access in server code (scripts/app.ts)
+document.getElementById('myElement'); // ERROR: document is not defined
+// ❌ Wrong - B object in client code (static/script.js)
+const user = B.user;                  // ERROR: B is not defined
+```
+
+### Incorrect HTML structure
+
+```html
+<!-- ❌ Wrong - full HTML document -->
+<!DOCTYPE html><html><head><title>My Report</title></head><body><div>Content</div></body></html>
+
+<!-- ✅ Correct - content and references only -->
+<link rel="stylesheet" href="styles.css" />
+<div>Content</div>
+<script src=".build/script.js"></script>
+```

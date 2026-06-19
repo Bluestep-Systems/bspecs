@@ -1,11 +1,43 @@
 ---
-description: BlueStep Platform workflow and lifecycle reference. Read when working with the b6p CLI, pulling/pushing, or troubleshooting sync issues.
+description: BlueStep Platform overview — architecture (Relate/Connect/Manage/BsJs), the b6p CLI, sync, and component lifecycle. Read when orienting on the platform, working with the b6p CLI, or troubleshooting pull/push sync.
 applyTo: "**/.b6p_metadata.json"
 ---
 
 # B6P Platform Workflow
 
-Workflow reference for sync, lifecycle, and the b6p CLI. Critical rules live in `CLAUDE.md`.
+Platform orientation plus the workflow reference for sync, lifecycle, and the b6p CLI. Critical rules live in `CLAUDE.md`; on-demand detail lives in `index.md`.
+
+## Contents
+
+- [Platform architecture](#platform-architecture)
+- [Workspace model](#workspace-model)
+- [Data hierarchy](#data-hierarchy)
+- [Script types](#script-types)
+- [b6p CLI workflow](#b6p-cli-workflow)
+- [`.b6p_metadata.json`](#b6p_metadatajson)
+- [Files Claude must never edit](#files-claude-must-never-edit)
+- [Imports — verification flow](#imports--verification-flow)
+- [When the CLI fails](#when-the-cli-fails)
+- [When `B.commit()` is required](#when-bcommit-is-required)
+
+## Platform architecture
+
+The BlueStep Platform is three web applications over one shared data layer:
+
+- **Relate** — the database and configuration layer. Defines the data model (**Type → Category → Form → Field**) and holds all structured records.
+- **Connect** — end-user web pages that view or enter Relate data. Connect pages embed MergeReports.
+- **Manage** — the administrative counterpart to Connect; also hosts MergeReports.
+- **BlueStep.js (BsJs)** — the TypeScript library used to build the three component types: MergeReports, Endpoints, and Formulas. Patterns and APIs: `bsjs-development.md`.
+
+**Relate data model (configuration view).** A **Type** is a high-level entity (Individual, Organization, Event); a **Category** sub-classifies it (Staff, Volunteer, Client) — a record has one Type and zero or more Categories; a **Form** is a named group of fields; a **Field** is one data element. This is the *configuration* model; the runtime/storage nesting is in "Data hierarchy" below.
+
+### MergeReports are embedded, not standalone
+
+A MergeReport does not render a whole page. Connect (or Manage) supplies the page shell — `<html>`/`<head>`/`<body>`, site navigation, and branding — and the MergeReport's `pageContent()` output and `static/index.html` are injected into it. Write MergeReport frontend assuming the host page already exists; do not emit a full HTML document. Detail: `reference/merge-report-static-index.md`, `reference/component-library.md`.
+
+- `B.siteNavigation()` — the host site's navigation tree.
+- `B.isLayout("MANAGE")` — branch on whether the page is a Manage or Connect layout.
+- `B.optUser` / `B.user` — the logged-in user (`B.user` is null in scheduled scripts; see "Script types").
 
 ## Workspace model
 
@@ -27,6 +59,8 @@ Organization
 ```
 
 Queries, scripts, and permissions are scoped per Unit by default. A local project may pull components from multiple Units; each lives under its own `U######/` folder created by `b6p pull` on first pull.
+
+<!-- CONFLICT: U###### identity — this overview treats U###### as the Unit folder created by `b6p pull` (nested under an Organization). Brandon's platform-overview labels U###### as the Organization's own ID. Needs human resolution. -->
 
 ## Script types
 

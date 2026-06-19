@@ -1,0 +1,29 @@
+---
+description: BlueStep merge report with a static/ bundle renders static/index.html as the page; scripts/app.ts B.out is NOT injected — put the mount + config island in index.html and run the client on DOMContentLoaded
+---
+
+For a BlueStep merge report that ships a `static/` bundle (`static/index.html` +
+`static/.build/script.js` + `static/styles.css`), the **served page is
+`static/index.html`** — its `<script src=".build/script.js">` is what loads the
+client. The server `scripts/app.ts` `B.out` is **not injected into that page**, so
+a mount node / server-data island placed in `B.out` never appears in the DOM.
+
+Symptom we hit (summitridge Resources Hub merge report 1471799): client JS ran but
+`document.getElementById('rh-root')` and the `#rh-config` blob were both null,
+because the mount + config were emitted from `B.out`. Spinner hung forever.
+
+**Do this instead:**
+- Put the root mount (`<div id="rh-root">`) and any static config island
+  (`<script id="rh-config" type="application/json">…</script>`) **directly in
+  `static/index.html`**, before the `<script src=".build/script.js">` tag. (Mirror
+  of the working Treatment Targets widget: `<div id="tt-widget"></div>` lives in
+  index.html.)
+- Run the client on DOM-ready: `if (document.readyState==='loading')
+  document.addEventListener('DOMContentLoaded', start); else start();`
+- The client should fetch all dynamic data from its endpoint (server-thin/client-fat)
+  rather than expecting server-rendered data from `B.out`.
+- Server-side per-user data (e.g. current user for a form prefill) can't ride in via
+  `B.out`; defer it, fetch it from the endpoint, or use index.html merge tokens.
+
+Builds on [merge report memo json](merge-report-memo-json.md) and
+[separate files](../conventions/separate-files.md); relevant to bluestep resources.

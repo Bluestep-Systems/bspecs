@@ -1,0 +1,37 @@
+---
+description: "ChronoUnit.MONTHS.between counts complete elapsed months (day-aware), NOT calendar-month boundaries — use (year-year)*12 + (month-month) when porting SQL DATEDIFF(MONTH) semantics"
+---
+
+`B.time.ChronoUnit.MONTHS.between(a, b)` and SQL `DATEDIFF(MONTH, a, b)`
+compute *different* numbers whenever `day(b) < day(a)`:
+
+- **ChronoUnit.MONTHS.between** — counts *complete elapsed* months, day-aware.
+  `between(2024-06-07, 2026-05-05)` = 22 (because 23 complete months would
+  end on 2026-05-07).
+- **SQL DATEDIFF(MONTH)** — counts calendar-month boundary crossings, day-blind.
+  Same input = 23 (`(2026-2024)*12 + (5-6)`).
+
+For "treatment-month ordinal" / "Nth-month bucket" math (where month 1
+starts on the admit date and month 2 begins on the next same-day-of-month),
+you want the SQL semantic. Implement with a plain calendar diff:
+
+```ts
+const calMonths = (Number(note.getYear()) - Number(admit.getYear())) * 12
+                + (Number(note.getMonthValue()) - Number(admit.getMonthValue()));
+const adj = note.getDayOfMonth() >= admit.getDayOfMonth() ? calMonths : (calMonths - 1);
+const treatmentMonth = adj + 1; // 1-indexed
+```
+
+`ChronoUnit.WEEKS / DAYS / YEARS .between` have the same elapsed-count
+semantics. DAYS happens to match SQL DATEDIFF(DAY) because both ignore
+sub-day resolution, but WEEKS and YEARS will drift the same way MONTHS
+does. When porting SQL date math, port the SQL formula faithfully — don't
+substitute ChronoUnit conveniences.
+
+**Discovered:** RISE Maestro v1 (alpineacademy/1515139) shipped with
+`ChronoUnit.MONTHS.between` and was off-by-one on `monthsSinceAdmit` for
+12 of 53 overlapping rows in the verification diff. See
+treatment targets sibling project — also does treatment-month
+math.
+
+Related: [localdate parse](localdate-parse.md) (LocalDate.parse — use B.time).

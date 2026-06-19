@@ -1,0 +1,48 @@
+---
+description: "BlueStep merge reports emit HTML+CSS+JS via a B.out template literal; the inline <script> inside that string must be plain JS — any TypeScript syntax ships verbatim to the browser and breaks parsing"
+---
+
+BlueStep merge reports emit their entire frontend as a single template literal:
+
+```ts
+B.out = `
+<style>...</style>
+<div>...</div>
+<script>
+(function() {
+  // ← this code is a STRING; the TS compiler does NOT process it
+})();
+</script>
+`;
+```
+
+Use plain ES2015+ JavaScript only inside the template literal. The TypeScript compiler only processes code *outside* the literal. Anything between the opening backtick and closing backtick is treated as a plain string and shipped to the browser verbatim, so TS syntax there fails to parse as JavaScript.
+
+**Common leaks that break the inline script:**
+
+- Type annotations: `var parts: string[] = [];` → `:` is invalid in JS at that position → `SyntaxError`.
+- `as` casts: `(x as any).foo` → invalid here.
+- Generics: `Foo<T>` → parsed as a `<` comparison, then garbage.
+- `interface`/`enum` declarations.
+
+**Symptom:** the dashboard sits forever on the initial "Loading…" because the bootstrap script never executes. `tsc` passes clean because the *source* file's TS is valid. No console error from the fetch — it never started.
+
+**How to apply:** When writing or editing the `B.out` template-literal block, keep the inline `<script>` JS-only — type your helper functions and outer code in TS all you want:
+
+- No `: Type` annotations on variables or params.
+- No `as Type` casts.
+- No `interface`/`enum`/`type` declarations.
+- Use `var` (or `let`/`const`) without type info.
+- Be especially careful when porting helper code that was originally TS.
+
+Quick lint after big edits:
+
+```js
+const inner = txt.slice(txt.indexOf('B.out = `'), txt.lastIndexOf('`;'));
+[...inner.matchAll(/\b(var|let|const)\s+\w+\s*:\s*[A-Za-z\[\]<>{}|]+\s*=/g)];
+// empty = clean; any match = a TS leak in the inline script
+```
+
+Discovered 2026-05-20 on the RISES Dashboard merge report (`alpineacademy/1515299`): a `var parts: string[] = [];` in the Protocols Gantt code froze the entire dashboard.
+
+Related: [single script](single-script.md) — BlueStep only compiles root `static/script.ts`, not subdirs. Merge reports inline their JS into `scripts/app.ts`'s string output instead — a different file but the same class of "TS doesn't process this content" problem.

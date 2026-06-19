@@ -1,0 +1,82 @@
+---
+description: Manifest of on-demand BlueStep instruction files (reference/, conventions/, gotchas/) with a one-line "load when" trigger for each. Read first when a task needs platform or BsJs detail, to pick the right file.
+---
+
+# BlueStep Instruction Index
+
+This is the navigation hub for the on-demand BlueStep rules. It is read when needed, not auto-loaded — Tier-1 critical rules stay in `CLAUDE.md`, and the Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`) cover the high-frequency platform and BsJs material. Consult an entry below when a task needs deeper, single-topic detail; each file is self-contained and is reached in one hop from here.
+
+Entries read: `path — what it covers. Load when <trigger>.` Match the trigger keywords to the task at hand, then open that one file.
+
+## reference/ — single-topic platform and API detail
+
+- [reference/api-patterns.md](reference/api-patterns.md) — B API usage: Java optionals (`.opt()/.orElse()`), field types and access, `mergeTag()` L/F/I/H codes, multi-entry-form (MEF) entries, query access, Java collections, writing date/datetime fields, `B.commit()` and formula triggers, endpoint request/response, base64, user/session. Load when calling the `B` API, reading or writing fields, or wiring an endpoint's request/response.
+- [reference/blueiq-credit-integration-playbook.md](reference/blueiq-credit-integration-playbook.md) — step-by-step playbook for wiring a new OpenAI/AI feature into the BlueIQ credit gate and ledger. Load when adding an AI feature that must consume BlueIQ credits.
+- [reference/chronounit-months.md](reference/chronounit-months.md) — `ChronoUnit.MONTHS.between` counts elapsed (day-aware) months, not calendar-month boundaries. Load when computing a month difference or porting SQL `DATEDIFF(MONTH)`.
+- [reference/code-patterns.md](reference/code-patterns.md) — working BsJs skeletons: queries, MergeReport server/client bridge, endpoints, error handling, performance (per-row queue, lazy init), component import, debugging. Load when starting a query, MergeReport, or endpoint and you want a known-good pattern.
+- [reference/component-library.md](reference/component-library.md) — BlueStep generic components (`moduleF`, `headF`, `svgF`, `tableF`), Bootstrap 3.3.7 fallback, `config.json` registration with short import, CSS anti-pattern, and when not to use components. Load when building MergeReport UI or generating HTML.
+- [reference/crm-dashboard-inspo.md](reference/crm-dashboard-inspo.md) — the CRM Intelligence Dashboard (`beh/1433876`), a 12-page sales SPA used as design inspiration. Load when designing a sales/CRM dashboard or the Behavioral Team Scorecard.
+- [reference/csv-parsing.md](reference/csv-parsing.md) — MergeReports can read and parse uploaded CSVs via the built-in `B.csv()` parser plus DocumentLinkField/Document/fetch. Load when parsing an uploaded CSV in a MergeReport.
+- [reference/dashboard-design-system.md](reference/dashboard-design-system.md) — the house design language (palette, type, cards, tabs) for dashboard MergeReports; do not use Material/rounded-tonal styling. Load when building any new dashboard UI.
+- [reference/datetime-field-write.md](reference/datetime-field-write.md) — set a DateTimeField with `field.val(zonedDateTime)`; `.dateTimeVal()` has Graal-ambiguous overloads. Load when writing a DateTimeField.
+- [reference/design-system.md](reference/design-system.md) — overview of the BlueStep Design System: component source priority, design standards, color palette, and the link to the interactive reference. Load when you need design standards or the canonical design-system URL.
+- [reference/dpn-dashboard-framework.md](reference/dpn-dashboard-framework.md) — parameterized data-endpoint + dashboard framework: endpoint serves per-client/date-range JSON via URL params, dashboard fans out throttled parallel fetches. Load when building a client-fed analytics dashboard.
+- [reference/endpoint-method-call.md](reference/endpoint-method-call.md) — `B.net.request.method` is a method (call it); without parens it type-checks but returns the Function. Load when reading the HTTP method inside an endpoint.
+- [reference/endpoint-no-delete-method.md](reference/endpoint-no-delete-method.md) — endpoints don't route DELETE (or other non-GET/POST/PUT methods); use a PUT/POST action discriminator. Load when designing endpoint routing or a delete action.
+- [reference/endpoint-output-channel.md](reference/endpoint-output-channel.md) — `/b/` endpoints write the body via `B.net.response.out()`, not `B.out` (the MergeReport channel, which yields a blank Error page). Load when an endpoint returns a blank or Error page.
+- [reference/endpoint-urls.md](reference/endpoint-urls.md) — endpoints are reached at `/b/<alias>`, not the `/files/{id}/draft/` path; the alias is per-endpoint. Load when testing an endpoint or giving a user its URL.
+- [reference/entry-delete.md](reference/entry-delete.md) — delete a multi-entry-form entry with `entry.entry().delete()`, not `entry.delete()` (the outer typed declaration lies). Load when deleting an MEF entry.
+- [reference/file-execution.md](reference/file-execution.md) — which files execute and when: `scripts/app.ts` (server) vs `static/index.html` (client), Workspace Sync, common mistakes. Load when a file isn't running or you're unsure of the server/client split.
+- [reference/http-requester.md](reference/http-requester.md) — method names on `B.net.httpRequester` (`.method()`, `.responseCode()`) use overloaded getter/setter style, not Java-bean `.setMethod`/`.getResponseCode`. Load when making a non-GET external HTTP call.
+- [reference/id-full-vs-short.md](reference/id-full-vs-short.md) — `Id.toString()` is the full `ClassID___ShortID`; `shortId()` is just the trailing number; `optById` needs the full form. Load when round-tripping an entry id or calling `optById`.
+- [reference/internal-loopback-fetch.md](reference/internal-loopback-fetch.md) — endpoint-to-endpoint loopback within an org uses `B.net.fetch` on a relative path with `credentials:true`, not the external `httpRequester`. Load when one endpoint calls another in the same org.
+- [reference/localdate-parse.md](reference/localdate-parse.md) — `Java.Time.LocalDate` is a TypeScript namespace only; use `B.time.LocalDate` for runtime `parse()`/`now()`. Load when parsing or creating a LocalDate.
+- [reference/merge-report-memo-json.md](reference/merge-report-memo-json.md) — the "MergeReport + memo field JSON" framework: embed a custom interactive widget on a form that persists its state as JSON in a hidden memo field. Load when building a stateful custom widget on a form.
+- [reference/merge-report-static-index.md](reference/merge-report-static-index.md) — with a `static/` bundle, `static/index.html` is the page and `app.ts` `B.out` is NOT injected; put the mount + config island in `index.html` and run the client on `DOMContentLoaded`. Load when a MergeReport has a `static/` bundle.
+- [reference/merge-report-urls.md](reference/merge-report-urls.md) — BSJS equivalents of relatescript `lookupMergeReport`/`lookupMergeReportScript`, and how to get `viewUrl`/`printUrl`. Load when looking up a MergeReport URL in code.
+- [reference/multi-entry-in-multi-entry.md](reference/multi-entry-in-multi-entry.md) — the "multi entry in a multi entry" pattern: many notes/updates against one MEF entry, stored as JSON in one memo field. Load when users need repeated sub-entries under a single form entry.
+- [reference/named-controls-submit.md](reference/named-controls-submit.md) — any HTML control with a `name` attribute inside a MergeReport form gets submitted and breaks the save. Load when adding form controls to a MergeReport settings UI.
+- [reference/new-entry-id.md](reference/new-entry-id.md) — pre-commit `shortId()` returns `"0"` (`id.isValid()` is false); commit before reading a new entry's id. Load when reading the id of a freshly-created entry.
+- [reference/relationship-field-set.md](reference/relationship-field-set.md) — `RelationshipField.set()` needs the target form-entry id, not a Record id, or the formula silently aborts; watch for `as any` casts hiding the bug. Load when setting a RelationshipField.
+- [reference/send-message-abort.md](reference/send-message-abort.md) — `B.net.sendMessage(msg, abort)` aborts saves, but in pre-delete formulas the message does not surface in the UI. Load when aborting a save or delete from a formula.
+- [reference/session-cookie-forwarding.md](reference/session-cookie-forwarding.md) — `request.cookies()` filters HttpOnly cookies; use `optHeader("Cookie")` to grab `JSESSIONID` for authenticated loopback calls. Load when forwarding the session cookie to a loopback call.
+- [reference/singleselect-null-copy.md](reference/singleselect-null-copy.md) — copying an empty SingleSelectField via `val(other.val())` throws `set(null.id())`; guard with `opt().isPresent()`/`clear()`. Load when copying a SingleSelectField value.
+- [reference/staff-query-permission-gating.md](reference/staff-query-permission-gating.md) — permission-gating concept: match the current user to a staff record via a query, read a per-staff SingleSelect permission, emit capability flags (fail-closed, super-user override). Load when gating a MergeReport UI by per-user permission.
+- [reference/timefield-vs-datetimefield.md](reference/timefield-vs-datetimefield.md) — `zonedDateTimeParts` works on a DateTimeField (ZonedDateTime); for a TimeField (LocalTime) use a separate `HH:mm` extractor. Load when extracting parts from a TimeField vs a DateTimeField.
+- [reference/user-zone-id.md](reference/user-zone-id.md) — `B.time.userZoneId()` returns the user/system ZoneId; `B.userZoneId()` does not type-check. Load when getting the user or system time zone.
+
+## conventions/ — build, deploy, and workflow directives
+
+- [conventions/always-snapshot.md](conventions/always-snapshot.md) — pull/push/snapshot workflow: use the CLI scripts (never fetch manually) and snapshot after every change via push → pull → snapshot. Load when syncing a component or unsure of the snapshot routine.
+- [conventions/blueiq-no-ai-branding.md](conventions/blueiq-no-ai-branding.md) — never put "AI" in front-facing BlueIQ text; the brand is always "BlueIQ". Load when writing user-visible BlueIQ copy.
+- [conventions/date-format.md](conventions/date-format.md) — `addSearch` needs `MM/DD/YYYY` for date fields; `YYYY/MM/DD` passes validation but silently fails to filter, and raw Java `LocalDate` objects also fail. Load when filtering a query by a date field.
+- [conventions/endpoint-approach.md](conventions/endpoint-approach.md) — research-first: gather API docs, read type declarations, and study existing examples before writing an endpoint. Load when starting a new endpoint.
+- [conventions/formula-patterns.md](conventions/formula-patterns.md) — correct BSJS formula patterns: form access, field reads/writes, HTTP, error handling, `B.*` utilities, DocumentLinkField. Load when writing a Formula or Post-Save script.
+- [conventions/no-global-dollar.md](conventions/no-global-dollar.md) — never define a global `$` in MergeReport scripts; pages use jQuery and you will silently break Save and all page interactivity. Load when adding client JS to a MergeReport.
+- [conventions/push-inner-draft.md](conventions/push-inner-draft.md) — pass the inner `draft/` folder (not the component root) to `push.js`, or files land in a `draft/draft/*` dead zone. Load when pushing a component with `push.js`.
+- [conventions/separate-files.md](conventions/separate-files.md) — don't pile CSS/HTML/JS into `app.ts`; use the `styles.css`/`index.html`/`script.ts` files the pulled folder already has. Load when structuring MergeReport files.
+- [conventions/single-script.md](conventions/single-script.md) — the server-side build compiles only root `static/script.ts` to `.build/script.js`; subdirectory `.ts` files are NOT compiled. Load when splitting client scripts into multiple files.
+- [conventions/snapshot-integrity.md](conventions/snapshot-integrity.md) — snapshots register cleanly only when `push.js` sends locally-compiled `.build/*` alongside source, otherwise a manual re-snapshot is needed. Load when a push leaves the snapshot needing manual re-registration.
+- [conventions/top-level-const-tdz.md](conventions/top-level-const-tdz.md) — endpoint/MergeReport scripts run top-down; declare every `const`/`let` above the entry `try` block or they are in TDZ when the handler fires. Load when ordering declarations in an endpoint or MergeReport.
+- [conventions/ts-in-template-literal.md](conventions/ts-in-template-literal.md) — the inline `<script>` inside a `B.out` template literal must be plain JS; any TypeScript syntax ships verbatim to the browser and breaks parsing. Load when emitting client JS through a `B.out` string.
+- [conventions/tsc-rootdir.md](conventions/tsc-rootdir.md) — compile endpoints with `--rootDir .` so output mirrors `scripts/app.ts` → `.build/scripts/app.js`; `--rootDir ./scripts` emits to `.build/app.js`, which the runtime ignores. Load when configuring the local TypeScript build for an endpoint.
+
+## gotchas/ — sharp edges
+
+- [gotchas/common-gotchas.md](gotchas/common-gotchas.md) — anti-pattern roundup: Java optionals vs JS null checks, Java collections vs JS arrays, server/client separation, MergeReport HTML structure, SweetAlert2 v8 vs v11, ES feature limits, strict mode, query access, script-timing race. Load when debugging a silent failure or before writing new component code.
+- [gotchas/fetched-resource-code.md](gotchas/fetched-resource-code.md) — `FetchedResource.code()` returns `0` on success, not the upstream HTTP status; only `code >= 400` reliably indicates failure. Load when checking the result of a fetched resource.
+
+## Term-level discovery
+
+When no entry above matches, grep the tree for the exact symbol or term:
+
+```bash
+grep -ri "<term>" .claude/instructions/
+```
+
+## Unresolved conflicts
+
+Cross-source disagreements left for human resolution. Each is flagged inline with a `<!-- CONFLICT: … -->` comment at the point of disagreement; grep with `grep -rn "CONFLICT" .claude/instructions/`.
+
+- [reference/api-patterns.md](reference/api-patterns.md) — client-ID field key: `sysId` (01-Platform-Reference) vs `systemID` (bluestep-knowledge merge-report examples). May be form/org-specific; needs confirmation of the canonical key.
+- [b6p-platform.md](b6p-platform.md) — `U######` identity: treated here as the Unit folder created by `b6p pull` vs. Brandon's platform-overview labeling it the Organization's own ID.
