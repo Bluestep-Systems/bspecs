@@ -1,6 +1,7 @@
 # Tasks — Publish chain (b6p-cli → bspecs)
 
-**Status:** Drafting
+**Status:** Complete (2026-06-19) — all 13 tasks done. Follow-up: the A5 fast-follow spec
+(`npx b6p` + shell-detection removal), now with concrete PATH findings from tasks 3 & 12.
 
 Each task is one coherent unit (one `/spec-execute` invocation). Tasks are tagged:
 
@@ -86,24 +87,39 @@ lockfile refresh in task 5, or `npm install` 404s on the unpublished dependency.
       `package.json`/`README`. No code edit unless the dry run reveals a stray include. — files:
       (verification; possibly `.npmignore`/`files` if a leak is found)
 
-- [ ] **11.** `[MANUAL]` **A3 — move repo to the org.** Create `Bluestep-Systems/bspecs` (private),
+- [x] **11.** `[MANUAL]` **A3 — move repo to the org.** Create `Bluestep-Systems/bspecs` (private),
       repoint `origin` off `fchazarreta-bs`, push `main` + tags:
       `git remote set-url origin git@github.com:Bluestep-Systems/bspecs.git` then
       `git push -u origin main --tags`.
       *Verify:* `git remote -v` shows the org URL; `main` is visible on the org repo. One-way door —
       confirm the exact repo name first.
+      **DONE (2026-06-19):** repo created (private) at `github.com/Bluestep-Systems/bspecs`, default
+      branch `main`. `main` fast-forwarded to the 0.8.0 publish commit (`2458f11`) and pushed; origin
+      repointed to the org SSH URL; tagged `v0.8.0` and pushed all tags. SSH auth via the WSL key.
 
-- [ ] **12.** `[MANUAL]` **A4 — publish bspecs + verify transitive install.**
+- [x] **12.** `[MANUAL]` **A4 — publish bspecs + verify transitive install.**
       `npm publish` from the repo root (publishConfig targets GitHub Packages restricted). Then from
       a clean dir: `npm i -g @bluestep-systems/bspecs` and `b6p --version`.
       *Verify:* `npm view @bluestep-systems/bspecs version` returns `0.8.0`; the clean install pulls
       `b6p-cli` transitively and `b6p --version` resolves. **Record** whether `b6p` is reachable from
       the WSL hooks/skills (input for the A5 spec) — do not fix here.
+      **DONE (2026-06-19):** `@bluestep-systems/bspecs@0.8.0` published; `npm view` → `0.8.0`. Clean
+      global install works **after removing the old `@bluestep/bspecs`** (EEXIST on the `bspecs` bin —
+      migration requires `npm rm -g @bluestep/bspecs` first; documented in CHANGELOG). `bspecs -v` →
+      `0.8.0`; `@bluestep-systems/b6p-cli@0.1.0` **is** pulled in transitively (in the dep tree).
+      ⚠️ **A5 input:** a dependency's bin is **NOT** symlinked onto the global PATH, so `b6p` is only
+      at `…/bspecs/node_modules/.bin/b6p`, not globally — a global bspecs install does **not** expose
+      `b6p`. A5 must wire it via a scaffolded-project devDependency + `npx b6p`. ⚠️ **Upstream bug:**
+      `b6p --version` prints `0.0.1` though the package is `0.1.0` (stale hardcoded version string in
+      `b6p-cli`; flag to the monorepo team).
 
-- [ ] **13.** `[CODE]` **Housekeeping — TODO/DONE.** Check off / archive the resolved TODO.md items
+- [x] **13.** `[CODE]` **Housekeeping — TODO/DONE.** Check off / archive the resolved TODO.md items
       ("Push to GitHub", "Consumer auth docs", upstream-publish item; note the peer-dep migration is
       now the A5 spec). Move completed entries to `DONE.md` per repo convention. — files: `TODO.md`,
       `DONE.md`
+      **DONE (2026-06-19):** TODO.md items checked (push-to-GitHub, consumer-auth, upstream-publish);
+      peer-dep item reframed as the A5 fast-follow; `DONE.md` "Done in 0.8.0" section added; both
+      headers renamed to `@bluestep-systems/bspecs`.
 
 ## Verification
 

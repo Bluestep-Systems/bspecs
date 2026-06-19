@@ -1,6 +1,14 @@
 # Done
 
-Completed work for `@bluestep/bspecs`, archived from `TODO.md` to keep the active list short. The authoritative, prose release notes live in `CHANGELOG.md`; this file is the lightweight per-version checklist history.
+Completed work for `@bluestep-systems/bspecs`, archived from `TODO.md` to keep the active list short. The authoritative, prose release notes live in `CHANGELOG.md`; this file is the lightweight per-version checklist history.
+
+## Done in 0.8.0
+
+- [x] Published `@bluestep-systems/b6p-cli@0.1.0` to GitHub Packages (restricted) from the `Bluestep-Systems/vscode-extension` monorepo (PR #14 was already merged); verified self-contained (core bundled).
+- [x] Renamed `@bluestep/bspecs` → `@bluestep-systems/bspecs`; added `@bluestep-systems/b6p-cli ^0.1.0` dependency; refreshed lockfile; added root `.npmrc`.
+- [x] Documented consumer auth in `README.md`; updated `CLAUDE.md` Publishing; recorded the direct-publish + rename in the ADR.
+- [x] Created `github.com/Bluestep-Systems/bspecs` (private), repointed `origin`, pushed `main` + tags, published `@bluestep-systems/bspecs@0.8.0`.
+- See `.claude/specs/publish-chain/` for the full spec. Follow-ups deferred to the A5 fast-follow: `npx b6p` switch + shell-detection removal (a dependency's bin is **not** placed on the global PATH, so a global bspecs install does not expose `b6p` — A5 wires it via a project devDependency + `npx`).
 
 ## Done in 0.3.2
 
