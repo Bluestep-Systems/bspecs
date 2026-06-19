@@ -35,10 +35,16 @@ Queries, scripts, and permissions are scoped per Unit by default. A local projec
 | Post-Save      | Yes                | Runs after a record is saved                       |
 | MergeReport    | Yes                | Page renderer; frontend in `static/`               |
 | Endpoint       | Yes                | HTTP-style request handler                         |
-| OnDemand       | Yes                | User-triggered formula                             |
+| OnDemand       | Yes                | User-triggered formula — runs on the task pod; ~5 s scheduler-queue delay before start |
 | Field Formula  | Yes                | Computes a field's value                           |
 | Scheduled      | **No (null)**      | Runs on cron; guard `B.user` accordingly           |
 | Section Script | Yes                | Page section logic                                 |
+
+### OnDemand — async/background use cases
+
+OnDemand formulas execute on the **task pod**, making them appropriate for heavy or long-running work that should not run on a production pod. They are a good fit for async, background, or batch tasks.
+
+**Do not use OnDemand on a user's synchronous wait path.** The platform's scheduler queues the formula and starts it "as soon as possible," but that incurs a ~5 second delay before execution begins. For user-facing create or update flows where latency matters, use a synchronous task-pod **Endpoint** instead. See `bsjs-development.md` → "OnDemand / Field Formula" for code patterns.
 
 ## b6p CLI workflow
 

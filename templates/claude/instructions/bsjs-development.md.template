@@ -33,6 +33,16 @@ Deep reference for BlueStep TypeScript development. Critical rules live in `CLAU
 
 A project may contain multiple Unit folders, each with multiple components of varying types. **Module split convention:** split complex logic into focused files under `scripts/`. `app.ts` is the entry point.
 
+**Multi-file components with ES imports are supported** (verified on the platform — `SMS Data Diagnostics`, `app.ts` importing `cleanupDuplicates.ts`). A sibling file `export`s a symbol and `app.ts` pulls it in with a standard relative ES import (no file extension); it compiles and links correctly after push. Use this to split a large `app.ts` into focused modules:
+
+```typescript
+// scripts/cleanupDuplicates.ts
+export function cleanupDuplicates(): void { /* ... */ }
+
+// scripts/app.ts
+import { cleanupDuplicates } from "./cleanupDuplicates";
+```
+
 ## The `B` object — full API
 
 ### `B.net` — outbound HTTP
@@ -222,6 +232,10 @@ export function run(): void {
 ```
 
 ### OnDemand / Field Formula
+
+OnDemand formulas run on the **task pod** — well-suited for heavy or long-running work because they keep load off production pods. Trigger them asynchronously and let the result land in a record the caller can poll or react to.
+
+**Critical latency caveat:** OnDemand has a ~5 second scheduler-queue delay before it starts, by design. This is fine for background / async work. It is the wrong tool for anything on a user's synchronous wait path — if a user is waiting for a response, an OnDemand hop adds ~5 s of irreducible latency before the work even begins. Prefer a synchronous task-pod **Endpoint** for user-facing create or update paths.
 
 ```typescript
 export function run(): void {
