@@ -1,6 +1,6 @@
 # bspecs — scaffolder for spec-driven BlueStep projects
 
-`@bluestep-systems/bspecs` is an interactive CLI (`bspecs`) that scaffolds a new BlueStep project with Claude Code skills, hooks, and conventions for spec-driven development. It generates a complete project directory from templates and detects the local `b6p` environment. It depends on `@bluestep-systems/b6p-cli`, so installing `bspecs` brings the `b6p` binary transitively.
+`@bluestep-systems/bspecs` is an interactive CLI (`bspecs`) that scaffolds a new BlueStep project with Claude Code skills, hooks, and conventions for spec-driven development. It generates a complete project directory from templates. Scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency and reach the `b6p` binary via `npx b6p`, which resolves the project's local `node_modules/.bin/b6p` — no global install and no shell/PATH detection.
 
 ## Architecture
 
@@ -8,7 +8,7 @@
 cli.js                    ← entry point, arg parsing
 src/
   prompts.js              ← @clack/prompts interactive wizard (5 questions)
-  scaffold.js             ← file generation, b6p detection, git init
+  scaffold.js             ← file generation, prettier pre-flight, install step, git init
   utils.js                ← template engine ({{VAR}} substitution), fs helpers
 templates/
   root/                   → project root files (CLAUDE.md, .gitignore, .prettierrc, README)
@@ -23,11 +23,9 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTE
 
 ## Key behaviors
 
-**b6p detection** (`scaffold.js:detectEnvironmentFor`): probes `command -v b6p` through a prioritized list of shell prefixes (`''`, `wsl zsh -lc`, `wsl zsh -ic`, `wsl bash -lc`, `wsl bash -ic` on Windows; user shell with `-lc`/`-ic` on Linux/macOS). First match wins. Result written to `.claude/b6p-env.json` in the generated project.
+**b6p invocation (`npx b6p`)**: scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency (`templates/root/package.json.template`) and ship a scope-mapped `.npmrc` (`templates/root/.npmrc.template`). The `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills invoke `npx b6p`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection, no `.claude/b6p-env.json`. The scaffolder instructs the user to run `npm install` (`scaffold.js:reportInstallStep`); it deliberately does **not** auto-install, which would need a GitHub Packages PAT at scaffold time. See `docs/decisions/b6p-cli-distribution.md`.
 
-**Shell prefix list** matters: `-lc` (login) loads `~/.zprofile` but not `.zshrc`; `-ic` (interactive) loads `.zshrc` so nvm-installed binaries work. Both are tried per shell.
-
-**prettier detection**: same probe logic, but only warns — doesn't write anything.
+**prettier detection** (`scaffold.js:checkPrettierOnPath`): a self-contained best-effort probe (`command -v prettier`, plus WSL on Windows since the prettier-on-save hook runs in WSL) that only warns — it writes nothing. Independent of b6p.
 
 **`SYNC_TARGETS` (dynamic)**: `src/sync.js` derives the synced-file list by walking `templates/claude/**` via `enumerateClaudeTargets(SYNC_EXCLUDE)` (`src/utils.js`) — one `.claude/**` target per file, with a trailing `.template` stripped (same transform as `copyTemplateTree`). Add a skill, agent, hook, or instruction file and `bspecs sync` / `bspecs.lock` pick it up automatically; there is no hardcoded list. `SYNC_EXCLUDE` (empty today) opts a scaffold-once file out of sync. See `docs/decisions/instruction-tree-and-claude-only.md`.
 
@@ -35,11 +33,11 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTE
 
 ## What gets scaffolded into every project
 
-- `CLAUDE.md`, `.prettierrc`, `.gitignore`, `README.md` (from `templates/root/`)
-- `.claude/settings.json` — permissions + hooks (block-generated-files, require-wsl-for-b6p, block-tsc, prettier-on-save)
-- `.claude/skills/` — `b6p-audit`, `b6p-detect`, `b6p-pull`, `b6p-push`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`, `task-comment`
+- `CLAUDE.md`, `.prettierrc`, `.gitignore`, `README.md`, `package.json`, `.npmrc` (from `templates/root/`) — `package.json` declares the `b6p-cli` devDependency and `.npmrc` maps the `@bluestep-systems` scope so `npm install` / `npx b6p` resolve
+- `.claude/settings.json` — permissions + hooks (block-generated-files, block-tsc, prettier-on-save)
+- `.claude/skills/` — `b6p-audit`, `b6p-pull`, `b6p-push`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`, `task-comment`
 - `.claude/agents/` — three BlueStep subagents: `b6p-task-implementer` (implements one spec task in an isolated context; `/spec-execute` delegates to it), `b6p-commenter` (fills in a component `draft/README.md`), `b6p-code-review` (BlueStep-aware, report-only review)
-- `.claude/hooks/` — four shell scripts (run in WSL; must use WSL-native toolchain)
+- `.claude/hooks/` — three shell scripts (run in WSL; must use WSL-native toolchain)
 - `.claude/instructions/` — Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`), the `index.md` manifest, and atomic single-topic files under `reference/`, `conventions/`, `gotchas/` (read on demand, not `@`-imported). No `.github/` Copilot mirror.
 - `.claude/spec-templates/` — `requirements.template.md`, `design.template.md`, `tasks.template.md`
 - `.claude/templates/` — per-component scaffolding (module README template)

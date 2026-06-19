@@ -82,22 +82,16 @@ OnDemand formulas execute on the **task pod**, making them appropriate for heavy
 
 ## b6p CLI workflow
 
-All `b6p` commands run inside WSL through a **login shell**. The shape is:
+`b6p` ships as a devDependency of this project (`@bluestep-systems/b6p-cli`). Invoke it with `npx`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection. Run `npm install` once if `node_modules` is missing. The shape is:
 
 ```
-wsl bash -lc 'b6p <subcommand> ...'
+npx b6p <subcommand> ...
 ```
-
-### Why `bash -lc` and not plain `wsl b6p ...`
-
-`b6p` is installed under nvm (`~/.nvm/versions/node/vXX/bin/b6p`). nvm adds itself to PATH via `~/.zshrc` / `~/.bashrc`, which only runs in a login shell. Plain `wsl b6p ...` spawns a non-login shell, skips the profile, and fails with `command not found: b6p`. `bash -lc '...'` is a login shell — it loads the profile, nvm sets PATH, and b6p is found.
-
-The `require-wsl-for-b6p.sh` hook enforces this shape and rejects bare `wsl b6p ...`.
 
 ### Pull a component
 
 ```
-wsl bash -lc 'b6p pull "<DAV URL>"'
+npx b6p pull "<DAV URL>"
 ```
 
 **`b6p pull` takes a DAV URL, not a display name.** The URL is copied from the component's page in the BlueStep platform UI. There is no name-based lookup; the CLI has no way to find a component by its label.
@@ -128,7 +122,7 @@ Subsequent pulls verify per-file integrity and only rewrite files whose content 
 The cleanest way to push an already-pulled component is `--file`, which lets the CLI derive the destination DAV URL from local `.b6p_metadata.json`:
 
 ```
-wsl bash -lc 'b6p push --file "U######/<Component>/draft/scripts/app.ts"'
+npx b6p push --file "U######/<Component>/draft/scripts/app.ts"
 ```
 
 Any file inside the component works as the `--file` argument; the CLI walks up to find `.b6p_metadata.json`. Same per-file integrity check applies — only changed files are uploaded. The platform compiles after receiving the push.
@@ -161,7 +155,7 @@ Before referencing a query/form/field in code:
 2. In older modules, `draft/objects/imports.ts` may also exist as a legacy artifact — ignore it for verification; new declarations land in `declarations/index.d.ts`.
 3. If missing:
    - Add the field to **this component's** form-import config on the platform.
-   - `wsl bash -lc 'b6p pull "<DAV URL>"'` to regenerate this component's declarations.
+   - `npx b6p pull "<DAV URL>"` to regenerate this component's declarations.
    - Then write the TypeScript reference.
 
 If N components all need the same new field, each one needs its own import-config update on the platform and a separate pull.
@@ -172,8 +166,8 @@ Hallucinated names pass local edits but fail on platform compile after push.
 
 Common causes:
 
-- `b6p` not installed in WSL (only on Windows). Install in WSL.
-- Network/auth issue with the platform. Re-authenticate.
+- `npx b6p` cannot be resolved — the project's dependencies are not installed. Run `npm install` in the project root.
+- Network/auth issue with the platform. Re-authenticate with `npx b6p auth set`.
 - Local file lock. Close VS Code, retry.
 
 Fallbacks:

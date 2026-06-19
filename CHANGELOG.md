@@ -6,6 +6,75 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.9.0] — 2026-06-19
+
+Completes the "A5" fast-follow staged in 0.8.0: scaffolded projects now reach `b6p` via `npx b6p`
+(resolving the project's own `node_modules/.bin/b6p`), and the ~200-line shell-detection workaround
+is deleted. `b6p-cli` becomes a **devDependency of each scaffolded project** rather than something
+the builder installs from source — because a dependency's bin is never placed on the global PATH, so
+`bspecs` depending on `b6p-cli` did not, by itself, give a scaffolded project a usable `b6p`. `npx`
+resolves the local bin cross-platform with no shells, login profiles, or PATH probing involved.
+
+### Removed
+
+- **Shell-detection scaffolding in `src/scaffold.js`.** `detectEnvironmentFor`, `probeCommand`,
+  `shellPrefixCandidates`, `userShell`, `classifyPrefix`, `detectB6pEnvironment`, `reportB6pStatus`,
+  and `writeB6pEnvFile` are gone. The scaffolder no longer probes for `b6p` or writes
+  `.claude/b6p-env.json`.
+- **`.claude/b6p-env.json`.** No longer written or read; the `npx b6p` invocation needs no persisted
+  shell prefix.
+- **`/b6p-detect` skill.** `templates/claude/skills/b6p-detect/` is deleted (it re-detected and
+  rewrote `b6p-env.json`). It drops out of the dynamic `SYNC_TARGETS` automatically.
+- **`require-wsl-for-b6p` hook.** `templates/claude/hooks/require-wsl-for-b6p.sh` is deleted and its
+  `PreToolUse(Bash)` registration removed from `settings.json.template`. Its sole job was enforcing a
+  shell-prefix shape so nvm-installed `b6p` was found on PATH — vestigial under `npx b6p`.
+
+### Added
+
+- **`templates/root/package.json.template`.** Scaffolded projects now ship a `private` `package.json`
+  declaring `@bluestep-systems/b6p-cli` (`^0.1.0`) as a `devDependency`, so `npm install` populates
+  `node_modules/.bin/b6p` for `npx b6p` to resolve.
+- **`templates/root/.npmrc.template`.** Maps the `@bluestep-systems` scope to GitHub Packages (token
+  via `${GITHUB_TOKEN}`), so `npm install` / `npx b6p` resolve `b6p-cli` in the scaffolded project.
+  Mirrors the repo-root `.npmrc` pattern from 0.8.0.
+- **Install-step instruction (`scaffold.js:reportInstallStep`).** After generating files, the
+  scaffolder tells the user to `cd <project> && npm install`. It deliberately does **not** auto-run
+  `npm install` — that would need the consumer's GitHub Packages PAT at scaffold time and fails poorly
+  on a first run.
+
+### Changed
+
+- **`/b6p-pull`, `/b6p-push`, `/b6p-audit` invoke `npx b6p …`** instead of `<shellPrefix> 'b6p …'`.
+  Each skill's `allowed-tools` is `Bash(npx b6p *)`; the `.claude/b6p-env.json` reading, auto-detect
+  procedure, and `/b6p-detect` references are removed. "command not found" now points at
+  `npm install` rather than an "install the b6p CLI from source" flow.
+- **Scaffolded prose switched to the `npx b6p` model** — `templates/root/CLAUDE.md.template` (critical
+  rule 5, the sync-workflow section, the skill table minus `/b6p-detect`),
+  `templates/root/README.md.template` (the build-from-source and WSL-invoke sections replaced with an
+  "Install dependencies" + `npx b6p auth set` flow), and
+  `templates/claude/instructions/b6p-platform.md.template` (the `bash -lc`/nvm rationale dropped).
+- **Prettier pre-flight is now self-contained** (`scaffold.js:checkPrettierOnPath`). It kept its
+  WSL-aware probe and warning but no longer depends on the removed `detectEnvironmentFor` machinery.
+- **This repo's `CLAUDE.md`** — the "b6p detection" / "Shell prefix list" key-behaviors paragraphs are
+  replaced with the `npx b6p` model; "What gets scaffolded" now lists `package.json` + `.npmrc`, drops
+  `/b6p-detect` and `require-wsl-for-b6p`, and notes three hooks (was four).
+
+### Note for existing projects
+
+`bspecs sync` updates tracked files but never deletes user files it no longer manages. A project
+scaffolded by an older `bspecs` keeps an orphaned `.claude/b6p-env.json` and `.claude/skills/b6p-detect/`
+— both harmless and no longer used; delete them by hand if you want them gone. To adopt the new flow,
+add `@bluestep-systems/b6p-cli` as a devDependency plus a scope-mapped `.npmrc`, then `npm install` so
+`npx b6p` resolves.
+
+### Note
+
+- The `~/.bluestep/push.js` snapshot conventions in `instructions/conventions/` still describe a
+  separate (personal) workflow that conflicts with the `b6p` CLI flow; tracked as a follow-up in
+  `TODO.md` ("Scaffolded snapshot conventions conflict with the `b6p` CLI flow"), out of scope for A5.
+
+---
+
 ## [0.8.0] — 2026-06-19
 
 Makes `bspecs` the single tool BlueStep builders install: it now depends on the freshly-published

@@ -9,7 +9,7 @@ if [[ "$FILE" == *"/declarations/"* ]] \
    || [[ "$FILE" == *"B.d.ts" ]] \
    || [[ "$FILE" == *"scriptlibrary.d.ts" ]] \
    || [[ "$FILE" == *"Globals.d.ts" ]]; then
-  echo "BLOCKED: '$FILE' is platform-generated. Pull from the platform instead of editing manually: wsl bash -lc 'b6p pull \"<DAV URL>\"'" >&2
+  echo "BLOCKED: '$FILE' is platform-generated. Pull from the platform instead of editing manually: npx b6p pull \"<DAV URL>\"" >&2
   exit 2
 fi
 

@@ -21,7 +21,7 @@ This workspace is a **local copy** of components that live on the BlueStep platf
 2. **NEVER** use `.writable()`. Field writability is configured on the platform, not requested in code.
 3. **NEVER** run `tsc` locally. Compilation is handled by the platform on push. _(enforced by hook)_
 4. **NEVER** create new B6P components locally. Create them on the platform first, then pull.
-5. **ALWAYS** run `b6p` through a WSL login shell: `wsl bash -lc 'b6p ...'`. Plain `wsl b6p ...` skips the login shell and fails with "command not found" because nvm/PATH never loads. _(enforced by hook)_
+5. **ALWAYS** invoke `b6p` as `npx b6p` — it resolves the project's local `@bluestep-systems/b6p-cli` cross-platform, with no global install or shell/PATH detection. Run `npm install` first if `node_modules` is missing.
 6. In **MergeReports**: frontend (HTML/CSS/JS) lives in `static/`, NOT in `scripts/`.
 7. The workspace is a local copy — the platform is source of truth.
 8. **NEVER** fabricate query/form/field references. They must exist in the **specific component's** `declarations/index.d.ts` before use. Form-field imports are per-component — a field visible in component A is not visible in component B unless B's import config was updated on the platform and B was pulled. If missing, update that component's import config on the platform and pull it.
@@ -95,7 +95,6 @@ Available skills (full docs in `.claude/skills/<name>/SKILL.md`):
 | `/b6p-pull <DAV URL>` | Bring a component down from the platform (first pull or re-sync) |
 | `/b6p-push <component>` | Send local changes back to the platform |
 | `/b6p-audit <component>` | Compare local vs. platform, see what diverged (read-only) |
-| `/b6p-detect` | Re-detect where `b6p` is installed and refresh `.claude/b6p-env.json`. Rarely needed — only after re-installing b6p in a different location. |
 | `/spec-create <feature-name>` | Plan a new feature (requirements → design → tasks) |
 | `/spec-execute <feature> <task#>` | Implement one specific task from a spec |
 | `/spec-status` | Show progress across all in-flight specs |
@@ -126,24 +125,14 @@ You don't need explicit confirmation to invoke these — they're either read-onl
 
 The skills above wrap these commands. You can run them directly if you need to, but prefer the skills for guidance and consistency.
 
-The exact invocation prefix depends on **where `b6p` is installed** on this machine and **which shell + flags load the user's PATH**. The scaffolder writes the detected prefix to `.claude/b6p-env.json` — read the `shellPrefix` field and prepend it to every `b6p` call. Examples:
+`b6p` ships as a devDependency of this project (`@bluestep-systems/b6p-cli`). Invoke it with `npx b6p`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection. Run `npm install` once if `node_modules` is missing.
 
-- `bash -lc` / `bash -ic` — host bash (login or interactive).
-- `zsh -lc` / `/usr/bin/zsh -ic` — host zsh; `-ic` is needed when nvm is configured in `.zshrc` (common).
-- `wsl bash -lc` / `wsl zsh -ic` — `b6p` lives inside WSL, invoked from Windows.
-- `""` (empty) — `b6p` is on the native Windows PATH.
-
-The `-lc` / `-ic` distinction matters: nvm-installed binaries (like `b6p`) usually require an interactive shell (`-ic`) because nvm is configured in `.zshrc` / `.bashrc`, not in `.zprofile`.
-
-Examples below use `<shellPrefix>` as a placeholder:
-
-- **Pull (DAV URL required):** `<shellPrefix> 'b6p --yes pull "<DAV URL>"'`. The DAV URL is copied from the component's page in the BlueStep platform UI — `b6p pull` does not accept display names. First pull creates the `U######/` folder and the component skeleton.
-- **Push (file-driven):** `<shellPrefix> 'b6p --yes push --file "U######/<Component>/draft/scripts/app.ts"'`. `--file` lets the CLI derive the destination from local metadata.
-- **Audit (read-only):** `<shellPrefix> 'b6p --yes --json audit --file "U######/<Component>/draft/scripts/app.ts"'`. Lists files that differ between local and platform.
+- **Pull (DAV URL required):** `npx b6p --yes pull "<DAV URL>"`. The DAV URL is copied from the component's page in the BlueStep platform UI — `b6p pull` does not accept display names. First pull creates the `U######/` folder and the component skeleton.
+- **Push (file-driven):** `npx b6p --yes push --file "U######/<Component>/draft/scripts/app.ts"`. `--file` lets the CLI derive the destination from local metadata.
+- **Audit (read-only):** `npx b6p --yes --json audit --file "U######/<Component>/draft/scripts/app.ts"`. Lists files that differ between local and platform.
 - Always pass `--yes` so the CLI does not show interactive prompts that Claude cannot answer.
 - Both pull and push verify per-file integrity and only transfer files whose content changed.
-- If `.claude/b6p-env.json` is missing, the skills auto-detect on first use. To redo detection (after re-installing `b6p` in a different location), run `/b6p-detect`.
-- If the b6p CLI fails with `command not found`, see the "Install the b6p CLI" section of the project's `README.md`. For other errors, the VS Code b6p extension is an equivalent fallback.
+- If `npx b6p` cannot be resolved, run `npm install` in the project root (see the "Install dependencies" section of the project's `README.md`). For other errors, the VS Code b6p extension is an equivalent fallback.
 
 ## Self-improvement
 
@@ -173,4 +162,4 @@ The two on-demand overviews come first for high-frequency material:
 
 Reach past the overviews into the indexed atomic files when you need a specific topic the overview only summarizes.
 
-The critical rules above (declarations, `.writable()`, `tsc`, WSL prefix, per-component imports) are the must-always-apply subset — you don't need the deep files to honor them.
+The critical rules above (declarations, `.writable()`, `tsc`, `npx b6p`, per-component imports) are the must-always-apply subset — you don't need the deep files to honor them.

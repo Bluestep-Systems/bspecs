@@ -2,6 +2,14 @@
 
 Completed work for `@bluestep-systems/bspecs`, archived from `TODO.md` to keep the active list short. The authoritative, prose release notes live in `CHANGELOG.md`; this file is the lightweight per-version checklist history.
 
+## Done in 0.9.0
+
+- [x] `b6p` `npx` migration (A5): scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency + ship a scope-mapped `.npmrc`, so `npx b6p` resolves the project-local bin cross-platform.
+- [x] `/b6p-pull`, `/b6p-push`, `/b6p-audit` switched to `npx b6p …`; added an install-step instruction to the scaffolder (instruct, not auto-install — auto-install would need a PAT at scaffold time).
+- [x] Removed the shell-detection workaround: `detectEnvironmentFor`/`probeCommand`/`shellPrefixCandidates` (+ helpers), `.claude/b6p-env.json`, the `/b6p-detect` skill, and the `require-wsl-for-b6p` hook & its `settings.json` registration.
+- [x] Switched scaffolded prose (`CLAUDE.md`, `README.md`, `b6p-platform.md`) and this repo's `CLAUDE.md` to the `npx b6p` model; bumped to 0.9.0 with a `### Removed` CHANGELOG entry; flipped the `b6p-cli-distribution` ADR to fully superseded.
+- See `.claude/specs/b6p-npx-migration/` for the full spec. Follow-up logged in `TODO.md`: the `~/.bluestep/push.js` snapshot conventions still conflict with the b6p CLI flow (own spec/bug, out of scope for A5).
+
 ## Done in 0.8.0
 
 - [x] Published `@bluestep-systems/b6p-cli@0.1.0` to GitHub Packages (restricted) from the `Bluestep-Systems/vscode-extension` monorepo (PR #14 was already merged); verified self-contained (core bundled).

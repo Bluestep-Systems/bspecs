@@ -1,7 +1,8 @@
 # ADR: How `bspecs` handles the `b6p` CLI dependency
 
-**Status:** Superseded by direct publish (2026-06-19). The interim detect-and-guide workaround
-(Option E) is being retired now that `@bluestep-systems/b6p-cli` is published.
+**Status:** Fully superseded (2026-06-19). `@bluestep-systems/b6p-cli` is published, and the A5
+fast-follow (bspecs **0.9.0**) completed the `npx b6p` switch and deleted the entire detect-and-guide
+workaround (Option E). This ADR is now historical — kept for the rationale trail.
 
 **Date:** 2026-05-21 (updated 2026-06-19)
 
@@ -122,10 +123,12 @@ Later, once upstream publishes:
 
 - [x] Implement Option C (done in 0.2.1: pre-flight check in scaffolder + install instructions in README + "command not found" handling in skills).
 - [x] Add shell-prefix detection and persistence so skills work across bash/zsh, login/interactive, native/WSL (done in 0.3.0 → 0.3.2, including `/b6p-detect` and `.claude/b6p-env.json`).
-- [ ] **Open upstream issue** at `Bluestep-Systems/vscode-extension` requesting publish of `@bluestep-systems/b6p-core` and `@bluestep-systems/b6p-cli` (tracked in `TODO.md` under "Upstream issue for b6p-cli publish").
-- [ ] **When upstream publishes:** see "Cleanup once b6p-cli is published" below.
+- [x] **Open upstream issue** — resolved without one: `@bluestep-systems/b6p-cli@0.1.0` was published directly to GitHub Packages (2026-06-19, the `publish-chain` spec / bspecs 0.8.0).
+- [x] **When upstream publishes:** done — the "Cleanup once b6p-cli is published" list below was executed in the A5 migration (bspecs 0.9.0).
 
 ## Cleanup once `b6p-cli` is published
+
+✅ **Done in bspecs 0.9.0 (the A5 migration).** Every item in the lists below was removed or replaced — see the `[0.9.0]` `### Removed` entry in `CHANGELOG.md` and `.claude/specs/b6p-npx-migration/`. (One deviation: b6p-cli is declared as a **devDependency of each scaffolded project**, not as a `peerDependency` of bspecs — a dependency's bin is never placed on the global PATH, so only a project-local devDependency makes `npx b6p` resolve.) The text is kept for the historical record.
 
 Everything we built between 0.2.1 and 0.3.2 to work around the missing publish is **disposable scaffolding**. When `b6p-cli` ships to a registry, we replace all of it with a `peerDependencies` declaration and `npx`-style invocation.
 

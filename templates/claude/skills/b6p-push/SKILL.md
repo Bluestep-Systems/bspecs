@@ -1,7 +1,7 @@
 ---
 name: b6p-push
 description: Push local changes for a component back to the BlueStep platform. Use when the user is ready to deploy local edits.
-allowed-tools: Bash(wsl bash -lc *) Bash(bash -lc *) Bash(git*)
+allowed-tools: Bash(npx b6p *) Bash(git*)
 ---
 
 # /b6p-push — Push a component to BlueStep
@@ -16,15 +16,11 @@ b6p push --file <path-inside-component>
 
 Any file inside the component works as the `--file` argument; the CLI walks up to find `.b6p_metadata.json`.
 
-## Where `b6p` lives in this project
+## How to invoke `b6p`
 
-Read `.claude/b6p-env.json` and use its `shellPrefix` for every b6p invocation. See `/b6p-pull`'s SKILL.md for the full description of accepted prefix shapes and the auto-detect / persist / fallback procedure.
+`b6p` ships as a devDependency of this project (`@bluestep-systems/b6p-cli`). Always invoke it with `npx b6p`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection. If `node_modules` is missing, the user has not run `npm install` yet (see the "Install dependencies" section of the project's `README.md`).
 
 ## Steps
-
-### 0. Resolve the b6p shell prefix
-
-Read `.claude/b6p-env.json` and use its `shellPrefix` for the push command. If the file does not exist, auto-detect and persist (see the section above).
 
 ### 1. Identify the component
 
@@ -46,10 +42,10 @@ Do not push without explicit confirmation.
 ### 4. Run the push
 
 ```
-<shellPrefix> 'b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"'
+npx b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"
 ```
 
-Where `<shellPrefix>` is whatever `.claude/b6p-env.json` resolved to in step 0. Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
+Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
 
 The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call will hang. Always include it.
 
@@ -61,7 +57,7 @@ The `--yes` is **required** — without it, b6p may show an interactive confirma
 
 ## What this skill must NOT do
 
-- Do NOT invoke `b6p` without `bash -lc` (or `wsl bash -lc` on Windows).
+- Do NOT invoke `b6p` any way other than `npx b6p`.
 - Do NOT push without showing the user the diff and getting confirmation.
 - Do NOT loop on CLI failures — fall back to the VS Code b6p extension.
 
@@ -69,6 +65,6 @@ The `--yes` is **required** — without it, b6p may show an interactive confirma
 
 Two distinct failure modes — handle them differently:
 
-- **`command not found: b6p`** — the CLI is not installed on this machine. Do NOT retry. Tell the user:
-  > `b6p` is not installed. See the "Install the b6p CLI" section of this project's `README.md` for one-time setup. Once installed, retry `/b6p-push <component>`.
+- **`command not found` / `b6p` cannot be resolved** — the project's dependencies are not installed. Do NOT retry. Tell the user:
+  > `b6p` could not be resolved. Run `npm install` in the project root (see the "Install dependencies" section of this project's `README.md`), then retry `/b6p-push <component>`.
 - **Any other error** (network, auth, conflict, etc.) — the VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Do not retry the CLI in a loop.

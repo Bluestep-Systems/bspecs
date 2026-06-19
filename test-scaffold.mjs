@@ -34,10 +34,11 @@ const expected = [
   '.prettierrc',
   '.gitignore',
   'README.md',
+  'package.json',
+  '.npmrc',
   '.claude/settings.json',
   '.claude/templates/README.md',
   '.claude/hooks/block-generated-files.sh',
-  '.claude/hooks/require-wsl-for-b6p.sh',
   '.claude/hooks/block-tsc.sh',
   '.claude/hooks/prettier-on-save.sh',
   '.claude/instructions/bsjs-development.md',
@@ -45,7 +46,6 @@ const expected = [
   '.claude/skills/b6p-pull/SKILL.md',
   '.claude/skills/b6p-push/SKILL.md',
   '.claude/skills/b6p-audit/SKILL.md',
-  '.claude/skills/b6p-detect/SKILL.md',
   '.claude/skills/spec-create/SKILL.md',
   '.claude/skills/spec-execute/SKILL.md',
   '.claude/skills/spec-status/SKILL.md',
@@ -62,6 +62,10 @@ for (const rel of expected) {
 
 // Claude-only: no GitHub Copilot mirror is scaffolded.
 check('no .github/ mirror generated', !existsSync(join(PROJECT_PATH, '.github')));
+
+// A5 (0.9.0): npx-b6p model — no shell-detection artifact, no /b6p-detect skill.
+check('no .claude/b6p-env.json written', !existsSync(join(PROJECT_PATH, '.claude/b6p-env.json')));
+check('no /b6p-detect skill scaffolded', !existsSync(join(PROJECT_PATH, '.claude/skills/b6p-detect')));
 
 // Instruction subfolders land (reference/conventions/gotchas).
 for (const dir of ['reference', 'conventions', 'gotchas']) {
@@ -126,10 +130,15 @@ const allHooks = [
 ].flatMap((g) => g.hooks || []);
 const cmds = allHooks.map((h) => h.command);
 check('hook wired: block-generated-files', cmds.some((c) => c.includes('block-generated-files')));
-check('hook wired: require-wsl-for-b6p', cmds.some((c) => c.includes('require-wsl-for-b6p')));
+check('hook NOT wired: require-wsl-for-b6p (removed in 0.9.0)', !cmds.some((c) => c.includes('require-wsl-for-b6p')));
 check('hook wired: block-tsc', cmds.some((c) => c.includes('block-tsc')));
 check('hook wired: prettier-on-save', cmds.some((c) => c.includes('prettier-on-save')));
-check('settings.json allows wsl bash -lc invocations', (settings.permissions?.allow || []).some((p) => /wsl bash -lc/.test(p)));
+check('settings.json allows npx invocations', (settings.permissions?.allow || []).some((p) => /npx/.test(p)));
+
+// A5 (0.9.0): scaffolded package.json carries the b6p-cli devDependency for `npx b6p`.
+const projectPkg = JSON.parse(readFileSync(join(PROJECT_PATH, 'package.json'), 'utf8'));
+check('package.json declares b6p-cli devDependency', !!projectPkg.devDependencies?.['@bluestep-systems/b6p-cli']);
+check('.npmrc maps the @bluestep-systems scope', readFileSync(join(PROJECT_PATH, '.npmrc'), 'utf8').includes('@bluestep-systems:registry='));
 
 console.log(`\n${passed} passed, ${failed} failed.\n`);
 

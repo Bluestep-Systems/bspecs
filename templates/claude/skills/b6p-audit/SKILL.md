@@ -1,7 +1,7 @@
 ---
 name: b6p-audit
 description: Compare a local component's state against what lives on the BlueStep platform, listing files that differ. Use when the user wants to know if they (or someone else) changed something on the platform side, or before a push to be sure nothing unexpected will be overwritten.
-allowed-tools: Bash(wsl bash -lc *) Bash(bash -lc *)
+allowed-tools: Bash(npx b6p *)
 ---
 
 # /b6p-audit — Compare local vs. platform
@@ -18,17 +18,13 @@ Use this **on demand**, not as a pre-flight before every push. The user decides 
 
 For a push that immediately follows, the user can ask you to chain `/b6p-audit` then `/b6p-push`; do not auto-chain it yourself.
 
-## How to invoke b6p
+## How to invoke `b6p`
 
-Read `.claude/b6p-env.json` and use its `shellPrefix` for every b6p invocation. See `/b6p-pull`'s SKILL.md for the full description of accepted prefix shapes and the auto-detect / persist / fallback procedure.
+`b6p` ships as a devDependency of this project (`@bluestep-systems/b6p-cli`). Always invoke it with `npx b6p`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection. If `node_modules` is missing, the user has not run `npm install` yet (see the "Install dependencies" section of the project's `README.md`).
 
 Always pass `--yes` so b6p does not show interactive prompts that Claude cannot answer.
 
 ## Steps
-
-### 0. Resolve the b6p shell prefix
-
-Read `.claude/b6p-env.json` and use its `shellPrefix` for the audit command. If the file does not exist, auto-detect and persist (see the section above).
 
 ### 1. Identify the component
 
@@ -41,7 +37,7 @@ Confirm `.b6p_metadata.json` exists at the component root — without it, audit 
 Pass `--json` so the result is parseable, and `--file` to specify a file inside the component:
 
 ```
-<shellPrefix> 'b6p --yes --json audit --file "U######/<ComponentName>/draft/scripts/app.ts"'
+npx b6p --yes --json audit --file "U######/<ComponentName>/draft/scripts/app.ts"
 ```
 
 The CLI walks up from `--file` to find the component root, then compares each file against the platform.
@@ -75,12 +71,12 @@ Never auto-pull or auto-push from inside this skill. The user drives the next st
 
 - Do NOT pass `--pull` to `b6p audit` (that flag would auto-sync; we want read-only).
 - Do NOT chain into `/b6p-pull` or `/b6p-push` without the user asking.
-- Do NOT invoke `b6p` without `bash -lc` (or `wsl bash -lc` on Windows) and without `--yes`.
+- Do NOT invoke `b6p` any way other than `npx b6p`, and never without `--yes`.
 
 ## If the CLI fails
 
 Two distinct failure modes — handle them differently:
 
-- **`command not found: b6p`** — the CLI is not installed. Tell the user:
-  > `b6p` is not installed. See the "Install the b6p CLI" section of this project's `README.md` for one-time setup.
+- **`command not found` / `b6p` cannot be resolved** — the project's dependencies are not installed. Tell the user:
+  > `b6p` could not be resolved. Run `npm install` in the project root (see the "Install dependencies" section of this project's `README.md`).
 - **Any other error** (network, auth, etc.) — the audit command is read-only so failures are usually transient. Surface the raw error to the user; suggest retrying or using `b6p auth set` if it looks like an auth issue.

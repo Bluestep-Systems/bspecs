@@ -8,54 +8,38 @@ A project is a collection of B6P components, organised by Unit. `b6p pull "<DAV 
 
 ## Prerequisites
 
-### Install the `b6p` CLI (one-time)
+### Install dependencies (one-time)
 
-This project relies on the `b6p` CLI for all sync with the BlueStep platform. As of this writing, `b6p` is not yet published to npm, so it has to be built from source:
+The `b6p` CLI ships as a dev dependency of this project (`@bluestep-systems/b6p-cli`). Install it with:
 
 ```bash
-git clone git@github.com:Bluestep-Systems/vscode-extension.git ~/bluestep-vscode-extension
-cd ~/bluestep-vscode-extension
 npm install
-npm run compile
-cd packages/b6p-cli
-npm link
 ```
 
-Verify with:
+The b6p skills (`/b6p-pull`, `/b6p-push`, `/b6p-audit`) then invoke it as `npx b6p …`, which resolves `node_modules/.bin/b6p` cross-platform — no global install and no shell/PATH detection.
+
+`npm install` needs a `~/.npmrc` granting access to the `@bluestep-systems` scope on GitHub Packages (a PAT with `read:packages`, exposed as `GITHUB_TOKEN`). The project's `.npmrc` maps the scope; the token is read from your environment.
+
+### Configure platform credentials (one-time)
+
+Set your BlueStep platform credentials once per machine:
 
 ```bash
-wsl bash -lc "b6p --help"
+npx b6p auth set
 ```
 
-Then configure your BlueStep platform credentials (one-time per machine):
-
-```bash
-wsl bash -lc "b6p auth set"
-```
-
-Without this, the first `b6p pull` will prompt for credentials interactively, which Claude Code cannot answer — the call will hang. Run `auth set` once before invoking `/b6p-pull`.
-
-If `git clone` fails with a permissions error, you need access to the `Bluestep-Systems` GitHub org — ask in your team channel.
+Without this, the first `npx b6p pull` will prompt for credentials interactively, which Claude Code cannot answer — the call will hang. Run `auth set` before invoking `/b6p-pull`.
 
 The **VS Code b6p extension** (`bsjs-push-pull`, published in the Marketplace) is an equivalent fallback for pull/push when the CLI is not available.
 
-### How to invoke `b6p`
-
-Always through a WSL **login shell** so nvm/PATH load:
-
-- `wsl bash -lc 'b6p pull "<DAV URL>"'`
-- `wsl bash -lc 'b6p push --file "U######/<Component>/draft/scripts/app.ts"'`
-
-Plain `wsl b6p ...` fails with `command not found` because it skips the profile. The `require-wsl-for-b6p` hook enforces the correct shape.
-
-The DAV URL is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
+The DAV URL passed to `b6p pull` is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
 
 ## Daily workflow
 
-1. **Pull a component:** `/b6p-pull <DAV URL>` (Claude skill — also scaffolds `draft/README.md` from metadata + code when missing) or `wsl bash -lc 'b6p pull "<DAV URL>"'`. The Unit folder is created automatically if it does not exist yet.
+1. **Pull a component:** `/b6p-pull <DAV URL>` (Claude skill — also scaffolds `draft/README.md` from metadata + code when missing) or `npx b6p pull "<DAV URL>"`. The Unit folder is created automatically if it does not exist yet.
 2. **Read the component's `draft/README.md`** before editing.
 3. **Edit code** under `U######/<component>/draft/scripts/` — never `declarations/`.
-4. **Push back:** `/b6p-push <component>` (Claude skill) or `wsl bash -lc 'b6p push --file "U######/<component>/draft/scripts/app.ts"'`.
+4. **Push back:** `/b6p-push <component>` (Claude skill) or `npx b6p push --file "U######/<component>/draft/scripts/app.ts"`.
 
 ## New feature workflow
 
@@ -70,7 +54,7 @@ Use Claude skills for spec-driven development:
 
 - `CLAUDE.md` — main Claude context (critical rules, workspace model, API summary).
 - `.claude/instructions/` — deep technical reference.
-- `.claude/hooks/` — automatic guardrails (block edits to `declarations/`, require `wsl` prefix, block `tsc`, auto-format).
+- `.claude/hooks/` — automatic guardrails (block edits to `declarations/`, block `tsc`, auto-format).
 - `.claude/skills/` — slash commands you can invoke (`/b6p-pull`, `/spec-create`, etc.).
 
 ## Secrets

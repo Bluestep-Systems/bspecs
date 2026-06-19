@@ -344,7 +344,7 @@ Server-side `B.net.fetch` is **synchronous** — no `await`/Promise round-trip (
 Query, form, and field references must exist in **the component you are editing**'s `declarations/index.d.ts` **before** you reference them in code. Form-field imports are per-component — another component's declarations file tells you nothing about this one. If a name is missing:
 
 1. Add it to **this component's** form-import config on the platform.
-2. Run `wsl bash -lc 'b6p pull "<DAV URL>"'` to update this component's declarations.
+2. Run `npx b6p pull "<DAV URL>"` to update this component's declarations.
 3. Then reference it in TypeScript.
 
 Hallucinating an import name silently passes type-check locally if the file is missing, but will fail at platform compile.

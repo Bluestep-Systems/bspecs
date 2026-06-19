@@ -1,7 +1,7 @@
 ---
 name: b6p-pull
 description: Pull a B6P component from the BlueStep platform into the local workspace using its DAV URL, and scaffold draft/README.md if missing. Use when the user wants to bring a component down for the first time or re-sync after platform edits.
-allowed-tools: Bash(wsl bash -lc *) Bash(bash -lc *)
+allowed-tools: Bash(npx b6p *)
 ---
 
 # /b6p-pull — Pull a component from BlueStep
@@ -18,49 +18,17 @@ The user copies the DAV URL from the component's page in the BlueStep platform U
 
 A first pull creates the `U######/<ComponentName>/` folder (creating the U-folder if it does not exist) and populates `declarations/`, `draft/`, and `.b6p_metadata.json`.
 
-## Where `b6p` lives in this project
+## How to invoke `b6p`
 
-`bspecs` scaffolds `.claude/b6p-env.json` with the install location it found at scaffold time. Read that file once at the start of the skill — its `shellPrefix` is the prefix you must prepend to every `b6p` invocation:
+`b6p` ships as a devDependency of this project (`@bluestep-systems/b6p-cli`). Always invoke it with `npx`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection:
 
-```json
-{
-  "shellPrefix": "/usr/bin/zsh -ic",
-  "location": "native",
-  "detectedAt": "..."
-}
+```
+npx b6p <args>
 ```
 
-`shellPrefix` can be any of these shapes (depending on where `b6p` was found):
-
-- `bash -lc` / `bash -ic` — `b6p` in the host bash.
-- `zsh -lc` / `zsh -ic` (or with an absolute path like `/usr/bin/zsh -ic`) — `b6p` in the host zsh.
-- `wsl bash -lc`, `wsl zsh -ic`, etc. — `b6p` lives inside WSL, called from a Windows host.
-- An empty string `""` — `b6p` is on the native Windows PATH (e.g. an `npx`-shimmed install).
-
-The `-lc` vs `-ic` distinction matters because nvm (where b6p typically lives) is usually configured in `.zshrc` / `.bashrc`, which only loads in interactive shells (`-ic`). `-lc` is the cleaner option when it works.
-
-The `require-wsl-for-b6p` hook accepts any of these shapes.
-
-### If `.claude/b6p-env.json` does NOT exist
-
-The scaffolder did not find `b6p` at scaffold time (maybe the user installed it after). Auto-detect once and persist by probing this ordered list of candidates until one succeeds:
-
-1. `<user-shell> -lc "command -v b6p"`  ← cleanest if it works
-2. `<user-shell> -ic "command -v b6p"`  ← needed when nvm lives in .zshrc/.bashrc
-3. `/bin/bash -lc "command -v b6p"`  ← fallback if user-shell is unusual
-4. `/bin/bash -ic "command -v b6p"`
-
-Where `<user-shell>` is `$SHELL` if it looks like bash/zsh/sh/fish, else `/bin/bash`. On Windows, prepend `wsl ` to each of those (and also try the plain command first, since b6p may be on the Windows PATH directly).
-
-If all probes fail → STOP and tell the user: `b6p` is not installed. Point them at the "Install the b6p CLI" section of the project's `README.md`.
-
-On success, write `.claude/b6p-env.json` with the detected shape so subsequent skill invocations skip the probe. If the user wants to redo this detection (e.g. they reinstalled `b6p` in a different location), they run `/b6p-detect`.
+If `node_modules` is missing, the user has not run `npm install` yet (see the "Install dependencies" section of the project's `README.md`).
 
 ## Steps
-
-### 0. Resolve the b6p shell prefix
-
-Read `.claude/b6p-env.json` and remember its `shellPrefix`. If the file does not exist, follow the auto-detect procedure described in the "Where `b6p` lives in this project" section above.
 
 ### 1. Get the DAV URL
 
@@ -71,13 +39,9 @@ Read `.claude/b6p-env.json` and remember its `shellPrefix`. If the file does not
 
 ### 2. Run the pull
 
-Using the `shellPrefix` resolved in step 0:
-
 ```
-<shellPrefix> 'b6p --yes pull "<DAV URL>"'
+npx b6p --yes pull "<DAV URL>"
 ```
-
-(For example: `bash -lc 'b6p --yes pull "<DAV URL>"'` or `wsl bash -lc 'b6p --yes pull "<DAV URL>"'`.)
 
 The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call will hang. Always include it.
 
@@ -144,7 +108,7 @@ Next: read draft/README.md, then start editing. For a new feature use /spec-crea
 
 ## What this skill must NOT do
 
-- Do NOT invoke `b6p` without `bash -lc` (or `wsl bash -lc` on Windows).
+- Do NOT invoke `b6p` any way other than `npx b6p`.
 - Do NOT accept a display name as a substitute for the DAV URL.
 - Do NOT overwrite a substantive `draft/README.md`.
 - Do NOT speculate beyond what the code shows when filling Overview/Behavior — if uncertain, ask.
@@ -154,6 +118,6 @@ Next: read draft/README.md, then start editing. For a new feature use /spec-crea
 
 Two distinct failure modes — handle them differently:
 
-- **`command not found: b6p`** — the CLI is not installed on this machine. Do NOT retry, do NOT try alternative invocations. Tell the user:
-  > `b6p` is not installed. See the "Install the b6p CLI" section of this project's `README.md` for one-time setup. Once installed, retry `/b6p-pull <DAV URL>`.
-- **Any other error** (network, auth, lock, etc.) — `b6p` is installed but the call failed. The VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Tell the user to use it via the editor UI rather than retrying the CLI in a loop.
+- **`command not found` / `b6p` cannot be resolved** — the project's dependencies are not installed. Do NOT retry, do NOT try alternative invocations. Tell the user:
+  > `b6p` could not be resolved. Run `npm install` in the project root (see the "Install dependencies" section of this project's `README.md`), then retry `/b6p-pull <DAV URL>`.
+- **Any other error** (network, auth, lock, etc.) — `b6p` ran but the call failed. The VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Tell the user to use it via the editor UI rather than retrying the CLI in a loop.

@@ -3,7 +3,6 @@
     "allow": [
       "Edit(**/*.md)",
       "Bash(git:*)",
-      "Bash(wsl bash -lc *)",
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(node:*)",
@@ -24,7 +23,6 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": ".claude/hooks/require-wsl-for-b6p.sh" },
           { "type": "command", "command": ".claude/hooks/block-tsc.sh" }
         ]
       }

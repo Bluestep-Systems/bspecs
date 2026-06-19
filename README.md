@@ -71,9 +71,9 @@ Projects scaffolded with `bspecs 0.5.0` or later run `bspecs sync` automatically
 ## Prerequisites
 
 - **Node.js 18+**
-- **`b6p` CLI** — required for the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills. Installed
-  automatically as a dependency (`@bluestep-systems/b6p-cli`); `bspecs` still detects it at scaffold
-  time and prints guidance if it is not reachable on your `PATH`.
+- **`b6p` CLI** — required for the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills. Scaffolded
+  projects declare it as a devDependency (`@bluestep-systems/b6p-cli`); run `npm install` in the
+  project and the skills invoke it via `npx b6p` — no global install, no shell/PATH detection.
 - **prettier** — required for the auto-format hook. `bspecs` warns if it is not found.
 
 ## Generated structure
@@ -84,12 +84,13 @@ my-project/
 ├── README.md                          ← project documentation
 ├── .prettierrc
 ├── .gitignore
+├── package.json                      ← declares the b6p-cli devDependency
+├── .npmrc                            ← maps the @bluestep-systems scope (GitHub Packages)
 ├── .claude/
 │   ├── bspecs.lock                    ← lock file for bspecs sync
-│   ├── b6p-env.json                   ← detected b6p environment
 │   ├── settings.json                  ← Claude Code permissions and hooks
-│   ├── hooks/                         ← 4 scripts executed by Claude Code
-│   ├── skills/                        ← 9 skills (/spec-create, /b6p-pull, etc.)
+│   ├── hooks/                         ← 3 scripts executed by Claude Code
+│   ├── skills/                        ← 8 skills (/spec-create, /b6p-pull, etc.)
 │   ├── agents/                        ← 3 BlueStep subagents (implementer, commenter, reviewer)
 │   ├── instructions/                  ← development rules for Claude
 │   ├── spec-templates/                ← spec file templates
