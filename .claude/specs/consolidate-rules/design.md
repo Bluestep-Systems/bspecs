@@ -16,7 +16,7 @@
 ### Code (so the new tree actually ships and syncs)
 
 - `src/scaffold.js` → `mirrorInstructionsToGithub` — **deleted** (Claude-only; no GitHub Copilot mirror). The call site in `scaffold()` and the import, if unused afterward, go too.
-- `src/sync.js` → `SYNC_TARGETS` — **generalized + Copilot entries removed.** The two `.claude/instructions/*` entries **and** the two `.github/instructions/*` mirror entries (currently hardcoded) are replaced by a dynamically-discovered list walking `templates/claude/instructions/**`, emitting **only** `.claude/instructions/**` targets. This is the load-bearing change: without it, `bspecs sync` and `bspecs.lock` would silently ignore every new file.
+- `src/sync.js` → `SYNC_TARGETS` — **replaced by a full walk of `templates/claude/**` + Copilot entries removed.** The entire hardcoded array (skills, hooks, settings, spec-templates, and the four instruction lines incl. the two `.github/instructions/*` mirrors) is replaced by a dynamically-discovered list walking `templates/claude/**`, emitting one `.claude/**` target per file. A documented `SYNC_EXCLUDE` constant (empty today) is the opt-out for future scaffold-once files. This is the load-bearing change: without it, `bspecs sync` and `bspecs.lock` would silently ignore every new file.
 
 ### Docs (kept in sync)
 
@@ -87,22 +87,32 @@ This beats a separate `UNRESOLVED.md` (flags drift from content) and beats silen
 
 ### Code generalization — single source of truth for the instructions tree
 
-Add a helper (in `utils.js` or `sync.js`) that walks `templates/claude/instructions/**` once and returns, per file, its sync target:
+Add a helper (in `utils.js` or `sync.js`) that walks **all of `templates/claude/**`** once and returns, per file, its sync target:
 
 ```js
 // for templates/claude/instructions/reference/foo.md.template →
 // { templateSrc: 'claude/instructions/reference/foo.md.template',
 //   destRel:     '.claude/instructions/reference/foo.md' }
+// for templates/claude/spec-templates/design.template.md →
+// { templateSrc: 'claude/spec-templates/design.template.md',
+//   destRel:     '.claude/spec-templates/design.template.md' }   // .template.md preserved
 ```
 
-Transform rules: strip `.template`; preserve subfolders. (No GitHub dest — Claude-only.)
+Transform rule (identical to `copyTemplateTree`'s `walk`): `destRel` = `.claude/` + path under `templates/claude/`, with a **trailing** `.template` stripped. Because the rule strips only a trailing `.template`:
+
+- `settings.json.template` → `settings.json` (stripped)
+- `spec-templates/design.template.md` → `design.template.md` (ends in `.md`, untouched)
+- `instructions/**/foo.md.template` → `foo.md` (stripped)
+- `skills/**/SKILL.md`, `hooks/*.sh` → unchanged
+
+This reproduces the old hardcoded array exactly. (No GitHub dest — Claude-only.)
 
 Then:
 
-- `SYNC_TARGETS` = the static skills/hooks/settings/spec-template entries **+** this helper expanded into one `.claude/instructions/**` entry per instruction file. The four hardcoded instruction lines (sync.js:27–32) — two `.claude` + two `.github` — are deleted.
+- `SYNC_TARGETS` = the helper's output for `templates/claude/**`, minus a documented `SYNC_EXCLUDE` set (empty today). The **entire** hardcoded array is deleted. The `templates/claude/**` boundary is what made the old list correct implicitly: `templates/root/` (user-owned CLAUDE.md/README) and `templates/module/` (scaffold-once) live outside it and are naturally excluded.
 - `mirrorInstructionsToGithub` and its call site in `scaffold()` (scaffold.js:54, 205–215) are deleted entirely. No mirror is generated.
 
-This guarantees lock-file hashing and `bspecs sync` both derive from the one tree — add a `reference/` file and it flows everywhere automatically, with no Copilot copy to keep in sync.
+This guarantees lock-file hashing and `bspecs sync` both derive from the one tree — add a skill, hook, or `reference/` file and it flows automatically, with no Copilot copy and no hand-maintained list to keep in sync.
 
 ### File extension convention
 
@@ -148,7 +158,7 @@ Verified against the live docs (June 2026): [Effective context engineering for A
 - **Three-tier on-demand loading** — exactly the pattern CLAUDE.md.template already documents ("not auto-imported — read on demand"); we scale it from 2 files to a tree. The only always-on cost is the CLAUDE.md pointer to `index.md`.
 - **Claude-only is a simplification, not a new pattern** — removing the Copilot mirror retires the dual-target single-source-of-truth machinery. The remaining single source is the template tree → `.claude/` only.
 - **`.md.template` + `{{VAR}}`** — same template engine and ext-strip convention as every other template file.
-- **New pattern introduced: dynamic enumeration of `SYNC_TARGETS`.** Today `SYNC_TARGETS` is fully static. Computing the instructions portion at runtime is a deliberate departure. **This warrants a short ADR** in `docs/decisions/` (e.g. `instruction-tree-and-claude-only.md`) recording (a) the move from hardcoded to walked enumeration and (b) the Claude-only decision (Copilot mirror dropped) — both change core mechanisms future contributors will touch. Recommended, low cost.
+- **New pattern introduced: dynamic enumeration of `SYNC_TARGETS`.** Today `SYNC_TARGETS` is fully static. Computing the **whole list** at runtime by walking `templates/claude/**` is a deliberate departure. **This warrants a short ADR** in `docs/decisions/` (e.g. `instruction-tree-and-claude-only.md`) recording (a) the move from a hardcoded array to a walked tree (with the `SYNC_EXCLUDE` escape hatch and the `templates/claude/**`-is-synced boundary) and (b) the Claude-only decision (Copilot mirror dropped) — both change core mechanisms future contributors will touch. Recommended, low cost.
 
 ## No-duplication review (consolidation correctness)
 
