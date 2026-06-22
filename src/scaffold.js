@@ -53,7 +53,7 @@ export async function scaffold(answers) {
   log.success('Files generated.');
 
   checkPrettierOnPath();
-  reportInstallStep(answers.projectName);
+  installDependencies(answers.projectName, projectDir);
 
   if (answers.initGit) {
     if (isInsideGitRepo(projectDir)) {
@@ -119,25 +119,38 @@ function checkPrettierOnPath() {
   log.warn(`prettier not found in either the native or WSL PATH. The prettier-on-save hook will be a no-op until you run: ${installCmd}`);
 }
 
-// Instruct the user to install the project's dependencies. We deliberately do
-// NOT auto-run `npm install`: it would need the consumer's GitHub Packages PAT
-// (the @bluestep-systems scope) at scaffold time, which fails poorly on a first
-// run. The b6p CLI ships as a devDependency and the skills invoke it via
-// `npx b6p`, so `node_modules/.bin/b6p` must exist before the first b6p skill.
-function reportInstallStep(projectName) {
-  log.info(
-    [
-      'Before using the b6p skills, install dependencies in the new project:',
-      '',
-      `    cd ${projectName}`,
-      '    npm install',
-      '',
-      'This fetches @bluestep-systems/b6p-cli (a devDependency) so the /b6p-pull,',
-      '/b6p-push, and /b6p-audit skills can run `npx b6p …` — no global install or',
-      'shell/PATH detection. `npm install` needs a ~/.npmrc granting the',
-      '@bluestep-systems scope on GitHub Packages (a PAT with read:packages exposed',
-      'as GITHUB_TOKEN); the project .npmrc maps the scope and reads the token from',
-      'your environment.',
-    ].join('\n')
-  );
+// Install the project's dependencies on a best-effort basis. We attempt
+// `npm install` so the b6p CLI (a devDependency) is present without a manual
+// step, but it can legitimately fail and we must NOT assume it will succeed:
+// the project .npmrc reads the GitHub Packages token from ${GITHUB_TOKEN}, whose
+// presence in THIS process's environment is not guaranteed at scaffold time —
+// a fresh shell/session may never have exported it (notably PowerShell on
+// Windows, where a bash-rc export does not apply), the token may have expired,
+// or the machine may be offline. On any failure we fall back to printing the
+// manual install reminder rather than failing the scaffold or leaving the
+// project half-installed. The skills invoke `npx b6p`, so `node_modules/.bin/b6p`
+// must exist before the first b6p skill runs — hence the reminder on failure.
+function installDependencies(projectName, projectDir) {
+  log.info(`Installing dependencies in ${projectName} (npm install)…`);
+  try {
+    execSync('npm install', { cwd: projectDir, stdio: 'ignore' });
+    log.success('Dependencies installed — b6p is ready via `npx b6p`.');
+  } catch {
+    log.warn(
+      [
+        'Could not run `npm install` automatically. Install dependencies by hand',
+        'before using the b6p skills:',
+        '',
+        `    cd ${projectName}`,
+        '    npm install',
+        '',
+        'This fetches @bluestep-systems/b6p-cli (a devDependency) so the /b6p-pull,',
+        '/b6p-push, and /b6p-audit skills can run `npx b6p …`. It needs a ~/.npmrc',
+        'granting the @bluestep-systems scope on GitHub Packages (a PAT with',
+        'read:packages exposed as GITHUB_TOKEN); the project .npmrc maps the scope',
+        'and reads the token from your environment. The most common cause of this',
+        'failure is GITHUB_TOKEN not being set in the current shell.',
+      ].join('\n')
+    );
+  }
 }

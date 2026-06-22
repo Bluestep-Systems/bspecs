@@ -2,6 +2,13 @@
 
 Completed work for `@bluestep-systems/bspecs`, archived from `TODO.md` to keep the active list short. The authoritative, prose release notes live in `CHANGELOG.md`; this file is the lightweight per-version checklist history.
 
+## Unreleased
+
+- [x] **Best-effort auto `npm install` in the scaffolded project.** `scaffold.js` now attempts `npm install` (renamed `reportInstallStep` → `installDependencies`) so the b6p devDependency is present without a manual step, and falls back to the manual-install reminder on failure. It does **not** assume success: the project `.npmrc` reads the token from `${GITHUB_TOKEN}`, whose presence at scaffold time is not guaranteed (unset in a fresh shell — notably Windows/PowerShell — expired token, or offline). Corrected the earlier "the token is already configured by scaffold time" framing in the install-friction ADR. See [`docs/decisions/install-friction-and-registry.md`](docs/decisions/install-friction-and-registry.md).
+- [x] **Wizard: warn-loud git init.** Kept the "Initialize a git repository?" confirm but the message now warns that skipping degrades the implementer agent; skipping logs a loud follow-up warning. Added `isInsideGitRepo()` (`src/scaffold.js`) so the scaffolder detects an enclosing repo via `git rev-parse --is-inside-work-tree` and skips init rather than nesting a repo.
+- [x] **Wizard: project description optional.** Dropped the 20-char minimum; the prompt now accepts an empty value (defaults to `''`). `PROJECT_DESCRIPTION` is retained because it feeds the generated `CLAUDE.md`, `README.md`, and `package.json` description.
+- [x] **Removed the Context7 dependency entirely.** Dropped the API-key prompt, the `CONTEXT7_API_KEY` variable, the whole `templates/vscode/` tree + its `copyTemplateTree` call, and all Context7/`.vscode/mcp.json` references across templates, docs, and `test-scaffold.mjs` (now asserts their absence). `copyTemplateTree` runs 3× and the wizard is 4 questions.
+
 ## Done in 0.9.0
 
 - [x] `b6p` `npx` migration (A5): scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency + ship a scope-mapped `.npmrc`, so `npx b6p` resolves the project-local bin cross-platform.

@@ -6,6 +6,19 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [Unreleased]
+
+### Changed
+
+- **Scaffolder runs `npm install` best-effort (`scaffold.js`, `reportInstallStep` →
+  `installDependencies`).** After generating files it now attempts the install so the `b6p-cli`
+  devDependency is present without a manual step, instead of only printing a reminder. The install
+  is **not** assumed to succeed: the project `.npmrc` reads the GitHub Packages token from
+  `${GITHUB_TOKEN}`, whose presence at scaffold time is not guaranteed (unset in a fresh shell —
+  notably PowerShell on Windows — an expired token, or no network). On any failure it falls back to
+  the manual `npm install` reminder and never fails the scaffold. See
+  `docs/decisions/install-friction-and-registry.md`.
+
 ## [0.9.0] — 2026-06-19
 
 Completes the "A5" fast-follow staged in 0.8.0: scaffolded projects now reach `b6p` via `npx b6p`
