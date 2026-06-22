@@ -16,7 +16,13 @@ Completed work for `@bluestep-systems/bspecs`, archived from `TODO.md` to keep t
 - [x] Renamed `@bluestep/bspecs` → `@bluestep-systems/bspecs`; added `@bluestep-systems/b6p-cli ^0.1.0` dependency; refreshed lockfile; added root `.npmrc`.
 - [x] Documented consumer auth in `README.md`; updated `CLAUDE.md` Publishing; recorded the direct-publish + rename in the ADR.
 - [x] Created `github.com/Bluestep-Systems/bspecs` (private), repointed `origin`, pushed `main` + tags, published `@bluestep-systems/bspecs@0.8.0`.
+- [x] Filed an upstream bug on `Bluestep-Systems/vscode-extension`: `@bluestep-systems/b6p-cli@0.1.0` reports `--version` as `0.0.1` (stale hardcoded string; should read from `package.json`). Discovered during the `publish-chain` spec (task 12).
 - See `.claude/specs/publish-chain/` for the full spec. Follow-ups deferred to the A5 fast-follow: `npx b6p` switch + shell-detection removal (a dependency's bin is **not** placed on the global PATH, so a global bspecs install does not expose `b6p` — A5 wires it via a project devDependency + `npx`).
+
+## Done in 0.7.0
+
+- [x] Converted Brandon's `03-Agents/` role files into BlueStep **subagents** (B4), not skills: `b6p-commenter` and `b6p-code-review` (report-only) under `templates/claude/agents/`, plus `b6p-task-implementer` (the reframed workflow layer of `bluestep-dev`; its knowledge was already in `instructions/` from 0.6.0). `/spec-execute` delegates to the implementer by default, with an `--inline` escape hatch.
+- See `.claude/specs/bluestep-subagents/` and `docs/decisions/subagents-and-delegated-execution.md`.
 
 ## Done in 0.3.2
 
