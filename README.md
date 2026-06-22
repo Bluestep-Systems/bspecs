@@ -42,9 +42,10 @@ registry (restricted access), so you need a Personal Access Token before install
    This gives you the `bspecs` command for scaffolding projects. It does **not** put a `b6p` binary
    on your global `PATH` — a dependency's bin is never globally reachable. Instead, every project you
    scaffold declares `@bluestep-systems/b6p-cli` as a devDependency and the skills invoke it via
-   `npx b6p`. After scaffolding, run `npm install` inside the new project (the scaffolder reminds you)
-   to fetch `b6p`. The same `~/.npmrc` + `GITHUB_TOKEN` from steps 1–2 authorizes that per-project
-   install — the scaffolded project also ships an `.npmrc` mapping the scope.
+   `npx b6p`. The scaffolder runs `npm install` in the new project for you (best-effort) to fetch
+   `b6p`; if it can't — e.g. `GITHUB_TOKEN` isn't set in that shell — it prints the command to run
+   by hand. The same `~/.npmrc` + `GITHUB_TOKEN` from steps 1–2 authorizes that per-project install —
+   the scaffolded project also ships an `.npmrc` mapping the scope.
 
 ## Usage
 
@@ -76,8 +77,9 @@ Projects scaffolded with `bspecs 0.5.0` or later run `bspecs sync` automatically
 
 - **Node.js 18+**
 - **`b6p` CLI** — required for the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills. Scaffolded
-  projects declare it as a devDependency (`@bluestep-systems/b6p-cli`); run `npm install` in the
-  project and the skills invoke it via `npx b6p` — no global install, no shell/PATH detection.
+  projects declare it as a devDependency (`@bluestep-systems/b6p-cli`); the scaffolder runs
+  `npm install` for you (re-run it by hand if that failed) and the skills invoke it via `npx b6p` —
+  no global install, no shell/PATH detection.
 - **prettier** — required for the auto-format hook. `bspecs` warns if it is not found.
 
 ## Generated structure

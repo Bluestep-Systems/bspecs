@@ -10,7 +10,7 @@ A project is a collection of B6P components, organised by Unit. `b6p pull "<DAV 
 
 ### Install dependencies (one-time)
 
-The `b6p` CLI ships as a dev dependency of this project (`@bluestep-systems/b6p-cli`). Install it with:
+The `b6p` CLI ships as a dev dependency of this project (`@bluestep-systems/b6p-cli`). `bspecs` runs `npm install` for you when it scaffolds the project, so this is usually already done. If that install was skipped or failed (most often because `GITHUB_TOKEN` was not set in the scaffolding shell), run it yourself:
 
 ```bash
 npm install
