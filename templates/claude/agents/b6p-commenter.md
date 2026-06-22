@@ -44,7 +44,7 @@ Write to `draft/README.md` using the component README structure this project sca
 - **## Type** — Endpoint / MergeReport / Post-Save / OnDemand / Scheduled / Formula, plus the type-specific details the template asks for (endpoint paths + methods + auth model; MergeReport pages/sections and whether it owns the frontend; Post-Save trigger form(s); Scheduled cadence).
 - **## Fields used** — the FID / Display name / Form / Access (read|write) table, from the field names actually referenced in the code and `metadata.json`.
 - **## Behavior** — one bullet per coherent runtime behavior: what triggers it, key branching, what gets written/output/returned and where it goes.
-- **## External dependencies** — outbound HTTP endpoints, libraries (e.g. via Context7), other B6P components this one calls or expects.
+- **## External dependencies** — outbound HTTP endpoints, libraries, other B6P components this one calls or expects.
 - **## Edge cases / known gotchas** — non-obvious things, BlueStep quirks, data states that could break it, dependencies on other scripts/forms/config. Leave blank if none.
 
 ### Step 5 — Print a summary

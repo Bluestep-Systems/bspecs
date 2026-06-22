@@ -26,7 +26,6 @@ function writeBspecsLock(projectDir, vars) {
       CLIENT_NAME: vars.CLIENT_NAME,
       PROJECT_DESCRIPTION: vars.PROJECT_DESCRIPTION,
       SCAFFOLD_DATE: vars.SCAFFOLD_DATE,
-      // CONTEXT7_API_KEY omitido: es una API key, no necesaria para re-renderizar templates
     },
     files,
   };
@@ -42,14 +41,12 @@ export async function scaffold(answers) {
     PROJECT_NAME: answers.projectName,
     CLIENT_NAME: answers.clientName,
     PROJECT_DESCRIPTION: answers.projectDescription,
-    CONTEXT7_API_KEY: answers.context7Key,
     SCAFFOLD_DATE: new Date().toISOString().split('T')[0],
   };
 
   copyTemplateTree('root', projectDir, vars);
   copyTemplateTree('claude', join(projectDir, '.claude'), vars, { makeExecutable: true });
   copyTemplateTree('module', join(projectDir, '.claude', 'templates'), vars);
-  copyTemplateTree('vscode', join(projectDir, '.vscode'), vars);
 
   writeBspecsLock(projectDir, vars);
 
@@ -59,17 +56,43 @@ export async function scaffold(answers) {
   reportInstallStep(answers.projectName);
 
   if (answers.initGit) {
-    try {
-      execSync('git init', { cwd: projectDir, stdio: 'ignore' });
-      execSync('git add -A', { cwd: projectDir, stdio: 'ignore' });
-      execSync('git commit -m "chore: initial scaffold via bspecs"', {
-        cwd: projectDir,
-        stdio: 'ignore',
-      });
-      log.success('Git repository initialized.');
-    } catch (err) {
-      log.warn('Could not initialize git repository (git may not be installed).');
+    if (isInsideGitRepo(projectDir)) {
+      log.warn(
+        'An existing git repository was found in a parent directory. Skipping git init to avoid nesting a repository inside another — initialize manually if that was intended.'
+      );
+    } else {
+      try {
+        execSync('git init', { cwd: projectDir, stdio: 'ignore' });
+        execSync('git add -A', { cwd: projectDir, stdio: 'ignore' });
+        execSync('git commit -m "chore: initial scaffold via bspecs"', {
+          cwd: projectDir,
+          stdio: 'ignore',
+        });
+        log.success('Git repository initialized.');
+      } catch (err) {
+        log.warn('Could not initialize git repository (git may not be installed).');
+      }
     }
+  } else {
+    log.warn(
+      'Skipped git init. The implementer agent relies on `git diff` to summarize its work — run `git init` in the project before using /spec-execute.'
+    );
+  }
+}
+
+// Detect whether the freshly created project directory sits inside an existing
+// git repository (a parent has a .git). Running `git init` here would nest a
+// repo inside another, which surprises users and breaks the implementer agent's
+// `git diff`. Returns false if git is unavailable so the normal init path runs.
+function isInsideGitRepo(dir) {
+  try {
+    const out = execSync('git rev-parse --is-inside-work-tree', {
+      cwd: dir,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.toString().trim() === 'true';
+  } catch {
+    return false;
   }
 }
 

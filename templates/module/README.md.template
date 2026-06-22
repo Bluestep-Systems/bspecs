@@ -39,7 +39,7 @@ empty or marked "TODO" — fill them in before editing code.
 
 ## External dependencies
 
-[Outbound HTTP endpoints, libraries pulled via Context7, other B6P components this one calls or expects.]
+[Outbound HTTP endpoints, other B6P components this one calls or expects.]
 
 ## Edge cases / known gotchas
 

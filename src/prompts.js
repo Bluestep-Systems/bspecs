@@ -1,4 +1,4 @@
-import { text, password, confirm, isCancel, cancel } from '@clack/prompts';
+import { text, confirm, isCancel, cancel } from '@clack/prompts';
 import { existsSync } from 'fs';
 import { join } from 'path';
 
@@ -43,25 +43,15 @@ export async function runPrompts() {
 
   const projectDescription = bail(
     await text({
-      message: 'Project description (you can paste from ClickUp)',
-      placeholder: 'What does this project do? Min 20 characters.',
-      validate: (v) => {
-        if (!v || v.trim().length < 20) return 'Description must be at least 20 characters';
-        return undefined;
-      },
-    })
-  );
-
-  const context7Key = bail(
-    await password({
-      message: 'Context7 API key (optional — press Enter to skip)',
-      mask: '*',
+      message: 'Project description (optional — gives Claude project context)',
+      placeholder: 'What does this project do? Press Enter to skip.',
     })
   );
 
   const initGit = bail(
     await confirm({
-      message: 'Initialize a git repository?',
+      message:
+        'Initialize a git repository? (skipping degrades the implementer agent, which relies on git diff)',
       initialValue: true,
     })
   );
@@ -78,8 +68,7 @@ export async function runPrompts() {
   return {
     projectName,
     clientName,
-    projectDescription,
-    context7Key: context7Key || 'YOUR_CONTEXT7_API_KEY_HERE',
+    projectDescription: projectDescription || '',
     initGit,
   };
 }

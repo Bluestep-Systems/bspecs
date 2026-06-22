@@ -56,7 +56,7 @@ From the parent directory where you want to create the project:
 bspecs
 ```
 
-The interactive wizard asks for the project name, client, description, and Context7 API key. When done, it generates the project directory with the full structure and runs `git init`.
+The interactive wizard asks for the project name, client, and an optional description. When done, it generates the project directory with the full structure and (unless you opt out) runs `git init`.
 
 ### Keep a project up to date
 
@@ -90,17 +90,15 @@ my-project/
 ├── .gitignore
 ├── package.json                      ← declares the b6p-cli devDependency
 ├── .npmrc                            ← maps the @bluestep-systems scope (GitHub Packages)
-├── .claude/
-│   ├── bspecs.lock                    ← lock file for bspecs sync
-│   ├── settings.json                  ← Claude Code permissions and hooks
-│   ├── hooks/                         ← 3 scripts executed by Claude Code
-│   ├── skills/                        ← 8 skills (/spec-create, /b6p-pull, etc.)
-│   ├── agents/                        ← 3 BlueStep subagents (implementer, commenter, reviewer)
-│   ├── instructions/                  ← development rules for Claude
-│   ├── spec-templates/                ← spec file templates
-│   └── templates/                     ← component scaffolding templates
-└── .vscode/
-    └── mcp.json                       ← Context7 MCP
+└── .claude/
+    ├── bspecs.lock                    ← lock file for bspecs sync
+    ├── settings.json                  ← Claude Code permissions and hooks
+    ├── hooks/                         ← 3 scripts executed by Claude Code
+    ├── skills/                        ← 8 skills (/spec-create, /b6p-pull, etc.)
+    ├── agents/                        ← 3 BlueStep subagents (implementer, commenter, reviewer)
+    ├── instructions/                  ← development rules for Claude
+    ├── spec-templates/                ← spec file templates
+    └── templates/                     ← component scaffolding templates
 ```
 
 ## Proposing changes

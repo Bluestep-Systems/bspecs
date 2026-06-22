@@ -7,19 +7,18 @@
 ```text
 cli.js                    ← entry point, arg parsing
 src/
-  prompts.js              ← @clack/prompts interactive wizard (5 questions)
+  prompts.js              ← @clack/prompts interactive wizard (4 questions)
   scaffold.js             ← file generation, prettier pre-flight, install step, git init
   utils.js                ← template engine ({{VAR}} substitution), fs helpers
 templates/
   root/                   → project root files (CLAUDE.md, .gitignore, .prettierrc, README)
   claude/                 → .claude/ tree (settings, skills, agents, hooks, instructions, spec-templates)
   module/                 → .claude/templates/ (per-component scaffolding)
-  vscode/                 → .vscode/mcp.json (Context7 MCP)
 ```
 
-`scaffold()` calls `copyTemplateTree()` four times (root, claude, module, vscode). Claude-only: no GitHub Copilot mirror is generated — the template tree → `.claude/` is the single source of truth. See `docs/decisions/instruction-tree-and-claude-only.md`.
+`scaffold()` calls `copyTemplateTree()` three times (root, claude, module). Claude-only: no GitHub Copilot mirror is generated — the template tree → `.claude/` is the single source of truth. See `docs/decisions/instruction-tree-and-claude-only.md`.
 
-Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTEXT7_API_KEY`, `SCAFFOLD_DATE`. Applied via `{{VAR}}` substitution in `utils.applyTemplate()`. Files ending in `.template` have that extension stripped on copy.
+Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `SCAFFOLD_DATE`. Applied via `{{VAR}}` substitution in `utils.applyTemplate()`. Files ending in `.template` have that extension stripped on copy. `PROJECT_DESCRIPTION` is optional (the wizard allows an empty value).
 
 ## Key behaviors
 
@@ -41,7 +40,6 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `CONTE
 - `.claude/instructions/` — Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`), the `index.md` manifest, and atomic single-topic files under `reference/`, `conventions/`, `gotchas/` (read on demand, not `@`-imported). No `.github/` Copilot mirror.
 - `.claude/spec-templates/` — `requirements.template.md`, `design.template.md`, `tasks.template.md`
 - `.claude/templates/` — per-component scaffolding (module README template)
-- `.vscode/mcp.json` — Context7 MCP with the API key
 
 ## Editing templates
 

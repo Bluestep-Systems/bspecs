@@ -15,7 +15,6 @@ await scaffold({
   projectName: PROJECT_NAME,
   clientName: 'Acme Corp',
   projectDescription: 'Smoke test for bspecs verifying generated context layout.',
-  context7Key: 'test-key-123',
   initGit: false,
 });
 
@@ -53,7 +52,6 @@ const expected = [
   '.claude/spec-templates/requirements.template.md',
   '.claude/spec-templates/design.template.md',
   '.claude/spec-templates/tasks.template.md',
-  '.vscode/mcp.json',
   '.claude/instructions/index.md',
 ];
 for (const rel of expected) {
@@ -92,14 +90,13 @@ if (filesWithPlaceholders.length > 0) {
   console.log('     leftover in:', filesWithPlaceholders);
 }
 
-// mcp.json valid JSON, has the API key
-const mcp = JSON.parse(readFileSync(join(PROJECT_PATH, '.vscode/mcp.json'), 'utf8'));
-check('mcp.json is valid JSON', !!mcp.servers?.Context7);
-check('mcp.json carries the supplied API key', mcp.servers?.Context7?.headers?.Authorization === 'Bearer test-key-123');
-
-// gitignore protects mcp.json
-const gi = readFileSync(join(PROJECT_PATH, '.gitignore'), 'utf8');
-check('.gitignore covers .vscode/mcp.json', gi.includes('.vscode/mcp.json'));
+// Context7 fully removed: no .vscode tree and no CONTEXT7 references in generated files.
+check('no .vscode/mcp.json scaffolded', !existsSync(join(PROJECT_PATH, '.vscode/mcp.json')));
+const noContext7 = walk(PROJECT_PATH).every((f) => {
+  try { return !/Context7|CONTEXT7_API_KEY/.test(readFileSync(f, 'utf8')); }
+  catch { return true; }
+});
+check('no Context7 references in generated files', noContext7);
 
 // CLAUDE.md contains the description and unit id
 const claudeMd = readFileSync(join(PROJECT_PATH, 'CLAUDE.md'), 'utf8');

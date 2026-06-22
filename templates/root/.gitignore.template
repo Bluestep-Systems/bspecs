@@ -1,6 +1,3 @@
-# MCP server config contains API keys
-.vscode/mcp.json
-
 # Dependencies
 node_modules/
 

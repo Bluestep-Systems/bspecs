@@ -65,10 +65,6 @@ Component type is encoded in `draft/info/metadata.json` (and the matching `confi
 
 Full API patterns: read `.claude/instructions/bsjs-development.md` when writing or reviewing BsJs (load on demand — it is not auto-imported).
 
-## MCP servers
-
-- **Context7** (`.vscode/mcp.json`) — fetch up-to-date docs for external libraries when a script depends on one.
-
 ## Reading module context — scoped to the task
 
 **Read `draft/README.md` only for the component(s) the current task touches** — not every component in the workspace. A workspace can hold dozens of components totalling thousands of lines of README; loading all of them into every session is wasteful and slow.
@@ -144,10 +140,6 @@ If you discover a B6P rule or pattern that is not documented here:
    - High-frequency platform/BsJs material → the matching overview (`.claude/instructions/b6p-platform.md` or `bsjs-development.md`).
    - A single-topic detail or sharp edge → a new or existing atomic file under `.claude/instructions/{reference,conventions,gotchas}/`, and add (or update) its one-line entry in `.claude/instructions/index.md` so it's discoverable.
 3. Note in your response: "Added rule: <description>".
-
-## Secrets
-
-`.vscode/mcp.json` is gitignored because it contains the Context7 API key. Do not remove it from `.gitignore`.
 
 ## Deep reference
 

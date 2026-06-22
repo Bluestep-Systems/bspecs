@@ -56,7 +56,3 @@ Use Claude skills for spec-driven development:
 - `.claude/instructions/` — deep technical reference.
 - `.claude/hooks/` — automatic guardrails (block edits to `declarations/`, block `tsc`, auto-format).
 - `.claude/skills/` — slash commands you can invoke (`/b6p-pull`, `/spec-create`, etc.).
-
-## Secrets
-
-`.vscode/mcp.json` contains the Context7 API key and is **gitignored**. Do not remove it from `.gitignore`.
