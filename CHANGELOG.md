@@ -6,6 +6,20 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.11.1] — 2026-06-24
+
+### Fixed
+
+- **The one-time auth command 404'd when run as documented.** README and the post-scaffold reminder
+  told users to run `npx b6p auth set` for the once-per-machine credential step, but `b6p` is a
+  *project-local* devDependency — bare `npx b6p` only resolves inside a scaffolded project that has
+  run `npm install`. Run from anywhere else (e.g. `~`, right after `npm install -g`), npx tried to
+  download a nonexistent package named `b6p` and failed with `404 b6p not found`. The standalone auth
+  step is now documented as `npx -p @bluestep-systems/b6p-cli b6p auth set`, which fetches the real
+  scoped package on the fly and works from any directory. Inside a scaffolded project, plain
+  `npx b6p …` still works as before. Fixes the install flow shipped in 0.11.0
+  (`README.md`, `src/scaffold.js`).
+
 ## [0.11.0] — 2026-06-24
 
 Fixes the first-run auth foot-gun: on a machine that never ran `npx b6p auth set`, the first

@@ -32,11 +32,12 @@ The npm install needs no token, but the `/b6p-pull`, `/b6p-push`, and `/b6p-audi
 work until you set your BlueStep platform credentials:
 
 ```sh
-npx b6p auth set
+npx -p @bluestep-systems/b6p-cli b6p auth set
 ```
 
 Run this **once per machine** — credentials are stored globally in `~/.b6p`, not per project. This is
-unrelated to the npm registry. See the scaffolded project's own README for details.
+unrelated to the npm registry. (The `-p` form is required because `b6p` is a project-local
+devDependency; bare `npx b6p` resolves only inside a scaffolded project, where `npx b6p …` works.)
 
 ## Usage
 

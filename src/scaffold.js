@@ -83,10 +83,12 @@ export async function scaffold(answers) {
     [
       'Next step — set your BlueStep platform credentials (required, once per machine):',
       '',
-      '    npx b6p auth set',
+      '    npx -p @bluestep-systems/b6p-cli b6p auth set',
       '',
-      'Until you do, the /b6p-pull, /b6p-push, and /b6p-audit skills cannot run. Credentials are',
-      'stored globally in ~/.b6p, so you only do this once — not per project.',
+      'Run that from anywhere (it fetches the CLI on the fly). Inside this project after `npm',
+      'install`, plain `npx b6p ...` also works. Until credentials are set, the /b6p-pull,',
+      '/b6p-push, and /b6p-audit skills cannot run. Credentials are stored globally in ~/.b6p,',
+      'so you only do this once — not per project.',
     ].join('\n')
   );
 }
