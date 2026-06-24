@@ -34,7 +34,6 @@ const expected = [
   '.gitignore',
   'README.md',
   'package.json',
-  '.npmrc',
   '.claude/settings.json',
   '.claude/templates/README.md',
   '.claude/hooks/block-generated-files.sh',
@@ -74,6 +73,9 @@ for (const dir of ['reference', 'conventions', 'gotchas']) {
 // No unsubstituted placeholders
 function walk(dir, out = []) {
   for (const e of readdirSync(dir)) {
+    // Skip installed deps and git internals — we only check scaffolded template output.
+    // (b6p-cli now installs from public npm, so node_modules exists during the test.)
+    if (e === 'node_modules' || e === '.git') continue;
     const p = join(dir, e);
     if (statSync(p).isDirectory()) walk(p, out);
     else out.push(p);
@@ -135,7 +137,9 @@ check('settings.json allows npx invocations', (settings.permissions?.allow || []
 // A5 (0.9.0): scaffolded package.json carries the b6p-cli devDependency for `npx b6p`.
 const projectPkg = JSON.parse(readFileSync(join(PROJECT_PATH, 'package.json'), 'utf8'));
 check('package.json declares b6p-cli devDependency', !!projectPkg.devDependencies?.['@bluestep-systems/b6p-cli']);
-check('.npmrc maps the @bluestep-systems scope', readFileSync(join(PROJECT_PATH, '.npmrc'), 'utf8').includes('@bluestep-systems:registry='));
+// Public-npm migration: @bluestep-systems/* resolves from the default registry with no
+// token, so no scaffolded .npmrc is needed — confirm none is emitted.
+check('no .npmrc scaffolded (public registry, no scope config needed)', !existsSync(join(PROJECT_PATH, '.npmrc')));
 
 console.log(`\n${passed} passed, ${failed} failed.\n`);
 

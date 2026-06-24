@@ -122,14 +122,12 @@ function checkPrettierOnPath() {
 // Install the project's dependencies on a best-effort basis. We attempt
 // `npm install` so the b6p CLI (a devDependency) is present without a manual
 // step, but it can legitimately fail and we must NOT assume it will succeed:
-// the project .npmrc reads the GitHub Packages token from ${GITHUB_TOKEN}, whose
-// presence in THIS process's environment is not guaranteed at scaffold time —
-// a fresh shell/session may never have exported it (notably PowerShell on
-// Windows, where a bash-rc export does not apply), the token may have expired,
-// or the machine may be offline. On any failure we fall back to printing the
-// manual install reminder rather than failing the scaffold or leaving the
-// project half-installed. The skills invoke `npx b6p`, so `node_modules/.bin/b6p`
-// must exist before the first b6p skill runs — hence the reminder on failure.
+// @bluestep-systems/b6p-cli installs anonymously from the public npm registry
+// (no token, no ~/.npmrc), so the realistic failure mode is the machine being
+// offline at scaffold time. On any failure we fall back to printing the manual
+// install reminder rather than failing the scaffold or leaving the project
+// half-installed. The skills invoke `npx b6p`, so `node_modules/.bin/b6p` must
+// exist before the first b6p skill runs — hence the reminder on failure.
 function installDependencies(projectName, projectDir) {
   log.info(`Installing dependencies in ${projectName} (npm install)…`);
   try {
@@ -145,11 +143,9 @@ function installDependencies(projectName, projectDir) {
         '    npm install',
         '',
         'This fetches @bluestep-systems/b6p-cli (a devDependency) so the /b6p-pull,',
-        '/b6p-push, and /b6p-audit skills can run `npx b6p …`. It needs a ~/.npmrc',
-        'granting the @bluestep-systems scope on GitHub Packages (a PAT with',
-        'read:packages exposed as GITHUB_TOKEN); the project .npmrc maps the scope',
-        'and reads the token from your environment. The most common cause of this',
-        'failure is GITHUB_TOKEN not being set in the current shell.',
+        '/b6p-push, and /b6p-audit skills can run `npx b6p …`. It installs from the',
+        'public npm registry with no token or ~/.npmrc setup — the most common cause',
+        'of this failure is simply being offline.',
       ].join('\n')
     );
   }
