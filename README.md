@@ -22,28 +22,21 @@ token or `~/.npmrc` setup — install in one command:
 npm install -g @bluestep-systems/bspecs
 ```
 
-This gives you the `bspecs` command for scaffolding projects. It does **not** put a `b6p` binary on
-your global `PATH` — a dependency's bin is never globally reachable. Instead, every project you
-scaffold declares `@bluestep-systems/b6p-cli` as a devDependency and the skills invoke it via
-`npx b6p`. The scaffolder runs `npm install` in the new project for you (best-effort) to fetch `b6p`;
-if it can't — e.g. you're offline — it prints the command to run by hand. That per-project install
-resolves `@bluestep-systems/b6p-cli` anonymously from public npm, no token needed.
+This installs the `bspecs` command. The `b6p` CLI is wired into each scaffolded project as a
+devDependency and invoked via `npx b6p` — the scaffolder installs it for you (re-run `npm install` in
+the project if you were offline).
 
-> **Not "zero setup."** Removing the npm token does **not** remove the one-time **BlueStep platform**
-> credential step. Before the `/b6p-pull`, `/b6p-push`, or `/b6p-audit` skills work in a scaffolded
-> project, run `npx b6p auth set` **once per machine** (credentials are stored globally in `~/.b6p`,
-> not per project). This is unrelated to the npm registry and is still required — see the scaffolded
-> project's own README.
+### Set your platform credentials (required, once per machine)
 
-> **Migrating from the old GitHub Packages install?** If you previously installed `bspecs` you likely
-> have a line in `~/.npmrc` mapping the scope to GitHub Packages:
->
-> ```ini
-> @bluestep-systems:registry=https://npm.pkg.github.com
-> ```
->
-> Remove it (and the matching `//npm.pkg.github.com/:_authToken=...` line). Left in place it keeps
-> routing `@bluestep-systems/*` to GitHub Packages and the public install will 404.
+The npm install needs no token, but the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills will not
+work until you set your BlueStep platform credentials:
+
+```sh
+npx b6p auth set
+```
+
+Run this **once per machine** — credentials are stored globally in `~/.b6p`, not per project. This is
+unrelated to the npm registry. See the scaffolded project's own README for details.
 
 ## Usage
 

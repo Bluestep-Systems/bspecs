@@ -6,6 +6,37 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.11.0] — 2026-06-24
+
+Fixes the first-run auth foot-gun: on a machine that never ran `npx b6p auth set`, the first
+`/b6p-pull` (or push/audit) hit an interactive credentials prompt Claude can't answer and hung
+silently — `--yes` guards only the *confirmation* prompt, not the *missing-credentials* one. Auth is
+now surfaced at every point the agent looks: a run-time preflight in the skills, a scaffold-time
+reminder, and the scaffolded `CLAUDE.md`. Resolves Concern C of
+`docs/decisions/b6p-cli-onboarding-in-scaffolds.md`.
+
+### Added
+
+- **Auth preflight in the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills.** Before any `b6p` call,
+  each skill runs `test -f ~/.b6p/secrets.enc`; if the encrypted credential store is absent it STOPs
+  with a "run `npx b6p auth set` first" message instead of hanging. File-existence is the check
+  because the b6p CLI exposes no non-interactive `auth status` command. Each skill's `allowed-tools`
+  gains `Bash(test -f *)`.
+- **Post-scaffold `auth set` reminder (`scaffold.js`).** After generating files, the scaffolder prints
+  the one-time `npx b6p auth set` next step (credentials are global in `~/.b6p`, once per machine).
+
+### Changed
+
+- **Scaffolded `CLAUDE.md`** now states the one-time `npx b6p auth set` prerequisite in the
+  Sync-workflow section, where the agent reads it before acting — not just in the README prose.
+- **README** install flow promotes the platform-credential step to its own
+  `### Set your platform credentials` section.
+
+### Note for existing projects
+
+`bspecs sync` propagates the updated skills and `CLAUDE.md` to projects scaffolded by an older
+`bspecs` (unless those files were edited locally).
+
 ## [0.10.0] — 2026-06-24
 
 ### Changed

@@ -123,6 +123,8 @@ The skills above wrap these commands. You can run them directly if you need to, 
 
 `b6p` ships as a devDependency of this project (`@bluestep-systems/b6p-cli`). Invoke it with `npx b6p`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection. Run `npm install` once if `node_modules` is missing.
 
+**One-time platform auth (required before any pull/push/audit).** `b6p` needs BlueStep platform credentials, stored globally in `~/.b6p/` (once per machine — not per project). On a machine that has never run it, the **first** `b6p` command prompts for credentials interactively, which hangs Claude (`--yes` does not cover the credentials prompt). Before the first sync command, verify credentials exist with `test -f ~/.b6p/secrets.enc`; if absent, run `npx b6p auth set` once, then retry. The `/b6p-*` skills do this preflight automatically.
+
 - **Pull (DAV URL required):** `npx b6p --yes pull "<DAV URL>"`. The DAV URL is copied from the component's page in the BlueStep platform UI — `b6p pull` does not accept display names. First pull creates the `U######/` folder and the component skeleton.
 - **Push (file-driven):** `npx b6p --yes push --file "U######/<Component>/draft/scripts/app.ts"`. `--file` lets the CLI derive the destination from local metadata.
 - **Audit (read-only):** `npx b6p --yes --json audit --file "U######/<Component>/draft/scripts/app.ts"`. Lists files that differ between local and platform.

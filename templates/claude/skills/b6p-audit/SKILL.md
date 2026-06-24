@@ -1,7 +1,7 @@
 ---
 name: b6p-audit
 description: Compare a local component's state against what lives on the BlueStep platform, listing files that differ. Use when the user wants to know if they (or someone else) changed something on the platform side, or before a push to be sure nothing unexpected will be overwritten.
-allowed-tools: Bash(npx b6p *)
+allowed-tools: Bash(npx b6p *) Bash(test -f *)
 ---
 
 # /b6p-audit — Compare local vs. platform
@@ -25,6 +25,20 @@ For a push that immediately follows, the user can ask you to chain `/b6p-audit` 
 Always pass `--yes` so b6p does not show interactive prompts that Claude cannot answer.
 
 ## Steps
+
+### 0. Auth preflight (do this first, before any `b6p` call)
+
+`b6p` stores BlueStep platform credentials globally in `~/.b6p/`. On a machine that has never run `npx b6p auth set`, the first `audit` prompts for credentials **interactively** — a prompt you (Claude) cannot answer, so the call hangs silently. `--yes` does **not** save you here: it guards the *confirmation* prompt, not the *missing-credentials* one.
+
+Before running the audit, check that credentials exist:
+
+```
+test -f ~/.b6p/secrets.enc && echo OK
+```
+
+- If it prints `OK` → credentials are set, continue.
+- If it prints nothing (file absent) → STOP. Do **not** run the audit. Tell the user:
+  > `b6p` has no BlueStep platform credentials on this machine yet, so the audit would hang on an interactive prompt I can't answer. Run `npx b6p auth set` once (it stores credentials globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-audit <component>`.
 
 ### 1. Identify the component
 

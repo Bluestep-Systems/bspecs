@@ -1,7 +1,7 @@
 ---
 name: b6p-pull
 description: Pull a B6P component from the BlueStep platform into the local workspace using its DAV URL, and scaffold draft/README.md if missing. Use when the user wants to bring a component down for the first time or re-sync after platform edits.
-allowed-tools: Bash(npx b6p *)
+allowed-tools: Bash(npx b6p *) Bash(test -f *)
 ---
 
 # /b6p-pull — Pull a component from BlueStep
@@ -29,6 +29,20 @@ npx b6p <args>
 If `node_modules` is missing, the user has not run `npm install` yet (see the "Install dependencies" section of the project's `README.md`).
 
 ## Steps
+
+### 0. Auth preflight (do this first, before any `b6p` call)
+
+`b6p` stores BlueStep platform credentials globally in `~/.b6p/`. On a machine that has never run `npx b6p auth set`, the first `pull` prompts for credentials **interactively** — a prompt you (Claude) cannot answer, so the call hangs silently. `--yes` does **not** save you here: it guards the *confirmation* prompt, not the *missing-credentials* one.
+
+Before running the pull, check that credentials exist:
+
+```
+test -f ~/.b6p/secrets.enc && echo OK
+```
+
+- If it prints `OK` → credentials are set, continue.
+- If it prints nothing (file absent) → STOP. Do **not** run the pull. Tell the user:
+  > `b6p` has no BlueStep platform credentials on this machine yet, so the pull would hang on an interactive prompt I can't answer. Run `npx b6p auth set` once (it stores credentials globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-pull <DAV URL>`.
 
 ### 1. Get the DAV URL
 

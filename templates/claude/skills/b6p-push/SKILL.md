@@ -1,7 +1,7 @@
 ---
 name: b6p-push
 description: Push local changes for a component back to the BlueStep platform. Use when the user is ready to deploy local edits.
-allowed-tools: Bash(npx b6p *) Bash(git*)
+allowed-tools: Bash(npx b6p *) Bash(git*) Bash(test -f *)
 ---
 
 # /b6p-push — Push a component to BlueStep
@@ -21,6 +21,20 @@ Any file inside the component works as the `--file` argument; the CLI walks up t
 `b6p` ships as a devDependency of this project (`@bluestep-systems/b6p-cli`). Always invoke it with `npx b6p`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection. If `node_modules` is missing, the user has not run `npm install` yet (see the "Install dependencies" section of the project's `README.md`).
 
 ## Steps
+
+### 0. Auth preflight (do this first, before any `b6p` call)
+
+`b6p` stores BlueStep platform credentials globally in `~/.b6p/`. On a machine that has never run `npx b6p auth set`, the first `push` prompts for credentials **interactively** — a prompt you (Claude) cannot answer, so the call hangs silently. `--yes` does **not** save you here: it guards the *confirmation* prompt, not the *missing-credentials* one.
+
+Before running the push, check that credentials exist:
+
+```
+test -f ~/.b6p/secrets.enc && echo OK
+```
+
+- If it prints `OK` → credentials are set, continue.
+- If it prints nothing (file absent) → STOP. Do **not** run the push. Tell the user:
+  > `b6p` has no BlueStep platform credentials on this machine yet, so the push would hang on an interactive prompt I can't answer. Run `npx b6p auth set` once (it stores credentials globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-push <component>`.
 
 ### 1. Identify the component
 

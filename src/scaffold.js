@@ -78,6 +78,17 @@ export async function scaffold(answers) {
       'Skipped git init. The implementer agent relies on `git diff` to summarize its work — run `git init` in the project before using /spec-execute.'
     );
   }
+
+  log.info(
+    [
+      'Next step — set your BlueStep platform credentials (required, once per machine):',
+      '',
+      '    npx b6p auth set',
+      '',
+      'Until you do, the /b6p-pull, /b6p-push, and /b6p-audit skills cannot run. Credentials are',
+      'stored globally in ~/.b6p, so you only do this once — not per project.',
+    ].join('\n')
+  );
 }
 
 // Detect whether the freshly created project directory sits inside an existing
