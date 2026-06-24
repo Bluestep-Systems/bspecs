@@ -22,7 +22,7 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `SCAFF
 
 ## Key behaviors
 
-**b6p invocation (`npx b6p`)**: scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency (`templates/root/package.json.template`) and ship a scope-mapped `.npmrc` (`templates/root/.npmrc.template`). The `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills invoke `npx b6p`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection, no `.claude/b6p-env.json`. The scaffolder runs `npm install` **best-effort** (`scaffold.js:installDependencies`): it attempts the install so `node_modules/.bin/b6p` exists for `npx b6p`, but falls back to printing a manual `npm install` reminder if it fails. Failure is expected when the project `.npmrc`'s `${GITHUB_TOKEN}` is not set in the current shell (common on Windows/PowerShell), the token has expired, or the machine is offline — so auto-install is never assumed to succeed and never fails the scaffold. See `docs/decisions/b6p-cli-distribution.md` and `docs/decisions/install-friction-and-registry.md`.
+**b6p invocation (`npx b6p`)**: scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency (`templates/root/package.json.template`), resolved anonymously from public npm — no scope-mapped `.npmrc` and no token. The `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills invoke `npx b6p`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection, no `.claude/b6p-env.json`. The scaffolder runs `npm install` **best-effort** (`scaffold.js:installDependencies`): it attempts the install so `node_modules/.bin/b6p` exists for `npx b6p`, but falls back to printing a manual `npm install` reminder if it fails. Failure is expected when the machine is offline — so auto-install is never assumed to succeed and never fails the scaffold. (`npx b6p` still needs platform credentials set once per machine via `npx b6p auth set` — unrelated to npm.) See `docs/decisions/b6p-cli-distribution.md` and `docs/decisions/install-friction-and-registry.md`.
 
 **prettier detection** (`scaffold.js:checkPrettierOnPath`): a self-contained best-effort probe (`command -v prettier`, plus WSL on Windows since the prettier-on-save hook runs in WSL) that only warns — it writes nothing. Independent of b6p.
 
@@ -32,7 +32,7 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `SCAFF
 
 ## What gets scaffolded into every project
 
-- `CLAUDE.md`, `.prettierrc`, `.gitignore`, `README.md`, `package.json`, `.npmrc` (from `templates/root/`) — `package.json` declares the `b6p-cli` devDependency and `.npmrc` maps the `@bluestep-systems` scope so `npm install` / `npx b6p` resolve
+- `CLAUDE.md`, `.prettierrc`, `.gitignore`, `README.md`, `package.json` (from `templates/root/`) — `package.json` declares the `b6p-cli` devDependency, resolved from public npm so `npm install` / `npx b6p` work with no token (no scaffolded `.npmrc`)
 - `.claude/settings.json` — permissions + hooks (block-generated-files, block-tsc, prettier-on-save)
 - `.claude/skills/` — `b6p-audit`, `b6p-pull`, `b6p-push`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`, `task-comment`
 - `.claude/agents/` — three BlueStep subagents: `b6p-task-implementer` (implements one spec task in an isolated context; `/spec-execute` delegates to it), `b6p-commenter` (fills in a component `draft/README.md`), `b6p-code-review` (BlueStep-aware, report-only review)
@@ -67,4 +67,6 @@ When a task is done and the user confirms, propose a commit message (title + bod
 
 ## Publishing
 
-Package name `@bluestep-systems/bspecs`, registry `https://npm.pkg.github.com` (GitHub Packages, `access: restricted`). Repo: `github.com/Bluestep-Systems/bspecs`. Only `cli.js`, `src/`, and `templates/` are included in the published package. It declares a runtime dependency on `@bluestep-systems/b6p-cli` (published from the `Bluestep-Systems/vscode-extension` monorepo), so a consumer needs a `~/.npmrc` mapping `@bluestep-systems` → GitHub Packages plus a PAT (`read:packages` to install, `write:packages` to publish). See `docs/decisions/b6p-cli-distribution.md`.
+Package name `@bluestep-systems/bspecs`, published to the **public npm registry** (`access: public`, no token to install). Repo: `github.com/Bluestep-Systems/bspecs`. Only `cli.js`, `src/`, and `templates/` are included in the published package. `@bluestep-systems/b6p-cli` is **not** a dependency of bspecs itself — it is a devDependency of *scaffolded* projects (`templates/root/package.json.template`), also resolved from public npm.
+
+Releases are automated, not hand-published: bump `version`, push a `vX.Y.Z` tag, and `.github/workflows/publish.yml` runs the version guard + smoke checks and publishes with `npm publish --provenance --access public` using the `NPM_TOKEN` repo secret. `.github/workflows/ci.yml` runs the smoke checks on every PR / push to the default branch. See `docs/decisions/install-friction-and-registry.md` and `docs/decisions/b6p-cli-distribution.md`.

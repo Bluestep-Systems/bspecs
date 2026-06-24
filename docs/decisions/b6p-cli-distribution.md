@@ -4,6 +4,12 @@
 fast-follow (bspecs **0.9.0**) completed the `npx b6p` switch and deleted the entire detect-and-guide
 workaround (Option E). This ADR is now historical — kept for the rationale trail.
 
+> **Registry update (2026-06-24):** Both `bspecs` and `b6p-cli` are now published to the
+> **public npm registry** (`access: public`), not GitHub Packages. The GitHub Packages
+> restricted-access setup this ADR described has been removed. See
+> [`install-friction-and-registry.md`](install-friction-and-registry.md) (status: Accepted,
+> Option 2) for the full decision.
+
 **Date:** 2026-05-21 (updated 2026-06-19)
 
 ## Update — 2026-06-19 (publish chain shipped)

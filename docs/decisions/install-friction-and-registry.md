@@ -1,9 +1,12 @@
 # ADR: Reducing install friction — registry choice and the GitHub PAT
 
-**Status:** Proposed — awaiting a BlueStep decision on whether `bspecs` and
-`@bluestep-systems/b6p-cli` may be published to the public npm registry.
+**Status:** Accepted — Option 2 (publish both to public npm).
 
-**Date:** 2026-06-22
+**Date:** 2026-06-22 (accepted 2026-06-24)
+
+**Decision by:** BlueStep engineer sign-off. `@bluestep-systems/b6p-cli` and
+`@bluestep-systems/b6p-core` are already live on public npm (`0.1.0`); the sequencing risk
+this ADR flagged ("bspecs goes public but its dependency is still private") no longer exists.
 
 ## Context
 
@@ -96,8 +99,21 @@ These reduce steps in every scenario and close off none of the three paths:
 
 ## Decision
 
-Pending. Adopt one of Options 1–3 once BlueStep answers the public/private question. The two
-independent improvements are not blocked by that answer and can proceed now.
+**Option 2 — publish both to the public npm registry.**
+
+- A BlueStep engineer approved making both packages world-readable.
+- `@bluestep-systems/b6p-cli` and `@bluestep-systems/b6p-core` were already published to
+  public npm before this decision landed, answering the open question this ADR posed.
+- `bspecs` is now published to the public npm registry with `access: public`; the PAT,
+  `~/.npmrc` scope mapping, and `${GITHUB_TOKEN}` are no longer required.
+- The scaffolded `.npmrc.template` was deleted — generated projects resolve
+  `@bluestep-systems/b6p-cli` anonymously from public npm.
+- Releases are automated via `.github/workflows/publish.yml` (tag-triggered) and validated
+  by `.github/workflows/ci.yml` (PR + push). See the `public-npm-publishing` spec.
+
+The two independent improvements shipped earlier: best-effort `npm install` in `scaffold.js`
+(0.8.0) and the `bspecs doctor` / `bspecs init` idea remains in `TODO.md` (deprioritised —
+Option 2 removes most of its reason to exist).
 
 ## References
 

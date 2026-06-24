@@ -15,37 +15,35 @@ CLI for scaffolding BlueStep projects with spec-driven development conventions f
 
 ## Installation
 
-Both `bspecs` and the `b6p` CLI it depends on are published to the Bluestep GitHub Packages
-registry (restricted access), so you need a Personal Access Token before installing.
+`bspecs` and the `b6p` CLI it depends on are published to the **public npm registry**, so there is no
+token or `~/.npmrc` setup — install in one command:
 
-1. **Create a classic PAT** (GitHub → Settings → Developer settings → Personal access tokens →
-   Tokens (classic)) with the `read:packages` scope. If the `Bluestep-Systems` org enforces SSO,
-   authorize the token for it.
-2. **Configure `~/.npmrc`** once — map the scope to the registry and reference the token from your
-   environment:
+```sh
+npm install -g @bluestep-systems/bspecs
+```
 
-   ```ini
-   @bluestep-systems:registry=https://npm.pkg.github.com
-   //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-   ```
+This gives you the `bspecs` command for scaffolding projects. It does **not** put a `b6p` binary on
+your global `PATH` — a dependency's bin is never globally reachable. Instead, every project you
+scaffold declares `@bluestep-systems/b6p-cli` as a devDependency and the skills invoke it via
+`npx b6p`. The scaffolder runs `npm install` in the new project for you (best-effort) to fetch `b6p`;
+if it can't — e.g. you're offline — it prints the command to run by hand. That per-project install
+resolves `@bluestep-systems/b6p-cli` anonymously from public npm, no token needed.
 
-   ```sh
-   export GITHUB_TOKEN=ghp_your_read_packages_token   # add to your shell rc to persist
-   ```
+> **Not "zero setup."** Removing the npm token does **not** remove the one-time **BlueStep platform**
+> credential step. Before the `/b6p-pull`, `/b6p-push`, or `/b6p-audit` skills work in a scaffolded
+> project, run `npx b6p auth set` **once per machine** (credentials are stored globally in `~/.b6p`,
+> not per project). This is unrelated to the npm registry and is still required — see the scaffolded
+> project's own README.
 
-3. **Install the CLI globally:**
-
-   ```sh
-   npm install -g @bluestep-systems/bspecs
-   ```
-
-   This gives you the `bspecs` command for scaffolding projects. It does **not** put a `b6p` binary
-   on your global `PATH` — a dependency's bin is never globally reachable. Instead, every project you
-   scaffold declares `@bluestep-systems/b6p-cli` as a devDependency and the skills invoke it via
-   `npx b6p`. The scaffolder runs `npm install` in the new project for you (best-effort) to fetch
-   `b6p`; if it can't — e.g. `GITHUB_TOKEN` isn't set in that shell — it prints the command to run
-   by hand. The same `~/.npmrc` + `GITHUB_TOKEN` from steps 1–2 authorizes that per-project install —
-   the scaffolded project also ships an `.npmrc` mapping the scope.
+> **Migrating from the old GitHub Packages install?** If you previously installed `bspecs` you likely
+> have a line in `~/.npmrc` mapping the scope to GitHub Packages:
+>
+> ```ini
+> @bluestep-systems:registry=https://npm.pkg.github.com
+> ```
+>
+> Remove it (and the matching `//npm.pkg.github.com/:_authToken=...` line). Left in place it keeps
+> routing `@bluestep-systems/*` to GitHub Packages and the public install will 404.
 
 ## Usage
 
@@ -77,9 +75,10 @@ Projects scaffolded with `bspecs 0.5.0` or later run `bspecs sync` automatically
 
 - **Node.js 18+**
 - **`b6p` CLI** — required for the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills. Scaffolded
-  projects declare it as a devDependency (`@bluestep-systems/b6p-cli`); the scaffolder runs
-  `npm install` for you (re-run it by hand if that failed) and the skills invoke it via `npx b6p` —
-  no global install, no shell/PATH detection.
+  projects declare it as a devDependency (`@bluestep-systems/b6p-cli`, resolved from public npm with
+  no token); the scaffolder runs `npm install` for you (re-run it by hand if that failed) and the
+  skills invoke it via `npx b6p` — no global install, no shell/PATH detection. Set your platform
+  credentials once per machine with `npx b6p auth set` (see Installation).
 - **prettier** — required for the auto-format hook. `bspecs` warns if it is not found.
 
 ## Generated structure
@@ -91,7 +90,6 @@ my-project/
 ├── .prettierrc
 ├── .gitignore
 ├── package.json                      ← declares the b6p-cli devDependency
-├── .npmrc                            ← maps the @bluestep-systems scope (GitHub Packages)
 └── .claude/
     ├── bspecs.lock                    ← lock file for bspecs sync
     ├── settings.json                  ← Claude Code permissions and hooks
@@ -115,6 +113,17 @@ If you need to adjust something only for your project (an extra permission in `s
 
 ## Publishing
 
-The package is published to GitHub Packages (`https://npm.pkg.github.com`) under the
-`@bluestep-systems` organization (restricted access). Only `cli.js`, `src/`, and `templates/` are
-included in the published package. Publishing requires a PAT with `write:packages`.
+The package is published to the **public npm registry** under the `@bluestep-systems` organization
+(`access: public`). Only `cli.js`, `src/`, and `templates/` are included in the published package.
+
+Releases are automated by GitHub Actions — there is no manual `npm publish`:
+
+1. Bump `version` in `package.json` and commit.
+2. Tag the commit `vX.Y.Z` (matching the new version) and push the tag.
+3. `.github/workflows/publish.yml` fires on the tag, verifies the tag matches `package.json`, runs the
+   smoke checks, and publishes with `npm publish --provenance --access public`.
+
+Publishing needs the `NPM_TOKEN` repo secret (an npm automation token with publish rights to
+`@bluestep-systems`); the version guard fails the run early if the tag and `package.json` disagree.
+`.github/workflows/ci.yml` runs the same smoke checks on every pull request and push to the default
+branch.

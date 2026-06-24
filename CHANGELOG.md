@@ -10,14 +10,50 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ### Changed
 
+- **Switched to the public npm registry (`access: public`, no PAT).** `publishConfig` targets the
+  default npm registry; the GitHub Packages mapping, `${GITHUB_TOKEN}`, and `access: restricted` are
+  gone. Install is now a single `npm install -g @bluestep-systems/bspecs` — no `~/.npmrc` or token.
+- **Removed `@bluestep-systems/b6p-cli` from bspecs's own `dependencies`.** It was never used by
+  bspecs source — it is a devDependency of *scaffolded* projects only. Removing it prevents the
+  stray dep from pulling `b6p-cli` (and formerly requiring a PAT) at global-install time.
+- **Repo-local `.npmrc` rewritten.** Single line `@bluestep-systems:registry=https://registry.npmjs.org`
+  (defensive override against stale GitHub-Packages mappings in `~/.npmrc`); the `${GITHUB_TOKEN}` +
+  `always-auth` lines are gone.
 - **Scaffolder runs `npm install` best-effort (`scaffold.js`, `reportInstallStep` →
   `installDependencies`).** After generating files it now attempts the install so the `b6p-cli`
   devDependency is present without a manual step, instead of only printing a reminder. The install
-  is **not** assumed to succeed: the project `.npmrc` reads the GitHub Packages token from
-  `${GITHUB_TOKEN}`, whose presence at scaffold time is not guaranteed (unset in a fresh shell —
-  notably PowerShell on Windows — an expired token, or no network). On any failure it falls back to
-  the manual `npm install` reminder and never fails the scaffold. See
-  `docs/decisions/install-friction-and-registry.md`.
+  is **not** assumed to succeed (network failure, offline). On any failure it falls back to the
+  manual `npm install` reminder and never fails the scaffold.
+- **`installDependencies` fallback message rewritten.** No longer mentions `~/.npmrc` or
+  `GITHUB_TOKEN` — the only likely failure is being offline.
+
+### Added
+
+- **`.github/workflows/ci.yml`.** PR + push-to-default-branch validation: Node 18/20/22 matrix,
+  `npm ci` with retry, smoke checks (`node cli.js -v`, `node cli.js -h`, `node test-scaffold.mjs`).
+  No secrets. Trimmed from the `b6p-cli` CI workflow.
+- **`.github/workflows/publish.yml`.** Tag-triggered (`v*.*.*`) publish to public npm: version guard
+  (tag must match `package.json`), same smoke checks as CI, then
+  `npm publish --provenance --access public` via `NPM_TOKEN`. Trimmed from the `b6p-cli` publish
+  workflow.
+
+### Removed
+
+- **Scaffolded `.npmrc.template`** (`templates/root/.npmrc.template`). Generated projects no longer
+  ship an `.npmrc` — `@bluestep-systems/b6p-cli` resolves anonymously from public npm.
+
+### Docs
+
+- **README** rewritten: "Installation" → single `npm install` command, no PAT; migration note for
+  users with the old GitHub-Packages scope in `~/.npmrc`; "Publishing" → tag-triggered workflow;
+  "Generated structure" → `.npmrc` line removed. The one-time `npx b6p auth set` platform-credential
+  step is kept clearly separate.
+- **CLAUDE.md** — "Publishing" and "b6p invocation" paragraphs updated to the public-registry,
+  no-PAT reality; scaffolded-files list corrected (no `.npmrc`).
+- **ADR `install-friction-and-registry.md`** flipped from *Proposed* to *Accepted* (Option 2, engineer
+  sign-off, `b6p-cli` already public).
+- **ADR `b6p-cli-distribution.md`** — registry-update note added (public npm supersedes the
+  GitHub-Packages setup it described).
 
 ## [0.9.0] — 2026-06-19
 
