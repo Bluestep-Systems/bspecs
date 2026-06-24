@@ -1,0 +1,68 @@
+# ============================================================================
+# bspecs CI
+# ============================================================================
+# Purpose: Validate the scaffolder on pull requests and pushes to the default
+#          branch. bspecs is plain ESM JS with no build/test suite, so this is
+#          a smoke check: the CLI must start and print version/help, and a
+#          scratch scaffold must succeed. No secrets — the @bluestep-systems
+#          scope resolves from public npm via .npmrc.
+# ============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Least privilege: read-only is all validation needs.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false  # See results across all Node versions, not just the first failure.
+      matrix:
+        node: ['18', '20', '22']  # engines floor (>=18) through current maintenance LTS.
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: |
+          for i in 1 2 3; do
+            npm ci --prefer-offline --no-audit && break
+            echo "Attempt $i failed, retrying..."
+            sleep 5
+          done
+        shell: bash
+
+      # Smoke test: the CLI must start and print version + usage.
+      - name: Smoke-run CLI (version)
+        run: node cli.js -v
+
+      - name: Smoke-run CLI (help)
+        run: node cli.js -h
+
+      # Scaffold a scratch project end-to-end and verify its layout.
+      - name: Smoke-run scaffold
+        run: node test-scaffold.mjs
