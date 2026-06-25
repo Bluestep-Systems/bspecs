@@ -46,10 +46,20 @@ devDependency; bare `npx b6p` resolves only inside a scaffolded project, where `
 From the parent directory where you want to create the project:
 
 ```sh
-bspecs
+bspecs new
 ```
 
 The interactive wizard asks for the project name, client, and an optional description. When done, it generates the project directory with the full structure and (unless you opt out) runs `git init`.
+
+### Add the tooling to an existing project
+
+Already have a project and just want the Claude Code tooling? From inside that project's directory:
+
+```sh
+bspecs init
+```
+
+`bspecs init` installs the full tooling tree **in place** and is strictly non-destructive: any file that already exists is left untouched. The one exception is `package.json` — the `@bluestep-systems/b6p-cli` devDependency (and the `b6p` script) are merged in, preserving everything else. It then writes the `bspecs.lock` so `bspecs sync` works going forward. At the end it prints a report of every file it skipped because the name already existed; to install the `bspecs` version of any of them, rename or move your local copy and run `bspecs init` again. The client-name prompt is optional — press Enter to default to `BlueStep Client`. (No `git init` — an existing project owns its own VCS.)
 
 ### Keep a project up to date
 

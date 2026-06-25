@@ -1,6 +1,6 @@
 # bspecs — scaffolder for spec-driven BlueStep projects
 
-`@bluestep-systems/bspecs` is an interactive CLI (`bspecs`) that scaffolds a new BlueStep project with Claude Code skills, hooks, and conventions for spec-driven development. It generates a complete project directory from templates. Scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency and reach the `b6p` binary via `npx b6p`, which resolves the project's local `node_modules/.bin/b6p` — no global install and no shell/PATH detection.
+`@bluestep-systems/bspecs` is an interactive CLI (`bspecs`) that sets up BlueStep projects with Claude Code skills, hooks, and conventions for spec-driven development. It has three verbs: `bspecs new` scaffolds a brand-new project in a subdirectory, `bspecs init` installs the tooling into the **current** directory non-destructively (skips any file that already exists; merges the b6p-cli devDependency into an existing `package.json`), and `bspecs sync` updates infrastructure files in an already-set-up project. Bare `bspecs` prints help. Scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency and reach the `b6p` binary via `npx b6p`, which resolves the project's local `node_modules/.bin/b6p` — no global install and no shell/PATH detection.
 
 ## Architecture
 
@@ -52,12 +52,13 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `SCAFF
 ## Running / testing
 
 ```bash
-node cli.js          # interactive scaffold in cwd
+node cli.js new      # scaffold a new project in a subdirectory (interactive)
+node cli.js init     # install tooling into the CURRENT directory (non-destructive)
 node cli.js -v       # print version
 node cli.js -h       # print help
 ```
 
-No test suite. Manual testing: run `node cli.js` and verify the generated project has the expected structure.
+Bare `node cli.js` (no recognized verb) prints help. No test suite. Manual testing: run `node cli.js new` (or `init` in a scratch dir) and verify the generated tree.
 
 ## Working on tasks
 

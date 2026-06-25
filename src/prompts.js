@@ -1,6 +1,6 @@
 import { text, confirm, isCancel, cancel } from '@clack/prompts';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { basename, join } from 'path';
 
 function titleCase(s) {
   return s
@@ -70,5 +70,41 @@ export async function runPrompts() {
     clientName,
     projectDescription: projectDescription || '',
     initGit,
+  };
+}
+
+// Prompts for `bspecs init` (install into the current directory). No folder-name
+// question — the project name defaults to the cwd basename — and no git prompt.
+// Client name is optional, falling back to 'BlueStep Client' on an empty Enter.
+export async function runInitPrompts() {
+  const cwd = process.cwd();
+
+  const clientName = bail(
+    await text({
+      message: 'Client name (optional — press Enter for "BlueStep Client")',
+      placeholder: 'BlueStep Client',
+    })
+  );
+
+  const projectDescription = bail(
+    await text({
+      message: 'Project description (optional — gives Claude project context)',
+      placeholder: 'What does this project do? Press Enter to skip.',
+    })
+  );
+
+  const proceed = bail(
+    await confirm({
+      message: `Install bspecs tooling into ${cwd}?`,
+      initialValue: true,
+    })
+  );
+
+  if (!proceed) return null;
+
+  return {
+    projectName: basename(cwd),
+    clientName: (clientName && clientName.trim()) || 'BlueStep Client',
+    projectDescription: projectDescription || '',
   };
 }

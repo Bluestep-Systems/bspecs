@@ -1,9 +1,9 @@
 import { execSync } from 'child_process';
-import { join, dirname } from 'path';
+import { join, dirname, basename, relative } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { log } from '@clack/prompts';
-import { ensureDir, copyTemplateTree, applyTemplate, TEMPLATES_DIR, sha256 } from './utils.js';
+import { ensureDir, copyTemplateTree, applyTemplate, writeFile, mergePackageJson, TEMPLATES_DIR, sha256 } from './utils.js';
 import { SYNC_TARGETS } from './sync.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -79,6 +79,11 @@ export async function scaffold(answers) {
     );
   }
 
+  printAuthReminder();
+}
+
+// One-time-per-machine BlueStep credential reminder, shared by `scaffold` and `init`.
+function printAuthReminder() {
   log.info(
     [
       'Next step — set your BlueStep platform credentials (required, once per machine):',
@@ -91,6 +96,102 @@ export async function scaffold(answers) {
       'so you only do this once — not per project.',
     ].join('\n')
   );
+}
+
+// `bspecs init`: install the template tree into the current directory without
+// overwriting anything that already exists (package.json is the one exception —
+// its devDependencies are merged). Writes the lock so `bspecs sync` works after.
+export async function init(answers) {
+  const projectDir = process.cwd();
+
+  const vars = {
+    PROJECT_NAME: answers.projectName,
+    CLIENT_NAME: answers.clientName,
+    PROJECT_DESCRIPTION: answers.projectDescription,
+    SCAFFOLD_DATE: new Date().toISOString().split('T')[0],
+  };
+
+  const collect = { written: [], skipped: [] };
+
+  copyTemplateTree('root', projectDir, vars, {
+    skipExisting: true,
+    collect,
+    exclude: ['package.json.template'],
+  });
+  copyTemplateTree('claude', join(projectDir, '.claude'), vars, {
+    skipExisting: true,
+    collect,
+    makeExecutable: true,
+  });
+  copyTemplateTree('module', join(projectDir, '.claude', 'templates'), vars, {
+    skipExisting: true,
+    collect,
+  });
+
+  const pkgStatus = handlePackageJson(projectDir, vars, collect);
+
+  writeBspecsLock(projectDir, vars);
+
+  log.success('Tooling installed.');
+
+  checkPrettierOnPath();
+  installDependencies(basename(projectDir), projectDir);
+  printAuthReminder();
+
+  reportInstall(projectDir, collect, pkgStatus);
+
+  return { collect, pkgStatus };
+}
+
+// End-of-`init` summary. Lists every file left untouched because it already
+// existed, with guidance to rename/move and re-run for the pristine version.
+function reportInstall(projectDir, collect, pkgStatus) {
+  const parts = [`${collect.written.length} added`];
+  if (pkgStatus === 'merged') parts.push('1 merged (package.json)');
+  parts.push(`${collect.skipped.length} skipped`);
+  log.info(`Install summary: ${parts.join(', ')}.`);
+
+  if (collect.skipped.length > 0) {
+    const list = collect.skipped.map((p) => '  ' + relative(projectDir, p)).join('\n');
+    log.warn(
+      'These files already existed and were left untouched:\n' +
+        list +
+        '\n\nTo install the bspecs version of any of them, rename or move your local copy and run `bspecs init` again.'
+    );
+  }
+}
+
+// package.json is the one file `init` may modify: if absent we write the template;
+// if present we merge in the missing b6p-cli devDependency (mergePackageJson fails
+// soft on malformed JSON). Returns 'written' | 'merged' | 'unchanged' | 'merge-failed'.
+function handlePackageJson(projectDir, vars, collect) {
+  const dest = join(projectDir, 'package.json');
+  const rendered = applyTemplate(
+    readFileSync(join(TEMPLATES_DIR, 'root', 'package.json.template'), 'utf8'),
+    vars
+  );
+
+  if (!existsSync(dest)) {
+    writeFile(dest, rendered);
+    collect.written.push(dest);
+    return 'written';
+  }
+
+  const existing = readFileSync(dest, 'utf8');
+  const merged = mergePackageJson(existing, rendered);
+  if (merged === null) {
+    log.warn(
+      'Existing package.json is not valid JSON — left untouched. Add the b6p CLI by hand:\n' +
+        '    "devDependencies": { "@bluestep-systems/b6p-cli": "^0.1.0" }'
+    );
+    collect.skipped.push(dest);
+    return 'merge-failed';
+  }
+  if (merged !== existing) {
+    writeFile(dest, merged);
+    return 'merged';
+  }
+  return 'unchanged';
 }
 
 // Detect whether the freshly created project directory sits inside an existing

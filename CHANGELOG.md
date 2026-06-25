@@ -6,6 +6,32 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.12.0] — 2026-06-25
+
+Adds an in-place install path and makes the CLI verbs explicit. You can now drop the full
+Claude Code tooling into a project you already have, without scaffolding a new directory.
+
+### Added
+
+- **`bspecs init` — install the tooling into the current directory.** Copies the whole template
+  tree (root files + `.claude/**` + module templates) into the cwd **non-destructively**: any
+  file that already exists is left byte-for-byte untouched. The one exception is `package.json`
+  — the `@bluestep-systems/b6p-cli` devDependency and the `b6p` script are merged into an
+  existing manifest (existing values never changed; malformed JSON is left alone with a
+  warning). Writes `.claude/bspecs.lock` so `bspecs sync` works afterward, then prints a report
+  of every file it skipped, with guidance to rename/move local copies and re-run for the
+  pristine versions. The client-name prompt is optional (defaults to `BlueStep Client`); no
+  `git init` is run. (`cli.js`, `src/prompts.js`, `src/scaffold.js`, `src/utils.js`)
+
+### Changed
+
+- **Scaffolding a new project is now `bspecs new`** (previously bare `bspecs`). The result is
+  identical — only the verb is explicit, matching the new three-verb surface (`new` / `init` /
+  `sync`).
+- **Bare `bspecs` (no recognized verb) now prints help** instead of immediately starting the
+  scaffolder. **Breaking:** any script or habit relying on bare `bspecs` to scaffold must switch
+  to `bspecs new`.
+
 ## [0.11.1] — 2026-06-24
 
 ### Fixed

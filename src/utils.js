@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync, readFileSync, existsSync, chmodSync, readdirSync, statSync } from 'fs';
 import { createHash } from 'node:crypto';
-import { dirname, join } from 'path';
+import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,11 +25,22 @@ export function readTemplate(relativePath) {
   return readFileSync(join(TEMPLATES_DIR, relativePath), 'utf8');
 }
 
+// Extra opts (all default off, so plain calls overwrite everything as before):
+// skipExisting leaves existing dest files untouched (bspecs init); collect is a
+// { written, skipped } accumulator of absolute paths; exclude lists source-relative
+// paths (forward-slashed) to omit so the caller can handle them separately.
 export function copyTemplateTree(srcRel, destAbs, vars, opts = {}) {
-  const { makeExecutable = false, stripTemplateExt = true } = opts;
+  const {
+    makeExecutable = false,
+    stripTemplateExt = true,
+    skipExisting = false,
+    collect = null,
+    exclude = [],
+  } = opts;
   const srcAbs = join(TEMPLATES_DIR, srcRel);
   if (!existsSync(srcAbs)) return;
-  walk(srcAbs, srcAbs, destAbs, vars, { makeExecutable, stripTemplateExt });
+  const skip = new Set(exclude);
+  walk(srcAbs, srcAbs, destAbs, vars, { makeExecutable, stripTemplateExt, skipExisting, collect, skip });
 }
 
 function walk(rootSrc, src, dest, vars, opts) {
@@ -39,16 +50,26 @@ function walk(rootSrc, src, dest, vars, opts) {
     if (stats.isDirectory()) {
       walk(rootSrc, srcEntry, join(dest, entry), vars, opts);
     } else {
+      const srcRelPath = relative(rootSrc, srcEntry).split('\\').join('/');
+      if (opts.skip.has(srcRelPath)) continue;
+
       const targetName = opts.stripTemplateExt && entry.endsWith('.template')
         ? entry.slice(0, -'.template'.length)
         : entry;
       const destFile = join(dest, targetName);
+
+      if (opts.skipExisting && existsSync(destFile)) {
+        if (opts.collect) opts.collect.skipped.push(destFile);
+        continue;
+      }
+
       const raw = readFileSync(srcEntry, 'utf8');
       const rendered = applyTemplate(raw, vars);
       writeFile(destFile, rendered);
       if (opts.makeExecutable && destFile.endsWith('.sh')) {
         try { chmodSync(destFile, 0o755); } catch { /* Windows can't chmod, ignore */ }
       }
+      if (opts.collect) opts.collect.written.push(destFile);
     }
   }
 }
@@ -92,4 +113,33 @@ export function exists(path) {
 
 export function sha256(str) {
   return createHash('sha256').update(str, 'utf8').digest('hex');
+}
+
+// Add only-missing template devDependencies and the `b6p` script into an existing
+// package.json (bspecs init); existing values are never changed. Returns merged
+// JSON text, or null if the existing content isn't valid JSON (caller fails soft).
+export function mergePackageJson(existingContent, templateContent) {
+  let existing;
+  try {
+    existing = JSON.parse(existingContent);
+  } catch {
+    return null;
+  }
+  const template = JSON.parse(templateContent);
+
+  const tplDeps = template.devDependencies || {};
+  if (Object.keys(tplDeps).length > 0) {
+    existing.devDependencies = existing.devDependencies || {};
+    for (const [name, version] of Object.entries(tplDeps)) {
+      if (!(name in existing.devDependencies)) existing.devDependencies[name] = version;
+    }
+  }
+
+  const tplScripts = template.scripts || {};
+  if ('b6p' in tplScripts) {
+    existing.scripts = existing.scripts || {};
+    if (!('b6p' in existing.scripts)) existing.scripts.b6p = tplScripts.b6p;
+  }
+
+  return JSON.stringify(existing, null, 2) + '\n';
 }

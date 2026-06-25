@@ -3,8 +3,8 @@ import { intro, outro, cancel, log } from '@clack/prompts';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
-import { runPrompts } from './src/prompts.js';
-import { scaffold } from './src/scaffold.js';
+import { runPrompts, runInitPrompts } from './src/prompts.js';
+import { scaffold, init } from './src/scaffold.js';
 import { sync } from './src/sync.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -12,17 +12,22 @@ const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
 
 const HELP = `bspecs — spec-driven BlueStep development with AI agents
 
-Scaffold a new BlueStep project with Claude Code skills, hooks, and
+Scaffold and maintain BlueStep projects with Claude Code skills, hooks, and
 project conventions for spec-driven development.
 
 Usage:
-  bspecs           Run the interactive scaffolder in the current directory.
+  bspecs new       Scaffold a brand-new project in a new subdirectory.
+  bspecs init      Install the tooling into the current directory (non-destructive).
   bspecs sync      Sync infrastructure files in the current project.
   bspecs -v        Print version.
   bspecs -h        Print this help.
 
 Options for bspecs sync:
   --silent         Suppress all output (used by the SessionStart hook).
+
+bspecs init never overwrites an existing file (package.json has the b6p-cli
+devDependency merged in) and reports what it skipped so you can rename/move and
+re-run. Its client-name prompt is optional — press Enter for "BlueStep Client".
 `;
 
 function parseArgs(argv) {
@@ -31,7 +36,9 @@ function parseArgs(argv) {
   if (flags.has('-v') || flags.has('--version')) return { mode: 'version' };
   if (flags.has('-h') || flags.has('--help'))    return { mode: 'help' };
   if (positional[0] === 'sync') return { mode: 'sync', silent: flags.has('--silent') };
-  return { mode: 'interactive' };
+  if (positional[0] === 'new')  return { mode: 'new' };
+  if (positional[0] === 'init') return { mode: 'init' };
+  return { mode: 'help' };
 }
 
 async function main() {
@@ -52,6 +59,25 @@ async function main() {
 
   intro('bspecs — spec-driven BlueStep development with AI agents');
 
+  if (mode === 'init') {
+    const answers = await runInitPrompts();
+    if (!answers) {
+      cancel('Cancelled.');
+      process.exit(0);
+    }
+
+    await init(answers);
+
+    outro(
+      `bspecs tooling installed in ${process.cwd()}\n` +
+      `  Next steps:\n` +
+      `    npm install   (if it did not run automatically)\n` +
+      `    npx -p @bluestep-systems/b6p-cli b6p auth set   (platform credentials, once per machine)`
+    );
+    return;
+  }
+
+  // mode === 'new'
   const answers = await runPrompts();
   if (!answers) {
     cancel('Cancelled.');
