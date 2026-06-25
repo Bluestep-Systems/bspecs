@@ -6,6 +6,22 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.13.0] — 2026-06-25
+
+### Removed
+
+- **Dropped four `~/.bluestep`-tooling convention files from the scaffolded instruction tree.**
+  `conventions/always-snapshot.md`, `snapshot-integrity.md`, `push-inner-draft.md`, and
+  `tsc-rootdir.md` documented a machine-local `node ~/.bluestep/push.js` / `pull.js` snapshot
+  workflow that does not exist in a consumer's environment and contradicted the actual scaffolded
+  flow on three axes: tooling (`~/.bluestep/*.js` vs `npx b6p`), local `tsc` (mandated by the files
+  but forbidden by the `block-tsc` hook and `CLAUDE.md`), and a snapshot step the b6p flow does not
+  have. All references were cleared in the same change: the four `index.md.template` links, the
+  `bsjs-development.md` `tsc-rootdir` pointer, the `merge-report-memo-json.md` "Related" links, and
+  the stale `~/.bluestep/docs/*` doc path in `csv-parsing.md`. No platform truth was lost — the
+  server-side compile-on-push and URL-root file-serving facts are already in `CLAUDE.md` /
+  `bsjs-development.md`, and pull/push/audit are owned by the `/b6p-*` skills.
+
 ## [0.12.0] — 2026-06-25
 
 Adds an in-place install path and makes the CLI verbs explicit. You can now drop the full

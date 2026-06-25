@@ -327,7 +327,7 @@ Each project root has a `tsconfig.json`. BlueStep projects run with **`strict: f
 }
 ```
 
-Do not run `tsc` locally — the platform compiles on push (a hook blocks local `tsc`). For why local builds / `rootDir` are avoided, see `conventions/tsc-rootdir.md`.
+Do not run `tsc` locally — the platform compiles on push (a hook blocks local `tsc`).
 
 ### Graal compatibility (server-side)
 

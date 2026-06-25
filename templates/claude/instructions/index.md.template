@@ -47,19 +47,15 @@ Entries read: `path — what it covers. Load when <trigger>.` Match the trigger 
 
 ## conventions/ — build, deploy, and workflow directives
 
-- [conventions/always-snapshot.md](conventions/always-snapshot.md) — pull/push/snapshot workflow: use the CLI scripts (never fetch manually) and snapshot after every change via push → pull → snapshot. Load when syncing a component or unsure of the snapshot routine.
 - [conventions/blueiq-no-ai-branding.md](conventions/blueiq-no-ai-branding.md) — never put "AI" in front-facing BlueIQ text; the brand is always "BlueIQ". Load when writing user-visible BlueIQ copy.
 - [conventions/date-format.md](conventions/date-format.md) — `addSearch` needs `MM/DD/YYYY` for date fields; `YYYY/MM/DD` passes validation but silently fails to filter, and raw Java `LocalDate` objects also fail. Load when filtering a query by a date field.
 - [conventions/endpoint-approach.md](conventions/endpoint-approach.md) — research-first: gather API docs, read type declarations, and study existing examples before writing an endpoint. Load when starting a new endpoint.
 - [conventions/formula-patterns.md](conventions/formula-patterns.md) — correct BSJS formula patterns: form access, field reads/writes, HTTP, error handling, `B.*` utilities, DocumentLinkField. Load when writing a Formula or Post-Save script.
 - [conventions/no-global-dollar.md](conventions/no-global-dollar.md) — never define a global `$` in MergeReport scripts; pages use jQuery and you will silently break Save and all page interactivity. Load when adding client JS to a MergeReport.
-- [conventions/push-inner-draft.md](conventions/push-inner-draft.md) — pass the inner `draft/` folder (not the component root) to `push.js`, or files land in a `draft/draft/*` dead zone. Load when pushing a component with `push.js`.
 - [conventions/separate-files.md](conventions/separate-files.md) — don't pile CSS/HTML/JS into `app.ts`; use the `styles.css`/`index.html`/`script.ts` files the pulled folder already has. Load when structuring MergeReport files.
 - [conventions/single-script.md](conventions/single-script.md) — the server-side build compiles only root `static/script.ts` to `.build/script.js`; subdirectory `.ts` files are NOT compiled. Load when splitting client scripts into multiple files.
-- [conventions/snapshot-integrity.md](conventions/snapshot-integrity.md) — snapshots register cleanly only when `push.js` sends locally-compiled `.build/*` alongside source, otherwise a manual re-snapshot is needed. Load when a push leaves the snapshot needing manual re-registration.
 - [conventions/top-level-const-tdz.md](conventions/top-level-const-tdz.md) — endpoint/MergeReport scripts run top-down; declare every `const`/`let` above the entry `try` block or they are in TDZ when the handler fires. Load when ordering declarations in an endpoint or MergeReport.
 - [conventions/ts-in-template-literal.md](conventions/ts-in-template-literal.md) — the inline `<script>` inside a `B.out` template literal must be plain JS; any TypeScript syntax ships verbatim to the browser and breaks parsing. Load when emitting client JS through a `B.out` string.
-- [conventions/tsc-rootdir.md](conventions/tsc-rootdir.md) — compile endpoints with `--rootDir .` so output mirrors `scripts/app.ts` → `.build/scripts/app.js`; `--rootDir ./scripts` emits to `.build/app.js`, which the runtime ignores. Load when configuring the local TypeScript build for an endpoint.
 
 ## gotchas/ — sharp edges
 

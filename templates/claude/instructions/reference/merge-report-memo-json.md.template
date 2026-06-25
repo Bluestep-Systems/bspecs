@@ -20,6 +20,6 @@ The recurring **"merge report + memo field JSON hack"** — how Brandon and I re
 - Injected controls must have **NO `name` attribute** — named controls get submitted with the form → "problem storing the data". See [named controls submit](named-controls-submit.md).
 - Mount modals on `document.body` to escape the form's submit scope.
 - Borrow native relate icons (`/static/.../relate-icons/pencil.svg`, `trash.svg`) and call `window.fixAllSVG()` after render to recolor them like native lists.
-- Build pipeline / push rules: [tsc rootdir](../conventions/tsc-rootdir.md), [push inner draft](../conventions/push-inner-draft.md), [separate files](../conventions/separate-files.md), [always snapshot](../conventions/always-snapshot.md).
+- File structure: [separate files](../conventions/separate-files.md). For sync, use the `/b6p-push` and `/b6p-pull` skills (`npx b6p`).
 
 **Reference implementations:** kaizenacademy/1465899 "Treatment Plan Review Comments Display" (original inspo, has Domains + lock); kaizenacademy/1466219 "Protocol Update Table" (notes-only + permission gating). Related JSON-in-memo dashboards: [crm dashboard inspo](crm-dashboard-inspo.md), visit dashboard.
