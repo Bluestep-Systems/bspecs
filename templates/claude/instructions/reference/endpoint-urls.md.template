@@ -11,5 +11,5 @@ The alias is set per-endpoint in BlueStep admin and is not derivable from the sc
 
 **How to apply:**
 - When reporting test URLs to the user, ask what the friendly alias is — do not guess from the script name or fall back to the `/files/.../draft/` URL.
-- The `.b6p_metadata.json` `url` field is the editor URL, not the runtime URL.
+- The DAV `url` the CLI recorded for the component is the editor URL, not the runtime URL.
 - If the user reports "500 / Error" on an endpoint, ask them to confirm the alias before adding script-side error handling.

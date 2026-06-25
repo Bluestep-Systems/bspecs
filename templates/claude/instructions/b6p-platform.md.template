@@ -1,6 +1,5 @@
 ---
 description: BlueStep Platform overview — architecture (Relate/Connect/Manage/BsJs), the b6p CLI, sync, and component lifecycle. Read when orienting on the platform, working with the b6p CLI, or troubleshooting pull/push sync.
-applyTo: "**/.b6p_metadata.json"
 ---
 
 # B6P Platform Workflow
@@ -14,7 +13,7 @@ Platform orientation plus the workflow reference for sync, lifecycle, and the b6
 - [Data hierarchy](#data-hierarchy)
 - [Script types](#script-types)
 - [b6p CLI workflow](#b6p-cli-workflow)
-- [`.b6p_metadata.json`](#b6p_metadatajson)
+- [Sync metadata](#sync-metadata)
 - [Files Claude must never edit](#files-claude-must-never-edit)
 - [Imports — verification flow](#imports--verification-flow)
 - [When the CLI fails](#when-the-cli-fails)
@@ -113,27 +112,27 @@ A successful first pull:
 - Creates the `U######/` folder (if not present) and the `<ComponentName>/` subfolder under it
 - Populates `draft/scripts/`, `draft/info/`, and (in older modules) `draft/objects/`
 - Populates `declarations/` with the platform-generated `.d.ts` files, including `declarations/index.d.ts` (field/query/form declarations)
-- Writes `.b6p_metadata.json` at the component root for future pulls/pushes
+- Records the component's sync metadata (WebDAV id, file hashes, script key) so future pulls/pushes can resolve it
 
 Subsequent pulls verify per-file integrity and only rewrite files whose content changed.
 
 ### Push a component
 
-The cleanest way to push an already-pulled component is `--file`, which lets the CLI derive the destination DAV URL from local `.b6p_metadata.json`:
+The cleanest way to push an already-pulled component is `--file`, which lets the CLI derive the destination DAV URL from the recorded sync metadata:
 
 ```
 npx b6p push --file "U######/<Component>/draft/scripts/app.ts"
 ```
 
-Any file inside the component works as the `--file` argument; the CLI walks up to find `.b6p_metadata.json`. Same per-file integrity check applies — only changed files are uploaded. The platform compiles after receiving the push.
+Any file inside the component works as the `--file` argument; the CLI walks up to find the component root and looks up its recorded sync metadata. Same per-file integrity check applies — only changed files are uploaded. The platform compiles after receiving the push.
 
 ### Fallback: VS Code extension
 
 If the `b6p` CLI fails (network, lock, auth), the VS Code **b6p extension** is an equivalent fallback for pull/push operations.
 
-## `.b6p_metadata.json`
+## Sync metadata
 
-Auto-managed by the CLI. Tracks WebDAV IDs, last-pull / last-push timestamps, file hashes, and script keys. **Never edit manually.**
+Auto-managed by the CLI and stored internally (no longer a `.b6p_metadata.json` file in the workspace; legacy files are migrated on first run). Tracks WebDAV IDs, last-pull / last-push timestamps, file hashes, and script keys, so pull/push/audit can resolve each component. Not something you edit.
 
 ## Files Claude must never edit
 
@@ -173,7 +172,7 @@ Common causes:
 Fallbacks:
 
 1. The VS Code b6p extension provides the same pull/push operations through the editor UI.
-2. As a last resort, the platform UI lets you download/upload component files manually — but losing `.b6p_metadata.json` consistency makes future CLI sync fragile.
+2. As a last resort, the platform UI lets you download/upload component files manually — but manual uploads bypass the CLI's recorded sync metadata, making future CLI sync fragile.
 
 ## When `B.commit()` is required
 

@@ -79,7 +79,7 @@ The legacy `objects/imports.ts` `.require()` registration did this in code; it i
 
 ## Workspace Sync
 
-Each project has a `.b6p_metadata.json` file tracking sync state between the local workspace and the BlueStep server: script metadata (name, org ID, WebDAV ID), per-file last-sync timestamps, and build state. The `draft/` directory holds the working version of the code; the `.build/` directories hold the compiled JavaScript output from the TypeScript source.
+The b6p CLI tracks sync state between the local workspace and the BlueStep server — script metadata (name, org ID, WebDAV ID), per-file last-sync timestamps, and build state — in its own internal store (no longer a `.b6p_metadata.json` file in the workspace). The `draft/` directory holds the working version of the code; the `.build/` directories hold the compiled JavaScript output from the TypeScript source.
 
 ## Common Mistakes
 

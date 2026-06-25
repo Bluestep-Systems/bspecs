@@ -8,13 +8,13 @@ allowed-tools: Bash(npx b6p *) Bash(git*) Bash(test -f *)
 
 ## How `b6p push` actually works
 
-`b6p push` is most reliably driven by `--file <path>`, which tells the CLI to derive the destination DAV URL from the local file's metadata (via `.b6p_metadata.json`):
+`b6p push` is most reliably driven by `--file <path>`, which tells the CLI to derive the destination DAV URL from the sync metadata it recorded for that component when it was pulled:
 
 ```
 b6p push --file <path-inside-component>
 ```
 
-Any file inside the component works as the `--file` argument; the CLI walks up to find `.b6p_metadata.json`.
+Any file inside the component works as the `--file` argument; the CLI walks up to find the component root and looks up its recorded sync metadata.
 
 ## How to invoke `b6p`
 
@@ -44,7 +44,7 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 
 - Run `git status` to surface what changed and flag anything unexpected.
 - Briefly summarise the diff scope: "X files changed in `U######/<Component>/draft/`".
-- Confirm `.b6p_metadata.json` exists inside the component — without it, `--file` cannot derive the destination URL.
+- Confirm the component was pulled with `b6p` (so its sync metadata is recorded) — `--file` resolves the destination URL from that metadata. If the component was never pulled here, pull it first.
 
 ### 3. Confirm with the user
 

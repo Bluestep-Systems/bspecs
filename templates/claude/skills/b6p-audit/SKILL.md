@@ -44,7 +44,7 @@ test -f ~/.b6p/secrets.enc && echo OK
 
 If `$ARGUMENTS` contains a component path (e.g. `U######/Combined Scheduler`), use it. If empty, ask the user which component to audit.
 
-Confirm `.b6p_metadata.json` exists at the component root — without it, audit cannot determine the destination URL.
+Confirm the component was pulled with `b6p` (so its sync metadata is recorded) — without that, audit cannot determine the destination URL. If it was never pulled here, pull it first.
 
 ### 2. Run the audit
 

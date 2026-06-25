@@ -16,7 +16,7 @@ b6p pull [options] <formula-url>
 
 The user copies the DAV URL from the component's page in the BlueStep platform UI. You cannot discover or infer it. There is no fallback that takes a name.
 
-A first pull creates the `U######/<ComponentName>/` folder (creating the U-folder if it does not exist) and populates `declarations/`, `draft/`, and `.b6p_metadata.json`.
+A first pull creates the `U######/<ComponentName>/` folder (creating the U-folder if it does not exist), populates `declarations/` and `draft/`, and records the component's sync metadata.
 
 ## How to invoke `b6p`
 
@@ -49,7 +49,7 @@ test -f ~/.b6p/secrets.enc && echo OK
 - If `$ARGUMENTS` looks like a URL (starts with `http://` or `https://`), use it.
 - If `$ARGUMENTS` is empty or looks like a display name (no scheme), STOP and ask the user:
   > I need the **DAV URL** of the component, not its name. Copy it from the component's page in the BlueStep platform UI and paste it here.
-- Do NOT guess the URL. Do NOT try to derive it from `.b6p_metadata.json` of other components.
+- Do NOT guess the URL. Do NOT try to derive it from another component's recorded metadata.
 
 ### 2. Run the pull
 
@@ -66,7 +66,6 @@ Capture the output — it prints the local path where the component landed.
 Parse the CLI output, or scan for the most recently modified `U######/<Name>/` directory under the project root. Confirm:
 
 - `declarations/` is populated
-- `.b6p_metadata.json` exists at the component root
 - `draft/info/metadata.json` and `draft/info/config.json` exist
 - `draft/scripts/app.ts` (or whatever `config.json:main` points at) exists
 
