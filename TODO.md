@@ -18,8 +18,6 @@ For deeper context behind any decision, see `docs/decisions/`. Completed work is
 
 - [ ] **`bspecs sync` command.** Add a `bspecs sync` subcommand that updates infrastructure files (skills, hooks, settings, instructions, spec-templates) in an existing project. Uses a `.claude/bspecs.lock` file (written at scaffold time) with SHA-256 hashes of each file to detect user edits — files the user modified locally are skipped. The `SessionStart` hook in generated projects runs `bspecs sync --silent` automatically on every workspace open, resume, and compaction, so projects stay up to date without manual intervention.
 
-- [ ] **Evaluate path-scoped rules (`.claude/rules/*.md` with `paths:` frontmatter) vs. the `.claude/instructions/` + `index.md` on-demand approach.** Claude Code now supports rules that load *only* when Claude opens files matching a glob — a more native version of the manual "consult index.md, then read the right file" pattern the scaffold uses today (e.g. BsJs reference could auto-load on `U######/**/*.ts`). This intersects [`docs/decisions/instruction-tree-and-claude-only.md`](docs/decisions/instruction-tree-and-claude-only.md), so it needs its own spec/ADR — don't fold into a tightening pass. Decide whether path-scoped rules replace, augment, or are rejected in favor of the current tree.
-
 ## Flow improvements
 
 - [ ] **`/spec-status` should split `[PLATFORM]` vs `[CODE]` task counts.** Today it just counts `[x]` vs `[ ]`. A spec at 3/5 means very different things if the 2 pending tasks are `[PLATFORM]` (blocking) vs `[CODE]` (just unimplemented).
