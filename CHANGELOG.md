@@ -6,6 +6,40 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.15.0] — 2026-06-26
+
+### Added
+
+- **`/bspecs-feedback` skill — route tooling-change requests to the canonical bspecs repo.**
+  A scaffolded project's `.claude/` tree is a copy that `bspecs sync` overwrites, so when an end
+  user notices a bspecs rule / skill / hook / instruction that should change, a local edit never
+  reaches the repo and doesn't survive the next sync. The new
+  `templates/claude/skills/bspecs-feedback/SKILL.md` infers the submission from the conversation
+  (kind(s), target(s), affected file + current rule text, proposed change/rationale, bspecs version
+  from `.claude/bspecs.lock`), confirms with the user, builds a prefilled GitHub issue deep link
+  against the public repo (`issues/new?template=feedback.yml&labels=feedback&…`, URL-encoded via
+  node's `URLSearchParams`), and opens it (`wslview`/`xdg-open`/`open`) — always printing the URL as
+  the fallback. **No token and no backend**: GitHub authenticates the user through their existing
+  browser session. Picked up automatically by `bspecs sync` (dynamic `SYNC_TARGETS`, no hardcoded
+  list). Kind and target are both multi-valued; because a single `feedback` label is used (no
+  `kind:*` labels) and GitHub multi-select prefill is unreliable, kind(s)/target(s) are embedded as
+  text in the issue title + body as the safety net.
+- **Structured issue form `.github/ISSUE_TEMPLATE/feedback.yml`** (plus a `config.yml` that keeps
+  the blank-issue route) so prefilled submissions land in a consistent shape — kind, target, file
+  path, current text, proposal, version. Backed by a repo-side `feedback` label. The `current_text`
+  and `proposal` textareas carry no `render:` attribute, which is required for query-param prefill.
+- **ADR `docs/decisions/bspecs-feedback-mechanism.md`** memorializing the prefilled-link /
+  no-backend / no-token decision and the rejected alternatives (baked-in token, server-side
+  webhook, local `.jsonl` fallback, `gh`-CLI primary path).
+
+### Changed
+
+- **Scaffolded `CLAUDE.md` Self-improvement section now routes by _what_ the discovery is.**
+  Project-local B6P domain knowledge is still captured locally; a bspecs **tooling** problem — or a
+  B6P rule general enough to belong in every scaffolded project — is now handed off to
+  `/bspecs-feedback`, since local `.claude/` edits don't survive `bspecs sync`. This makes the skill
+  discoverable at the moment a user notices something wrong.
+
 ## [0.14.1] — 2026-06-26
 
 ### Fixed

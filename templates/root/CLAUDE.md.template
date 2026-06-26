@@ -134,7 +134,9 @@ The skills above wrap these commands. You can run them directly if you need to, 
 
 ## Self-improvement
 
-If you discover a B6P rule or pattern that is not documented here:
+When you discover something worth changing, route it by **what** it is.
+
+**B6P domain knowledge** not documented here (a platform rule, a BsJs pattern) — capture it **locally**:
 
 1. Apply it for the current task.
 2. Capture the rule in the right place:
@@ -142,6 +144,11 @@ If you discover a B6P rule or pattern that is not documented here:
    - High-frequency platform/BsJs material → the matching overview (`.claude/instructions/b6p-platform.md` or `bsjs-development.md`).
    - A single-topic detail or sharp edge → a new or existing atomic file under `.claude/instructions/{reference,conventions,gotchas}/`, and add (or update) its one-line entry in `.claude/instructions/index.md` so it's discoverable.
 3. Note in your response: "Added rule: <description>".
+
+**A bspecs tooling problem, or a rule that should reach _every_ project** — file it upstream with `/bspecs-feedback`. This `.claude/` tree is a scaffolded copy that `bspecs sync` overwrites, so a local edit here does not reach the canonical bspecs repo and does not survive the next sync. Use `/bspecs-feedback` when:
+
+- a bspecs **tooling artifact** is wrong, broken, or missing — a skill, hook, subagent, instruction _template_, settings rule, or a `CLAUDE.md` rule that came from bspecs; or
+- a B6P rule you found is general enough to belong in **every** scaffolded project (bspecs' shipped instruction templates), not just this one.
 
 ## Deep reference
 

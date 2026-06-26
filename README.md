@@ -98,7 +98,7 @@ my-project/
     ├── bspecs.lock                    ← lock file for bspecs sync
     ├── settings.json                  ← Claude Code permissions and hooks
     ├── hooks/                         ← 3 scripts executed by Claude Code
-    ├── skills/                        ← 8 skills (/spec-create, /b6p-pull, etc.)
+    ├── skills/                        ← 9 skills (/spec-create, /b6p-pull, /bspecs-feedback, etc.)
     ├── agents/                        ← 3 BlueStep subagents (implementer, commenter, reviewer)
     ├── instructions/                  ← development rules for Claude
     ├── spec-templates/                ← spec file templates

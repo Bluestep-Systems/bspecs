@@ -1,0 +1,76 @@
+name: bspecs feedback
+description: Request a change to bspecs tooling — a rule, skill, subagent, hook, instruction, or the CLI. Usually filed via the /bspecs-feedback skill, which prefills this form.
+title: "[feedback]: "
+labels: ["feedback"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the feedback. This form is normally opened prefilled by the `/bspecs-feedback`
+        skill from inside a scaffolded project, but you can also fill it in by hand.
+
+        A submission may carry **several kinds at once** (e.g. a rule that is both wrong and should
+        change) and span **several targets** (e.g. a hook plus the instruction that documents it).
+        Tick everything that applies — neither field is single-select.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      description: What kind(s) of change is this? (multiple allowed)
+      multiple: true
+      options:
+        - add rule — missing guidance
+        - change rule — correct / clarify / expand / narrow existing
+        - remove rule — obsolete / redundant / contradicts reality
+        - report error/bug — tooling broken (hook misfires, skill errors, stale ref, rule contradicts platform truth)
+        - request capability — new skill / subagent / hook / CLI feature
+        - report friction — works but painful, no fix proposed
+    validations:
+      required: true
+  - type: dropdown
+    id: target
+    attributes:
+      label: Target
+      description: Which artifact(s) does this hit? (multiple allowed)
+      multiple: true
+      options:
+        - instruction (reference / convention / gotcha)
+        - skill
+        - subagent
+        - hook
+        - settings / permission
+        - spec template
+        - module template
+        - CLAUDE.md
+        - CLI
+    validations:
+      required: false
+  - type: input
+    id: file_path
+    attributes:
+      label: File path
+      description: The file the feedback is about, if known (e.g. `templates/claude/skills/b6p-push/SKILL.md`).
+    validations:
+      required: false
+  - type: textarea
+    id: current_text
+    attributes:
+      label: Current text
+      description: The existing rule/text being changed or removed, quoted verbatim. Leave blank for add-rule / capability requests.
+      placeholder: Paste the current text here (keep it to the relevant excerpt).
+    validations:
+      required: false
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change & rationale
+      description: What should change, and why. For a bug, include the repro. For a capability, describe the use case.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: bspecs version
+      description: From `.claude/bspecs.lock` (`bspecs_version`). The skill fills this in automatically.
+    validations:
+      required: false

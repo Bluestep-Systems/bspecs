@@ -34,7 +34,7 @@ Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `SCAFF
 
 - `CLAUDE.md`, `.prettierrc`, `.gitignore`, `README.md`, `package.json` (from `templates/root/`) — `package.json` declares the `b6p-cli` devDependency, resolved from public npm so `npm install` / `npx b6p` work with no token (no scaffolded `.npmrc`)
 - `.claude/settings.json` — permissions + hooks (block-generated-files, block-tsc, prettier-on-save)
-- `.claude/skills/` — `b6p-audit`, `b6p-pull`, `b6p-push`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`, `task-comment`
+- `.claude/skills/` — `b6p-audit`, `b6p-pull`, `b6p-push`, `bspecs-feedback`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`, `task-comment`
 - `.claude/agents/` — three BlueStep subagents: `b6p-task-implementer` (implements one spec task in an isolated context; `/spec-execute` delegates to it), `b6p-commenter` (fills in a component `draft/README.md`), `b6p-code-review` (BlueStep-aware, report-only review)
 - `.claude/hooks/` — three shell scripts (run in WSL; must use WSL-native toolchain)
 - `.claude/instructions/` — Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`), the `index.md` manifest, and atomic single-topic files under `reference/`, `conventions/`, `gotchas/` (read on demand, not `@`-imported). No `.github/` Copilot mirror.

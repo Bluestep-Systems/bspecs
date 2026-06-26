@@ -1,0 +1,3 @@
+# Keep the blank-issue route available alongside the structured feedback form,
+# so contributors who want a free-form issue are not forced through the form.
+blank_issues_enabled: true
