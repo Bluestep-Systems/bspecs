@@ -31,6 +31,13 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 - **ADR `docs/decisions/bspecs-feedback-mechanism.md`** memorializing the prefilled-link /
   no-backend / no-token decision and the rejected alternatives (baked-in token, server-side
   webhook, local `.jsonl` fallback, `gh`-CLI primary path).
+- **ADR `docs/decisions/path-scoped-rules-evaluation.md`** — evaluated Claude Code's path-scoped
+  rules (`.claude/rules/*.md` with `paths:` frontmatter) as a replacement for the on-demand
+  `instructions/` + `index.md` tree and **rejected it for now**. The ~50 atomic files are keyed by
+  task *intent*, not by file path (B6P sources are undifferentiated `*.ts`/`*.js`), and path-scoped
+  rules don't fire on the Write/Edit-dominated B6P workflow; reliability and subagent-inheritance
+  gaps compound it (sync and the Claude-only invariant were *not* blockers). Records a gated revisit
+  trigger and a thin "augment" sketch. Doc-only — no code or scaffold change.
 
 ### Changed
 
