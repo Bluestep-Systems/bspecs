@@ -39,6 +39,16 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   B6P rule general enough to belong in every scaffolded project — is now handed off to
   `/bspecs-feedback`, since local `.claude/` edits don't survive `bspecs sync`. This makes the skill
   discoverable at the moment a user notices something wrong.
+- **Tightened the scaffolded `CLAUDE.md.template` (167 → 131 lines).** The file loads into every
+  session of every scaffolded project, so its length is paid continuously. Cut ~36 lines of
+  redundancy with no signal loss: collapsed the README-vs-spec lifecycle (previously stated four
+  times) into one "Module context" section; replaced the `B`-object table with a pointer to
+  `bsjs-development.md` (keeping the `B.time`-not-`Date` and `B.user`-null-in-cron gotchas inline);
+  demoted the "Sync workflow" section to a short pointer (the `/b6p-*` skills own the `npx b6p`
+  commands, with the one-time `auth set` note preserved); and trimmed the Deep-reference footer that
+  restated the critical rules. The on-demand `index.md` design (no `@`-imports) and the Critical
+  rules block are unchanged. Also fixed the `spec-create` skill's cross-reference to the renamed
+  "Module context" heading.
 
 ## [0.14.1] — 2026-06-26
 
