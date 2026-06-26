@@ -1,29 +1,52 @@
 ---
-description: BlueStep merge report with a static/ bundle renders static/index.html as the page; scripts/app.ts B.out is NOT injected — put the mount + config island in index.html and run the client on DOMContentLoaded
+description: BlueStep merge report with a static/ bundle — B.out (server content) and static/index.html (client markup) BOTH render but are completely disjoint (B.out is injected as a tag that runs AFTER index.html), and static/styles.css + .build/script.js load automatically. Put the mount/config/markup/CSS in static/, use B.out only for final server-rendered markup; never fetch/inline your own styles.css and never use a B.out config island as a data channel to the index.html client script.
 ---
 
-For a BlueStep merge report that ships a `static/` bundle (`static/index.html` +
-`static/.build/script.js` + `static/styles.css`), the **served page is
-`static/index.html`** — its `<script src=".build/script.js">` is what loads the
-client. The server `scripts/app.ts` `B.out` is **not injected into that page**, so
-a mount node / server-data island placed in `B.out` never appears in the DOM.
+In a BlueStep merge report that ships a `static/` bundle (`static/index.html` +
+`static/.build/script.js` + `static/styles.css`), **both entry points render into
+the page together** (see [file execution](file-execution.md)):
+
+- `scripts/app.ts` writes **server content** to `B.out` — this **does** render.
+- `static/index.html` supplies the **client markup**; its `<link rel="stylesheet"
+  href="styles.css">` and `<script src=".build/script.js">` load **automatically**.
+
+But the two are **completely disjoint**: `B.out` is injected as a tag on the page
+that runs **after** `static/index.html` has been put on the page. They share no DOM
+context you can bridge — a node emitted from `B.out` is **not** something the
+index.html client script can reliably reach, and ordering tricks like
+`DOMContentLoaded` won't fix it (B.out arrives later, in a separate region).
+
+The platform serves `static/styles.css` (and `static/.build/script.js`) for you
+while `B.out` renders the page body. So you do **not** need to read or fetch your
+own stylesheet — `B.net.fetch("static/styles.css")` + inlining it into a `<style>`
+block in `app.ts` is pointless work. CSS stays in `static/styles.css` per
+[separate files](../conventions/separate-files.md).
+
+**Where each piece goes:**
+- Root mount (`<div id="…-root">`) and static config islands (`<script id="…-config"
+  type="application/json">…</script>`) → put in `static/index.html`, before the
+  `<script src=".build/script.js">` tag. (Mirror of the Treatment Targets widget:
+  `<div id="tt-widget"></div>` lives in index.html.)
+- CSS → `static/styles.css`. Client JS → `static/script.ts` (→ `.build/script.js`).
+- `B.out` (from `app.ts`) → **final server-rendered markup only**: HTML with
+  server-computed values baked straight in, e.g. record-scoped section URLs (see
+  [merge report urls](merge-report-urls.md)), current-user values, or query results
+  rendered as the visible content. Because B.out is disjoint from index.html, do
+  **not** emit a mount or a `<script type="application/json">` config island from
+  `B.out` and expect the index.html client script to read it — that's the trap below.
+
+**Getting server data to the client widget:** when a client-side widget (booted by
+the index.html script) needs server context, don't route it through `B.out` — fetch
+it from the component's **endpoint** (server-thin/client-fat), or use **index.html
+merge tokens**. Reserve `B.out` for content it renders directly.
 
 Symptom we hit (summitridge Resources Hub merge report 1471799): client JS ran but
-`document.getElementById('rh-root')` and the `#rh-config` blob were both null,
-because the mount + config were emitted from `B.out`. Spinner hung forever.
-
-**Do this instead:**
-- Put the root mount (`<div id="rh-root">`) and any static config island
-  (`<script id="rh-config" type="application/json">…</script>`) **directly in
-  `static/index.html`**, before the `<script src=".build/script.js">` tag. (Mirror
-  of the working Treatment Targets widget: `<div id="tt-widget"></div>` lives in
-  index.html.)
-- Run the client on DOM-ready: `if (document.readyState==='loading')
-  document.addEventListener('DOMContentLoaded', start); else start();`
-- The client should fetch all dynamic data from its endpoint (server-thin/client-fat)
-  rather than expecting server-rendered data from `B.out`.
-- Server-side per-user data (e.g. current user for a form prefill) can't ride in via
-  `B.out`; defer it, fetch it from the endpoint, or use index.html merge tokens.
+`document.getElementById('rh-root')` and the `#rh-config` blob were both null —
+because the mount + config island were emitted from `B.out`, a separate region that
+is injected *after* index.html and disjoint from the index.html client script. We
+*wrongly* concluded `B.out` wasn't injected — it is. The fix is to put the mount +
+config island in `static/index.html` (the client-markup file), and fetch any dynamic
+data from the endpoint.
 
 Builds on [merge report memo json](merge-report-memo-json.md) and
 [separate files](../conventions/separate-files.md); relevant to bluestep resources.

@@ -6,6 +6,34 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.14.1] — 2026-06-26
+
+### Fixed
+
+- **Corrected the MergeReport `static/`-bundle guidance that wrongly claimed `B.out` is
+  suppressed.** `reference/merge-report-static-index.md` previously stated that when a merge
+  report ships a `static/` bundle the served page becomes `static/index.html` and `scripts/app.ts`'s
+  `B.out` is **not** injected. That is wrong and contradicted the canonical model in
+  `reference/file-execution.md`: `B.out` (server content) **and** `static/index.html` (client markup)
+  both render, and `static/styles.css` + `static/.build/script.js` load automatically. The bad rule
+  led an agent to `B.net.fetch("static/styles.css")` and inline its own stylesheet into a `<style>`
+  block — pointless work it then had to delete. Rewrote the file around the real behavior (reserve
+  `B.out` for **final server-rendered markup** like record-scoped URLs; keep the mount/config/CSS in
+  `static/`; never fetch/inline your own stylesheet). Per platform-team clarification, `B.out` and
+  `static/index.html` are **completely disjoint**: `B.out` is injected as a tag that runs *after*
+  index.html, so a mount or `<script type="application/json">` config island emitted from `B.out`
+  can't be reached by the index.html client script (and `DOMContentLoaded` won't fix it). The
+  summitridge null-mount symptom is reframed accordingly — put the mount + config island in
+  `index.html` and fetch dynamic data from the endpoint, not a `B.out` island. Cross-linked
+  `merge-report-urls.md` for the record-scoped-URL computation that legitimately belongs in `B.out`.
+- **Dropped the misleading "we inline styles.css via `B.net.fetch`" aside in
+  `reference/csv-parsing.md`,** which implied fetching/inlining your own stylesheet is a normal
+  pattern. The fetch-by-URL CSV route now stands on its own.
+- **Made `conventions/separate-files.md` explicit about the `static/`-bundle case** — `styles.css`
+  loads automatically, so CSS stays in `styles.css` and is never read or fetched to inline — closing
+  the gap an agent used to resolve by inlining CSS into `app.ts`. Updated the matching `index.md`
+  one-liner.
+
 ## [0.14.0] — 2026-06-26
 
 ### Added

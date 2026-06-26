@@ -10,7 +10,8 @@ When a BlueStep pull contains dedicated files (`styles.css`, `index.html`, `scri
 
 - Before writing or modifying a BlueStep file, list the folder contents and identify which dedicated files exist.
 - Route content to its natural file: CSS → `styles.css`, markup template → `index.html` (or a separate template file), client-side JS → `script.ts`, server-side logic → `app.ts`.
-- For merge reports specifically: the server-side TS can read sibling files via `B.io.fromInputStream(...)` (or the appropriate API) and inject them into `B.out` — investigate the existing API rather than inlining.
+- For merge reports **with a `static/` bundle**: `static/styles.css` and `static/.build/script.js` load automatically while `B.out` renders the page body — leave CSS in `styles.css`; do **not** read or `B.net.fetch` your own stylesheet to inline it. See [merge report static index](../reference/merge-report-static-index.md).
+- For older merge reports **without** a `static/` bundle: the server-side TS can read sibling files via `B.io.fromInputStream(...)` (or the appropriate API) and inject them into `B.out` — investigate the existing API rather than inlining.
 - For endpoints with `static/` folders: HTML/CSS/JS load from their own files; `app.ts` is the request handler only.
 - If unsure how multiple files relate in a given BlueStep component type, check [api patterns](../reference/api-patterns.md) and look at how other working components are organized.
 
