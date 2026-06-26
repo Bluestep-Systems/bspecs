@@ -1,6 +1,6 @@
 {
   "name": "@bluestep-systems/bspecs",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "description": "Spec-driven BlueStep development with AI agents — scaffolder and project conventions for Claude Code",
   "type": "module",
   "bin": {

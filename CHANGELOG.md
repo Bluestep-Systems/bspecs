@@ -6,6 +6,20 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [0.14.0] — 2026-06-26
+
+### Added
+
+- **Documented async merge-report loading and the `<b-include>` element in the scaffolded
+  instruction tree.** Two new atomic `reference/` files capture platform knowledge that was
+  previously absent: `merge-report-async-loading.md` (the "Asynchronous Loading" option on a
+  Data Merge Report lazy-loads it *after* the page resolves — covering the BSJS-`async`-metadata-
+  vs-checkbox history, parent→child fan-out, the script-timing gotcha, and the obsolete
+  `formFooter` hack) and `b-include-element.md` (the `<b-include>` browser custom element for
+  inline async HTML fragments — `src`/`run-scripts`/`csrf` attrs, behavior, security/Zesty
+  whitelist). Both cross-link each other and the existing merge-report files, with matching
+  one-line `index.md` entries. Picked up automatically by `bspecs sync` (no hardcoded list).
+
 ## [0.13.0] — 2026-06-25
 
 ### Removed
