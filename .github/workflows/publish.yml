@@ -82,3 +82,97 @@ jobs:
         run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # Create the GitHub Release for this tag (once) so the binary jobs can upload
+  # assets to it. Also closes the long-standing gap where published tags never
+  # got a Release object. Idempotent: skips if the release already exists.
+  create-release:
+    name: Create GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Create release if missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists — skipping create"
+          else
+            gh release create "$TAG" --verify-tag --generate-notes
+          fi
+        shell: bash
+
+  # Build the self-contained SEA binary on each target OS (SEA cannot
+  # cross-compile) and upload it to the release. The binary embeds Node 22 (the
+  # runner's node) plus the bundled CLI + template tree, so it runs with no Node
+  # or npm on the user's machine.
+  build-binaries:
+    name: Build SEA binary (${{ matrix.target }})
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: win-x64
+            asset: bspecs-win-x64.exe
+          - os: macos-13          # Intel
+            target: macos-x64
+            asset: bspecs-macos-x64
+          - os: macos-14          # Apple Silicon
+            target: macos-arm64
+            asset: bspecs-macos-arm64
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --no-audit
+        shell: bash
+
+      - name: Build binary
+        run: npm run build:binary -- --out "build/${{ matrix.asset }}"
+        shell: bash
+
+      # Smoke: the binary must start AND report the tag version (validates the
+      # build-time version injection inside the real SEA, not just the dev path).
+      - name: Smoke-run binary
+        run: |
+          set -euo pipefail
+          BIN="build/${{ matrix.asset }}"
+          ACTUAL="$("./$BIN" -v)"
+          EXPECTED="${GITHUB_REF#refs/tags/v}"
+          if [ "$ACTUAL" != "$EXPECTED" ]; then
+            echo "::error::Binary version '$ACTUAL' does not match tag '$EXPECTED'"
+            exit 1
+          fi
+          "./$BIN" -h | head -1
+          echo "::notice::$BIN reports version $ACTUAL"
+        shell: bash
+
+      - name: Upload binary to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${GITHUB_REF#refs/tags/}" "build/${{ matrix.asset }}" --clobber
+        shell: bash

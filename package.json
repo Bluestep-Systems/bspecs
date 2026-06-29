@@ -12,10 +12,15 @@
     "templates/"
   ],
   "scripts": {
-    "start": "node cli.js"
+    "start": "node cli.js",
+    "build:binary": "node scripts/build-binary.mjs"
   },
   "dependencies": {
     "@clack/prompts": "^0.9.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "postject": "^1.0.0-alpha.6"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -1,11 +1,8 @@
 import { readFileSync, writeFileSync, existsSync, chmodSync } from 'fs';
 import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
 import { log } from '@clack/prompts';
-import { TEMPLATES_DIR, applyTemplate, writeFile, sha256, enumerateClaudeTargets } from './utils.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
+import { applyTemplate, writeFile, sha256, enumerateClaudeTargets, readTemplate, templateExists } from './utils.js';
+import { getVersion } from './version.js';
 
 // Files the scaffolder writes once but sync must NOT manage afterwards.
 // Empty today; add a templateSrc path (forward-slashed, e.g.
@@ -45,10 +42,9 @@ function syncFiles(projectRoot, lock, silent) {
   let skipped = 0;
 
   for (const target of SYNC_TARGETS) {
-    const templatePath = join(TEMPLATES_DIR, target.templateSrc);
-    if (!existsSync(templatePath)) continue;
+    if (!templateExists(target.templateSrc)) continue;
 
-    const newContent = applyTemplate(readFileSync(templatePath, 'utf8'), vars);
+    const newContent = applyTemplate(readTemplate(target.templateSrc), vars);
     const newHash = sha256(newContent);
     const destAbs = join(projectRoot, target.destRel);
     const lockHash = lock.files[target.destRel];
@@ -107,7 +103,7 @@ export async function sync({ silent = false } = {}) {
     const { updated, skipped, newFiles } = syncFiles(projectRoot, lock, silent);
 
     writeLock(projectRoot, {
-      bspecs_version: pkg.version,
+      bspecs_version: getVersion(),
       synced_at: new Date().toISOString().split('T')[0],
       vars: lock.vars || {},
       files: newFiles,
