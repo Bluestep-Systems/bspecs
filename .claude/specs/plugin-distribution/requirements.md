@@ -224,7 +224,8 @@ public-npm-no-token reality in `CLAUDE.md` / `package.json.template` — stale d
   skills coexist) vs actively deprecate/remove them on next sync. Risk of skill-name collisions.
 - **Sanitization track — DECIDED:** kept as the **first, gating phase inside this spec** (not split
   out). The content scrub must land before the plugin marketplace is published.
-- **Redact vs relocate for the 4 High business-content files** (`blueiq-credit-integration-playbook`,
-  `blueiq-no-ai-branding`, `crm-dashboard-inspo`, `dpn-dashboard-framework`). The first two have
-  little generic value (lean relocate/remove); the latter two carry a reusable pattern under the
-  business framing (relocate vs redact-to-generic is a judgment call).
+- **Redact vs relocate for the 4 High business-content files** (the two pure-IP product files +
+  the two dashboard files `crm-dashboard-inspo`, `dpn-dashboard-framework`; the literal names of the
+  product files are in the gitignored token file). The first two have little generic value (lean
+  relocate/remove); the latter two carry a reusable pattern under the business framing (relocate vs
+  redact-to-generic is a judgment call).

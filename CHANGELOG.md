@@ -128,7 +128,7 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   `static/index.html` are **completely disjoint**: `B.out` is injected as a tag that runs *after*
   index.html, so a mount or `<script type="application/json">` config island emitted from `B.out`
   can't be reached by the index.html client script (and `DOMContentLoaded` won't fix it). The
-  summitridge null-mount symptom is reframed accordingly — put the mount + config island in
+  null-mount symptom is reframed accordingly — put the mount + config island in
   `index.html` and fetch dynamic data from the endpoint, not a `B.out` island. Cross-linked
   `merge-report-urls.md` for the record-scoped-URL computation that legitimately belongs in `B.out`.
 - **Dropped the misleading "we inline styles.css via `B.net.fetch`" aside in
