@@ -1,7 +1,7 @@
 ---
 name: b6p-push
 description: Push local changes for a component back to the BlueStep platform. Use when the user is ready to deploy local edits.
-allowed-tools: Bash(b6p:*) Bash(git*) Bash(test -f *)
+allowed-tools: Bash(b6p:*) Bash(git:*) Bash(test -f *)
 ---
 
 # /b6p-push — Push a component to BlueStep
