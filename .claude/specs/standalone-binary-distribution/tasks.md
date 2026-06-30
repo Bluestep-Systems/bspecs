@@ -1,6 +1,9 @@
 # Tasks — standalone-binary-distribution
 
-**Status:** Drafting
+**Status:** Superseded — see [`plugin-distribution`](../plugin-distribution/). The standalone SEA
+binary and the two-delivery-paths plan are dropped in favor of a single Claude Code plugin; Part A's
+committed code was reverted there and Part B (the `{{B6P}}` profile) was never started. The `[x]`
+marks below reflect Part A as it was built before supersession — left as historical record.
 
 Each task references specific files and is sized for one `/spec-execute`. Ordered so dependents
 follow their prerequisites. Tasks are tagged `[CODE]` (implementable here) or `[PLATFORM]`

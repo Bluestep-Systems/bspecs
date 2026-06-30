@@ -1,6 +1,11 @@
 # ADR: npm-free delivery of bspecs scaffolding via the VSCode extension
 
-**Status:** Proposed — leaning accept, pending the update-process conversation.
+**Status:** Superseded by [`plugin-distribution.md`](plugin-distribution.md) (2026-06-30). The
+npm-free goal is met by distributing the tooling as a **Claude Code plugin via a public git
+marketplace** — not by folding scaffolding into the VSCode extension (this ADR's proposed route), nor
+by the standalone binary (its rejected "Single-executable build" alternative, which was briefly
+pursued then dropped). Kept for the rationale trail; the feasibility analysis below remains useful
+context (e.g. that the Claude Code host is already npm-free).
 
 **Date:** 2026-06-25
 

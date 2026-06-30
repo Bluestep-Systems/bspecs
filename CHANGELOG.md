@@ -6,6 +6,60 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [Unreleased] — plugin distribution
+
+> **Version-scheme note (needs a human call):** the npm package `@bluestep-systems/bspecs` is **no
+> longer published** — the tooling now ships as a Claude Code plugin (`plugin/.claude-plugin/plugin.json`
+> carries its own `version`, currently `0.1.0`). Whether to keep bumping the root `package.json`
+> version, retire it, or align it with the plugin manifest version is a maintainer decision. This entry
+> is filed under `[Unreleased]` and uses no semver heading until that is settled.
+
+### Changed
+
+- **Tooling migrated to a Claude Code plugin distributed via a public marketplace — the single
+  delivery path.** All shared `.claude/**` tooling (skills, subagents, hooks, the on-demand
+  instruction tree, and spec-templates) now lives in `plugin/`, distributed via the in-repo public
+  `bluestep` marketplace (`.claude-plugin/marketplace.json` at the repo root, `source: ./plugin`).
+  There is no per-project copy and no `bspecs sync`/`bspecs.lock`/`SessionStart` sync — updates are
+  native (`/plugin marketplace update` / `autoUpdate`). The instruction tree is re-homed as the
+  `bluestep-reference` skill (`index.md` → `SKILL.md`, atomic files as bundled resources), preserving
+  the on-demand-read pattern. The `/b6p-*` skills now call a bare `b6p` (the standalone b6p-cli
+  artifact on PATH) instead of `npx b6p`.
+
+### Added
+
+- **`/bluestep-init` plugin skill — the single project-bootstrap path.** Run inside Claude Code with
+  the plugin enabled, it writes the per-project files in-session (`CLAUDE.md`, `README.md`, a
+  `package.json` with **no** `b6p-cli` devDependency, `.gitignore`, `.prettierrc`, and a
+  plugin-enabling `.claude/settings.json`) from bundled root templates and guides `git init`. Replaces
+  the dormant CLI's scaffold step and works for everyone, including no-npm staff.
+- **ADR `docs/decisions/plugin-distribution.md`** — plugin as the single delivery path; the
+  templating-model change (substitution now lives only in `/bluestep-init`'s bundled root templates);
+  the npm CLI dropped-but-kept-dormant rationale; the public marketplace + managed-settings enforcement
+  model; and the supersession of both the SEA binary and the two-paths plan.
+- **ADR `docs/decisions/content-sanitization-for-public-tooling.md`** (category-level) — why
+  customer-derived working-memory does not belong in publicly distributed tooling, and the
+  audit-before-publish gate that now governs it.
+
+### Removed
+
+- **Standalone SEA binary dropped.** The Part A binary build is fully reverted: `sea-config.json`,
+  `scripts/build-binary.mjs`, `src/templates-embed.js`, `INSTALL.md`, the binary CI/build jobs, and
+  the SEA version-injection are gone. `src/version.js` reads `package.json` from disk again.
+- **npm publish dropped.** `.github/workflows/publish.yml` no longer publishes to npm; on a version
+  tag it now only cuts a GitHub Release. The npm CLI (`cli.js`/`src/*`) is **dropped as a supported
+  path but kept dormant** in the repo — it still loads (`node cli.js -v`/`-h`) but scaffolds nothing
+  (`templates/` is now empty).
+
+### Security
+
+- **Content sanitization (gating).** A pre-publication sensitivity audit found the instruction tree
+  carried customer-derived working-memory. The pure-IP files were relocated to a private store and the
+  provenance/business framing was redacted in place, keeping the generic platform technique in each.
+  Every committed artifact describes the removed content by **category only** (no literal customer
+  names, org subdomains, file IDs, employee names, domain terms, or business figures). See the
+  content-sanitization ADR.
+
 ## [0.15.0] — 2026-06-26
 
 ### Added

@@ -1,6 +1,8 @@
 # Requirements — standalone-binary-distribution
 
-**Status:** Drafting
+**Status:** Superseded — see [`plugin-distribution`](../plugin-distribution/). The standalone SEA
+binary and the two-delivery-paths plan are dropped in favor of a single Claude Code plugin; Part A's
+committed code was reverted there and Part B (the `{{B6P}}` profile) was never started.
 
 ## Context
 

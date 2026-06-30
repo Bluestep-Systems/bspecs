@@ -1,133 +1,68 @@
-# @bluestep-systems/bspecs
+# bluestep-tools
 
-CLI for scaffolding BlueStep projects with spec-driven development conventions for Claude Code.
+A **Claude Code plugin** that sets up BlueStep projects with spec-driven development conventions: skills, BlueStep subagents, guardrail hooks, and an on-demand platform reference.
 
 ## What it does
 
-`bspecs` generates a project directory ready to use with:
+The `bluestep-tools` plugin provides:
 
-- Claude Code skills (`/spec-create`, `/spec-execute`, `/b6p-pull`, `/b6p-push`, and more)
+- Claude Code skills — `/spec-create`, `/spec-execute`, `/spec-status`, `/b6p-pull`, `/b6p-push`, `/b6p-audit`, `/bug-fix`, `/task-comment`, `/bspecs-feedback`, and `/bluestep-init`
 - BlueStep subagents — `b6p-task-implementer` (isolated task execution; `/spec-execute` delegates to it), `b6p-commenter` (component README), `b6p-code-review` (report-only review)
-- Automatic hooks (prettier on save, generated-file blocking, `b6p` integration)
-- Instructions for Claude Code (the template tree is the single source of truth)
-- Spec templates (`requirements.md`, `design.md`, `tasks.md`)
-- The `b6p` CLI wired into each project as a devDependency, invoked via `npx b6p` (no global install or shell/PATH detection)
+- Guardrail hooks — prettier on save, generated-file blocking, `tsc` blocking
+- `bluestep-reference` — an on-demand platform/BsJs/RelateScript reference Claude reads as needed
+- Spec templates (`requirements.md`, `design.md`, `tasks.md`), bundled with `/spec-create`
 
 ## Installation
 
-`bspecs` and the `b6p` CLI it depends on are published to the **public npm registry**, so there is no
-token or `~/.npmrc` setup — install in one command:
+The plugin is distributed via the public `bluestep` **marketplace** — this repo doubles as the marketplace, so there is no npm, no token, and no `~/.npmrc` setup. From inside Claude Code:
 
-```sh
-npm install -g @bluestep-systems/bspecs
+```
+/plugin marketplace add Bluestep-Systems/bspecs
+/plugin install bluestep-tools@bluestep
 ```
 
-This installs the `bspecs` command. The `b6p` CLI is wired into each scaffolded project as a
-devDependency and invoked via `npx b6p` — the scaffolder installs it for you (re-run `npm install` in
-the project if you were offline).
+(Internal staff typically get the marketplace pre-registered and the plugin force-enabled via managed settings, so this step is automatic.)
 
-### Set your platform credentials (required, once per machine)
+Keep the tooling current with `/plugin marketplace update` (or `autoUpdate`).
 
-The npm install needs no token, but the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills will not
-work until you set your BlueStep platform credentials:
+### The `b6p` CLI (required for the `/b6p-*` skills)
+
+The `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills call a bare `b6p`. Install the standalone **b6p-cli** artifact separately so `b6p` is on your PATH — it is its own release, not an npm dependency of this plugin. Then set your platform credentials once per machine:
 
 ```sh
-npx -p @bluestep-systems/b6p-cli b6p auth set
+b6p auth set
 ```
 
-Run this **once per machine** — credentials are stored globally in `~/.b6p`, not per project. This is
-unrelated to the npm registry. (The `-p` form is required because `b6p` is a project-local
-devDependency; bare `npx b6p` resolves only inside a scaffolded project, where `npx b6p …` works.)
+Credentials are stored globally in `~/.b6p`, not per project.
+
+### prettier (required for the auto-format hook)
+
+The prettier-on-save hook needs `prettier` available in the project (the hook runs in WSL on Windows).
 
 ## Usage
 
-### Scaffold a new project
+### Bootstrap a project
 
-From the parent directory where you want to create the project:
-
-```sh
-bspecs new
-```
-
-The interactive wizard asks for the project name, client, and an optional description. When done, it generates the project directory with the full structure and (unless you opt out) runs `git init`.
-
-### Add the tooling to an existing project
-
-Already have a project and just want the Claude Code tooling? From inside that project's directory:
-
-```sh
-bspecs init
-```
-
-`bspecs init` installs the full tooling tree **in place** and is strictly non-destructive: any file that already exists is left untouched. The one exception is `package.json` — the `@bluestep-systems/b6p-cli` devDependency (and the `b6p` script) are merged in, preserving everything else. It then writes the `bspecs.lock` so `bspecs sync` works going forward. At the end it prints a report of every file it skipped because the name already existed; to install the `bspecs` version of any of them, rename or move your local copy and run `bspecs init` again. The client-name prompt is optional — press Enter to default to `BlueStep Client`. (No `git init` — an existing project owns its own VCS.)
-
-### Keep a project up to date
-
-When a new version of `bspecs` is published with improvements to skills, hooks, or instructions, update your global install and sync the project:
-
-```sh
-npm update -g @bluestep-systems/bspecs
-cd my-project
-bspecs sync
-```
-
-`bspecs sync` compares each infrastructure file against the state it was in when scaffolded. Files you have not modified locally are updated; files you have edited are left untouched with a warning. If you believe your local changes would be useful across all BlueStep projects, open an issue in this repo so they can be incorporated into the scaffolder.
-
-Projects scaffolded with `bspecs 0.5.0` or later run `bspecs sync` automatically every time Claude Code opens the workspace — no manual action needed.
-
-## Prerequisites
-
-- **Node.js 18+**
-- **`b6p` CLI** — required for the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills. Scaffolded
-  projects declare it as a devDependency (`@bluestep-systems/b6p-cli`, resolved from public npm with
-  no token); the scaffolder runs `npm install` for you (re-run it by hand if that failed) and the
-  skills invoke it via `npx b6p` — no global install, no shell/PATH detection. Set your platform
-  credentials once per machine with `npx b6p auth set` (see Installation).
-- **prettier** — required for the auto-format hook. `bspecs` warns if it is not found.
-
-## Generated structure
+With the plugin enabled, from the directory you want to set up:
 
 ```
-my-project/
-├── CLAUDE.md                          ← project instructions for Claude
-├── README.md                          ← project documentation
-├── .prettierrc
-├── .gitignore
-├── package.json                      ← declares the b6p-cli devDependency
-└── .claude/
-    ├── bspecs.lock                    ← lock file for bspecs sync
-    ├── settings.json                  ← Claude Code permissions and hooks
-    ├── hooks/                         ← 3 scripts executed by Claude Code
-    ├── skills/                        ← 9 skills (/spec-create, /b6p-pull, /bspecs-feedback, etc.)
-    ├── agents/                        ← 3 BlueStep subagents (implementer, commenter, reviewer)
-    ├── instructions/                  ← development rules for Claude
-    ├── spec-templates/                ← spec file templates
-    └── templates/                     ← component scaffolding templates
+/bluestep-init
 ```
+
+`/bluestep-init` writes the per-project files in-session — `CLAUDE.md`, `README.md`, a `package.json`, `.gitignore`, `.prettierrc`, and a plugin-enabling `.claude/settings.json` — then guides `git init`. The generated `package.json` carries **no** `b6p-cli` devDependency (`b6p` is a standalone artifact). Claude asks for the project and client values conversationally.
+
+> The first time a project's `.claude/settings.json` enables the plugin, Claude Code asks you to confirm the install on folder-trust — enablement is not silent. Confirm once and the skills/hooks are available.
+
+### The spec-driven workflow
+
+Once bootstrapped, drive features through `/spec-create` → `/spec-execute` → `/spec-status`, pull/push BlueStep components with the `/b6p-*` skills, and let the guardrail hooks keep the tree clean.
+
+## Distribution
+
+The plugin lives in `plugin/`; the repo-root `.claude-plugin/marketplace.json` lists it (`source: ./plugin`). There is **no npm publish and no binary build**. A GitHub Release is cut on each version tag (`vX.Y.Z`) by `.github/workflows/publish.yml`; `.github/workflows/ci.yml` runs smoke checks on every pull request and push to the default branch.
+
+The npm CLI that previously scaffolded these files (`cli.js`/`src/*`) is retained in the repo but **dormant** — unpublished and unsupported. See [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md) and [`docs/decisions/content-sanitization-for-public-tooling.md`](docs/decisions/content-sanitization-for-public-tooling.md).
 
 ## Proposing changes
 
-### Global changes (improvements for all projects)
-
-If you find something that should be improved in the skills, hooks, instructions, or templates — something useful across all BlueStep projects — open an issue or PR in this repo. Once merged and published as a new version, `bspecs sync` propagates the change to all existing projects automatically.
-
-### Local changes (specific to your project)
-
-If you need to adjust something only for your project (an extra permission in `settings.json`, a custom skill, changes to your `CLAUDE.md`), edit it directly in your repo. `bspecs sync` detects that those files were locally modified and leaves them untouched on future syncs.
-
-## Publishing
-
-The package is published to the **public npm registry** under the `@bluestep-systems` organization
-(`access: public`). Only `cli.js`, `src/`, and `templates/` are included in the published package.
-
-Releases are automated by GitHub Actions — there is no manual `npm publish`:
-
-1. Bump `version` in `package.json` and commit.
-2. Tag the commit `vX.Y.Z` (matching the new version) and push the tag.
-3. `.github/workflows/publish.yml` fires on the tag, verifies the tag matches `package.json`, runs the
-   smoke checks, and publishes with `npm publish --provenance --access public`.
-
-Publishing needs the `NPM_TOKEN` repo secret (an npm automation token with publish rights to
-`@bluestep-systems`); the version guard fails the run early if the tag and `package.json` disagree.
-`.github/workflows/ci.yml` runs the same smoke checks on every pull request and push to the default
-branch.
+Found something that should improve across all BlueStep projects — a skill, hook, reference rule, or subagent? Use the `/bspecs-feedback` skill (or open an issue/PR in this repo). Once merged and released, `/plugin marketplace update` propagates it.

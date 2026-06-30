@@ -1,6 +1,6 @@
 # Tasks — plugin-distribution
 
-**Status:** Drafting
+**Status:** Complete
 
 Phased per the design: **sanitize → build the plugin → shrink the scaffolder → revert Part A →
 docs/ADRs.** Each task is one `/spec-execute`. The concrete sensitive file list + grep token set
@@ -82,23 +82,23 @@ referenced by Phase 0 live in the gitignored `sanitization-tokens.local.md` (nev
 
 ## Phase 3 — Supersession
 
-- [ ] **13.** [CODE] Mark `standalone-binary-distribution` **Superseded** (Status line + a pointer to
+- [x] **13.** [CODE] Mark `standalone-binary-distribution` **Superseded** (Status line + a pointer to
   this spec) across its three files. — files: `.claude/specs/standalone-binary-distribution/{requirements,design,tasks}.md`.
 
 ## Phase 4 — Docs & ADRs
 
-- [ ] **14.** [CODE] ADR `docs/decisions/plugin-distribution.md` — plugin as the **single** delivery
+- [x] **14.** [CODE] ADR `docs/decisions/plugin-distribution.md` — plugin as the **single** delivery
   path; the templating-model change (templating now lives only in `/bluestep-init`'s bundled root
   templates); the npm CLI **dropped-but-kept-dormant** rationale; public marketplace +
   managed-settings enforcement; cross-IDE portable-by-default; and the supersession of both the
   binary and the two-paths plan. Amend `npm-free-scaffolding-via-vscode-extension.md` and
   `b6p-cli-distribution.md` to cross-reference. — files: new `docs/decisions/plugin-distribution.md`,
   `docs/decisions/npm-free-scaffolding-via-vscode-extension.md`, `docs/decisions/b6p-cli-distribution.md`.
-- [ ] **15.** [CODE] ADR `docs/decisions/content-sanitization-for-public-tooling.md` — **category-level
+- [x] **15.** [CODE] ADR `docs/decisions/content-sanitization-for-public-tooling.md` — **category-level
   only** (no literal names/IDs): why customer-derived working-memory does not belong in publicly
   distributed tooling, and the audit-before-publish gate that now governs it. — files: new
   `docs/decisions/content-sanitization-for-public-tooling.md`.
-- [ ] **16.** [CODE] Sync the working docs + final cleanup: update `CLAUDE.md` (plugin-only model,
+- [x] **16.** [CODE] Sync the working docs + final cleanup: update `CLAUDE.md` (plugin-only model,
   `/bluestep-init` bootstrap, the dormant/unpublished CLI, no sync, the two ADRs), the root
   `README.md` (plugin-only onboarding: add marketplace → install → `/bluestep-init`; drop the stale
   `GITHUB_TOKEN`/`~/.npmrc` doc), `TODO.md` (tick the npm-free item #17; reconcile the
