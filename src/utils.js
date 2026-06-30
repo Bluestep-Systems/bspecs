@@ -21,8 +21,14 @@ export function writeFile(path, content) {
   writeFileSync(path, content, 'utf8');
 }
 
+// Read one template by its TEMPLATES_DIR-relative path (from disk).
 export function readTemplate(relativePath) {
   return readFileSync(join(TEMPLATES_DIR, relativePath), 'utf8');
+}
+
+// Whether a template exists on disk.
+export function templateExists(relativePath) {
+  return existsSync(join(TEMPLATES_DIR, relativePath));
 }
 
 // Extra opts (all default off, so plain calls overwrite everything as before):
@@ -37,9 +43,10 @@ export function copyTemplateTree(srcRel, destAbs, vars, opts = {}) {
     collect = null,
     exclude = [],
   } = opts;
+  const skip = new Set(exclude);
+
   const srcAbs = join(TEMPLATES_DIR, srcRel);
   if (!existsSync(srcAbs)) return;
-  const skip = new Set(exclude);
   walk(srcAbs, srcAbs, destAbs, vars, { makeExecutable, stripTemplateExt, skipExisting, collect, skip });
 }
 
@@ -86,9 +93,9 @@ function walk(rootSrc, src, dest, vars, opts) {
 // .github mirror target is emitted. `exclude` lists templateSrc paths to skip —
 // the escape hatch for any future scaffold-once file under claude/.
 export function enumerateClaudeTargets(exclude = []) {
+  const skip = new Set(exclude);
   const root = join(TEMPLATES_DIR, 'claude');
   if (!existsSync(root)) return [];
-  const skip = new Set(exclude);
   const targets = [];
   walkClaude(root, 'claude', skip, targets);
   return targets;

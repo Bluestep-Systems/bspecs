@@ -10,6 +10,12 @@ workaround (Option E). This ADR is now historical — kept for the rationale tra
 > [`install-friction-and-registry.md`](install-friction-and-registry.md) (status: Accepted,
 > Option 2) for the full decision.
 
+> **Plugin-distribution update (2026-06-30):** bspecs's scaffolded tooling is now distributed as a
+> Claude Code plugin (see [`plugin-distribution.md`](plugin-distribution.md)). The `/b6p-*` skills no
+> longer call `npx b6p` — they call a bare `b6p`, expected to be the **standalone b6p-cli artifact**
+> on PATH (installed separately). The npm-devDependency model described in this ADR's "Cleanup" section
+> is retired along with the bspecs npm CLI path.
+
 **Date:** 2026-05-21 (updated 2026-06-19)
 
 ## Update — 2026-06-19 (publish chain shipped)

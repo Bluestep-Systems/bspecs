@@ -1,14 +1,9 @@
 #!/usr/bin/env node
 import { intro, outro, cancel, log } from '@clack/prompts';
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
 import { runPrompts, runInitPrompts } from './src/prompts.js';
 import { scaffold, init } from './src/scaffold.js';
 import { sync } from './src/sync.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
+import { getVersion } from './src/version.js';
 
 const HELP = `bspecs — spec-driven BlueStep development with AI agents
 
@@ -45,7 +40,7 @@ async function main() {
   const { mode, silent } = parseArgs(process.argv.slice(2));
 
   if (mode === 'version') {
-    console.log(pkg.version);
+    console.log(getVersion());
     return;
   }
   if (mode === 'help') {

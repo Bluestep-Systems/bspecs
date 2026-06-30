@@ -1,64 +1,58 @@
-# bspecs — scaffolder for spec-driven BlueStep projects
+# bspecs — BlueStep tooling for spec-driven development
 
-`@bluestep-systems/bspecs` is an interactive CLI (`bspecs`) that sets up BlueStep projects with Claude Code skills, hooks, and conventions for spec-driven development. It has three verbs: `bspecs new` scaffolds a brand-new project in a subdirectory, `bspecs init` installs the tooling into the **current** directory non-destructively (skips any file that already exists; merges the b6p-cli devDependency into an existing `package.json`), and `bspecs sync` updates infrastructure files in an already-set-up project. Bare `bspecs` prints help. Scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency and reach the `b6p` binary via `npx b6p`, which resolves the project's local `node_modules/.bin/b6p` — no global install and no shell/PATH detection.
+This repo ships **`bluestep-tools`**, a **Claude Code plugin** that sets up BlueStep projects with skills, subagents, hooks, an on-demand platform reference, and spec-driven conventions. The plugin is the **single delivery path**: it is distributed via the in-repo public `bluestep` **marketplace** (a plain git repo — no npm, no binary, no build step), and bootstrapping a new project is the plugin's own `/bluestep-init` skill. See `docs/decisions/plugin-distribution.md`.
+
+The old npm CLI (`bspecs new`/`init`/`sync`, `cli.js`/`src/*`) is **dormant**: unpublished, unsupported, kept in the repo as a frozen fallback. It still loads (`node cli.js -v`/`-h`) but scaffolds nothing — `templates/` is now empty because all tooling moved into `plugin/`.
 
 ## Architecture
 
 ```text
-cli.js                    ← entry point, arg parsing
-src/
-  prompts.js              ← @clack/prompts interactive wizard (4 questions)
-  scaffold.js             ← file generation, prettier pre-flight, install step, git init
-  utils.js                ← template engine ({{VAR}} substitution), fs helpers
-templates/
-  root/                   → project root files (CLAUDE.md, .gitignore, .prettierrc, README)
-  claude/                 → .claude/ tree (settings, skills, agents, hooks, instructions, spec-templates)
-  module/                 → .claude/templates/ (per-component scaffolding)
+.claude-plugin/
+  marketplace.json        ← repo-root marketplace ("bluestep"), lists the plugin (source: ./plugin)
+plugin/
+  .claude-plugin/
+    plugin.json           ← plugin manifest (name "bluestep-tools", version)
+  skills/                 ← /b6p-pull, /b6p-push, /b6p-audit, /spec-create, /spec-execute,
+                            /spec-status, /bug-fix, /task-comment, /bspecs-feedback, /bluestep-init,
+                            and bluestep-reference (the on-demand platform reference)
+  agents/                 ← three subagents (b6p-task-implementer, b6p-commenter, b6p-code-review)
+  hooks/                  ← hooks.json + three scripts (block-generated-files, block-tsc, prettier-on-save)
+cli.js, src/              ← DORMANT npm CLI (frozen fallback; loads but scaffolds nothing)
+templates/                ← empty (all tooling migrated into plugin/)
 ```
 
-`scaffold()` calls `copyTemplateTree()` three times (root, claude, module). Claude-only: no GitHub Copilot mirror is generated — the template tree → `.claude/` is the single source of truth. See `docs/decisions/instruction-tree-and-claude-only.md`.
-
-Template variables: `PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `SCAFFOLD_DATE`. Applied via `{{VAR}}` substitution in `utils.applyTemplate()`. Files ending in `.template` have that extension stripped on copy. `PROJECT_DESCRIPTION` is optional (the wizard allows an empty value).
+Plugins serve content **verbatim** — there is no `{{VAR}}` templating in the plugin tree. The only per-project files that need value substitution (a project `CLAUDE.md`, `README.md`, `package.json`) are bundled with the `/bluestep-init` skill and filled in conversationally by Claude. See `docs/decisions/plugin-distribution.md`.
 
 ## Key behaviors
 
-**b6p invocation (`npx b6p`)**: scaffolded projects declare `@bluestep-systems/b6p-cli` as a devDependency (`templates/root/package.json.template`), resolved anonymously from public npm — no scope-mapped `.npmrc` and no token. The `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills invoke `npx b6p`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection, no `.claude/b6p-env.json`. The scaffolder runs `npm install` **best-effort** (`scaffold.js:installDependencies`): it attempts the install so `node_modules/.bin/b6p` exists for `npx b6p`, but falls back to printing a manual `npm install` reminder if it fails. Failure is expected when the machine is offline — so auto-install is never assumed to succeed and never fails the scaffold. (`npx b6p` still needs platform credentials set once per machine via `npx b6p auth set` — unrelated to npm.) See `docs/decisions/b6p-cli-distribution.md` and `docs/decisions/install-friction-and-registry.md`.
+**`/bluestep-init` (project bootstrap)**: the single bootstrap path. Run inside Claude Code with the plugin enabled, it writes the per-project files in-session — `CLAUDE.md`, `README.md`, a `package.json` (with **no** `@bluestep-systems/b6p-cli` devDependency — `b6p` is a standalone artifact, not an npm dep), `.gitignore`, `.prettierrc`, and a plugin-enabling `.claude/settings.json` (permissions + `extraKnownMarketplaces` for the `bluestep` marketplace + `enabledPlugins: ["bluestep-tools@bluestep"]`; **no** hooks block and **no** `SessionStart` sync — hooks come from the plugin) — then guides `git init`. Bundled root templates live in `plugin/skills/bluestep-init/templates/`. This replaces the dormant CLI's scaffold step and works for everyone, including no-npm staff. `plugin/skills/bluestep-init/SKILL.md`.
 
-**prettier detection** (`scaffold.js:checkPrettierOnPath`): a self-contained best-effort probe (`command -v prettier`, plus WSL on Windows since the prettier-on-save hook runs in WSL) that only warns — it writes nothing. Independent of b6p.
+**b6p invocation (bare `b6p`)**: the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills call a bare `b6p`. `b6p` reaches the machine as the standalone **b6p-cli** artifact (installed separately, on PATH independently of bspecs) — no `npx b6p`, no project-local devDependency, no global npm install. This is a tracked cross-repo dependency. See `docs/decisions/b6p-cli-distribution.md`.
 
-**`SYNC_TARGETS` (dynamic)**: `src/sync.js` derives the synced-file list by walking `templates/claude/**` via `enumerateClaudeTargets(SYNC_EXCLUDE)` (`src/utils.js`) — one `.claude/**` target per file, with a trailing `.template` stripped (same transform as `copyTemplateTree`). Add a skill, agent, hook, or instruction file and `bspecs sync` / `bspecs.lock` pick it up automatically; there is no hardcoded list. `SYNC_EXCLUDE` (empty today) opts a scaffold-once file out of sync. See `docs/decisions/instruction-tree-and-claude-only.md`.
+**`bluestep-reference` skill (on-demand platform reference)**: the former on-demand `instructions/` tree, re-homed as a plugin skill. Its `SKILL.md` is the former `index.md` manifest; the two Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`) and the atomic single-topic files under `reference/`, `conventions/`, `gotchas/` are bundled resources Claude resolves relatively and reads on demand. The on-demand-read pattern (no `@`-imports) of `docs/decisions/instruction-tree-and-claude-only.md` is preserved; only the entry point moved from `.claude/instructions/index.md` to a skill. Skills/agents reference the bundled paths rather than restating platform rules (no-duplication invariant).
 
-**Delegated `/spec-execute` (default)**: the scaffolded `/spec-execute` skill implements a `[CODE]` task by delegating to the `b6p-task-implementer` subagent, which reads declarations/source and the relevant `instructions/` in its own context and returns a summary — keeping that bulk out of the main session. The approval gate stays in the main session (review the diff, mark `[x]`, STOP). `--inline` implements in-session for trivial tasks. The `b6p-commenter` and `b6p-code-review` subagents are on-demand only (suggested at the STOP, never auto-fired). See `docs/decisions/subagents-and-delegated-execution.md`.
+**Delegated `/spec-execute` (default)**: `/spec-execute` implements a `[CODE]` task by delegating to the `b6p-task-implementer` subagent, which reads declarations/source and the relevant `bluestep-reference` content in its own context and returns a summary — keeping that bulk out of the main session. The approval gate stays in the main session (review the diff, mark `[x]`, STOP). `--inline` implements in-session for trivial tasks. The `b6p-commenter` and `b6p-code-review` subagents are on-demand only (suggested at the STOP, never auto-fired). See `docs/decisions/subagents-and-delegated-execution.md`.
 
-## What gets scaffolded into every project
+**Hooks**: `plugin/hooks/hooks.json` wires the three scripts (block-generated-files, block-tsc, prettier-on-save), referenced via `${CLAUDE_PLUGIN_ROOT}`. They run in WSL and must use the WSL-native toolchain. Hooks ship with the plugin, so an enabled plugin gets them automatically — no per-project hooks block.
 
-- `CLAUDE.md`, `.prettierrc`, `.gitignore`, `README.md`, `package.json` (from `templates/root/`) — `package.json` declares the `b6p-cli` devDependency, resolved from public npm so `npm install` / `npx b6p` work with no token (no scaffolded `.npmrc`)
-- `.claude/settings.json` — permissions + hooks (block-generated-files, block-tsc, prettier-on-save)
-- `.claude/skills/` — `b6p-audit`, `b6p-pull`, `b6p-push`, `bspecs-feedback`, `bug-fix`, `spec-create`, `spec-execute`, `spec-status`, `task-comment`
-- `.claude/agents/` — three BlueStep subagents: `b6p-task-implementer` (implements one spec task in an isolated context; `/spec-execute` delegates to it), `b6p-commenter` (fills in a component `draft/README.md`), `b6p-code-review` (BlueStep-aware, report-only review)
-- `.claude/hooks/` — three shell scripts (run in WSL; must use WSL-native toolchain)
-- `.claude/instructions/` — Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`), the `index.md` manifest, and atomic single-topic files under `reference/`, `conventions/`, `gotchas/` (read on demand, not `@`-imported). No `.github/` Copilot mirror.
-- `.claude/spec-templates/` — `requirements.template.md`, `design.template.md`, `tasks.template.md`
-- `.claude/templates/` — per-component scaffolding (module README template)
+## Editing the plugin
 
-## Editing templates
-
-- Skills live in `templates/claude/skills/<name>/SKILL.md` — no vars, plain markdown.
-- Subagents live in `templates/claude/agents/<name>.md` — plain markdown like skills (no vars), with `name`/`description`/`tools` frontmatter. They reference the `instructions/` tree on demand rather than restating platform rules, to preserve the no-duplication invariant. See `docs/decisions/subagents-and-delegated-execution.md`.
-- Instruction files live in `templates/claude/instructions/` — the two overviews plus `index.md` and the `reference/`/`conventions/`/`gotchas/` subfolders, all `*.md.template` (support `{{VAR}}`). Claude-only: no `.github/` mirror. When adding a file under a subfolder, add a matching one-line entry to `index.md.template` (it links one hop to every file).
-- `templates/claude/settings.json.template` controls hooks and permissions for generated projects.
-- Hook scripts are in `templates/claude/hooks/*.sh` — marked executable on copy (no-op on Windows).
+- Skills live in `plugin/skills/<name>/SKILL.md` — verbatim markdown (no vars). A skill that bundles resources (e.g. `spec-create` bundles `spec-templates/`, `bluestep-init` bundles root templates, `b6p-commenter`'s README template) references them via `${CLAUDE_PLUGIN_ROOT}`.
+- Subagents live in `plugin/agents/<name>.md` — plain markdown with `name`/`description`/`tools` frontmatter. They reference the `bluestep-reference` skill's bundled files on demand rather than restating platform rules. See `docs/decisions/subagents-and-delegated-execution.md`.
+- The platform reference lives in `plugin/skills/bluestep-reference/` — `SKILL.md` (the manifest), the two overviews, and the `reference/`/`conventions/`/`gotchas/` subfolders. When adding a topic file, add a matching one-line entry to `SKILL.md` (it links one hop to every file). **Every committed reference file is category-level only** — no literal customer names, org subdomains, file IDs, employee names, domain/sector terms, or business figures. See `docs/decisions/content-sanitization-for-public-tooling.md`.
+- Hook scripts are in `plugin/hooks/*.sh`.
+- The plugin manifest is `plugin/.claude-plugin/plugin.json`; the marketplace manifest is the repo-root `.claude-plugin/marketplace.json`.
 
 ## Running / testing
 
+No test suite. Manual testing of the plugin: add the in-repo marketplace and install the plugin into a scratch project, then confirm `/bluestep-tools:*` skills appear, the three hooks fire on Edit/Write/Bash, and the `bluestep-reference` skill serves reference files on demand. Bootstrap: in a scratch dir with the plugin enabled, run `/bluestep-init` and verify it writes the root files + a plugin-enabling `.claude/settings.json` (no hooks block, no sync) and guides `git init`; the generated `package.json` has no `b6p-cli` devDependency.
+
 ```bash
-node cli.js new      # scaffold a new project in a subdirectory (interactive)
-node cli.js init     # install tooling into the CURRENT directory (non-destructive)
-node cli.js -v       # print version
-node cli.js -h       # print help
+node cli.js -v       # dormant CLI still loads (prints version)
+node cli.js -h       # dormant CLI still loads (prints help)
 ```
 
-Bare `node cli.js` (no recognized verb) prints help. No test suite. Manual testing: run `node cli.js new` (or `init` in a scratch dir) and verify the generated tree.
+The dormant CLI no longer produces a complete project (its tooling now lives in the plugin) — expected.
 
 ## Working on tasks
 
@@ -66,8 +60,8 @@ Before substantive changes (implement / add / fix / refactor), skim `TODO.md` (o
 
 When a task is done and the user confirms, propose a commit message (title + body) based on the diff. Do not run `git commit` unless the user says so.
 
-## Publishing
+## Distribution
 
-Package name `@bluestep-systems/bspecs`, published to the **public npm registry** (`access: public`, no token to install). Repo: `github.com/Bluestep-Systems/bspecs`. Only `cli.js`, `src/`, and `templates/` are included in the published package. `@bluestep-systems/b6p-cli` is **not** a dependency of bspecs itself — it is a devDependency of *scaffolded* projects (`templates/root/package.json.template`), also resolved from public npm.
+The plugin is distributed via the public `bluestep` marketplace (this repo doubles as the marketplace — `.claude-plugin/marketplace.json` at the root, `source: ./plugin`). Repo: `github.com/Bluestep-Systems/bspecs`. **There is no npm publish.** Installation is `/plugin marketplace add Bluestep-Systems/bspecs` → `/plugin install bluestep-tools@bluestep` → `/bluestep-init`; updates are `/plugin marketplace update` / `autoUpdate`. Admin enforcement uses managed settings (`extraKnownMarketplaces` + `enabledPlugins` + `strictKnownMarketplaces`), which also defends against lookalike marketplaces.
 
-Releases are automated, not hand-published: bump `version`, push a `vX.Y.Z` tag, and `.github/workflows/publish.yml` runs the version guard + smoke checks and publishes with `npm publish --provenance --access public` using the `NPM_TOKEN` repo secret. `.github/workflows/ci.yml` runs the smoke checks on every PR / push to the default branch. See `docs/decisions/install-friction-and-registry.md` and `docs/decisions/b6p-cli-distribution.md`.
+A **Release** is cut on a version tag: bump the plugin manifest version, push a `vX.Y.Z` tag, and `.github/workflows/publish.yml` creates a GitHub Release for the tag (`gh release create`). No `npm publish`, no binary build. `.github/workflows/ci.yml` runs smoke checks on every PR / push to the default branch. See `docs/decisions/plugin-distribution.md`.

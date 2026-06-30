@@ -1,0 +1,47 @@
+# {{CLIENT_NAME}} — {{PROJECT_NAME}}
+
+{{PROJECT_DESCRIPTION}}
+
+## Layout
+
+A project is a collection of B6P components, organised by Unit. `b6p pull "<DAV URL>"` creates the `U######/` folder and the component skeleton on first pull — you do not create Unit folders by hand. A single project commonly spans multiple Unit folders, and each Unit folder holds components of different types (Endpoint, MergeReport, Formula, etc.).
+
+## Tooling
+
+The skills, subagents, hooks, and BlueStep reference for this project come from the **`bluestep-tools` Claude Code plugin**, not from files in this repo. `.claude/settings.json` registers the `bluestep` marketplace and enables the plugin; Claude Code prompts to install it the first time you open the project (or run `claude plugin install bluestep-tools@bluestep`).
+
+The `b6p` CLI is a **standalone binary** installed separately on the machine — not an npm dependency of this project. The b6p skills (`/b6p-pull`, `/b6p-push`, `/b6p-audit`) invoke it as bare `b6p`. If `b6p` is not on PATH, install the b6p-cli binary from its release.
+
+### Configure platform credentials (one-time)
+
+Set your BlueStep platform credentials once per machine:
+
+```bash
+b6p auth set
+```
+
+Without this, the first `b6p pull` will prompt for credentials interactively, which Claude Code cannot answer — the call will hang. Run `auth set` before invoking `/b6p-pull`.
+
+The DAV URL passed to `b6p pull` is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
+
+## Daily workflow
+
+1. **Pull a component:** `/b6p-pull <DAV URL>` (Claude skill — also scaffolds `draft/README.md` from metadata + code when missing) or `b6p pull "<DAV URL>"`. The Unit folder is created automatically if it does not exist yet.
+2. **Read the component's `draft/README.md`** before editing.
+3. **Edit code** under `U######/<component>/draft/scripts/` — never `declarations/`.
+4. **Push back:** `/b6p-push <component>` (Claude skill) or `b6p push --file "U######/<component>/draft/scripts/app.ts"`.
+
+## New feature workflow
+
+Use Claude skills for spec-driven development:
+
+- `/spec-create <feature>` — generate requirements/design/tasks with approval gates.
+- `/spec-execute <feature> <task#>` — implement one task.
+- `/spec-status` — see progress.
+- `/bug-fix` — shorter workflow for bug fixes.
+
+## Configuration
+
+- `CLAUDE.md` — main Claude context (critical rules, workspace model, API summary).
+- `.claude/settings.json` — permissions + the `bluestep-tools` plugin enablement.
+- Deep platform/BsJs reference, skills, subagents, and hooks all come from the `bluestep-tools` plugin (see Tooling above).

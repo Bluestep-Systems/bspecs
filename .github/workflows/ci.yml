@@ -63,6 +63,9 @@ jobs:
       - name: Smoke-run CLI (help)
         run: node cli.js -h
 
-      # Scaffold a scratch project end-to-end and verify its layout.
-      - name: Smoke-run scaffold
-        run: node test-scaffold.mjs
+      # Plugin distribution: the marketplace + plugin manifests must be valid JSON.
+      - name: Validate plugin manifests
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('.claude-plugin/marketplace.json','utf8')); console.log('marketplace.json OK')"
+          node -e "JSON.parse(require('fs').readFileSync('plugin/.claude-plugin/plugin.json','utf8')); console.log('plugin.json OK')"
+        shell: bash

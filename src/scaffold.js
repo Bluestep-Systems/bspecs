@@ -1,25 +1,21 @@
 import { execSync } from 'child_process';
-import { join, dirname, basename, relative } from 'path';
-import { fileURLToPath } from 'url';
+import { join, basename, relative } from 'path';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { log } from '@clack/prompts';
-import { ensureDir, copyTemplateTree, applyTemplate, writeFile, mergePackageJson, TEMPLATES_DIR, sha256 } from './utils.js';
+import { ensureDir, copyTemplateTree, applyTemplate, writeFile, mergePackageJson, readTemplate, templateExists, sha256 } from './utils.js';
+import { getVersion } from './version.js';
 import { SYNC_TARGETS } from './sync.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'));
 
 function writeBspecsLock(projectDir, vars) {
   const files = {};
   for (const target of SYNC_TARGETS) {
-    const templatePath = join(TEMPLATES_DIR, target.templateSrc);
-    if (!existsSync(templatePath)) continue;
-    const rendered = applyTemplate(readFileSync(templatePath, 'utf8'), vars);
+    if (!templateExists(target.templateSrc)) continue;
+    const rendered = applyTemplate(readTemplate(target.templateSrc), vars);
     files[target.destRel] = sha256(rendered);
   }
 
   const lock = {
-    bspecs_version: pkg.version,
+    bspecs_version: getVersion(),
     synced_at: new Date().toISOString().split('T')[0],
     vars: {
       PROJECT_NAME: vars.PROJECT_NAME,
@@ -166,10 +162,7 @@ function reportInstall(projectDir, collect, pkgStatus) {
 // soft on malformed JSON). Returns 'written' | 'merged' | 'unchanged' | 'merge-failed'.
 function handlePackageJson(projectDir, vars, collect) {
   const dest = join(projectDir, 'package.json');
-  const rendered = applyTemplate(
-    readFileSync(join(TEMPLATES_DIR, 'root', 'package.json.template'), 'utf8'),
-    vars
-  );
+  const rendered = applyTemplate(readTemplate('root/package.json.template'), vars);
 
   if (!existsSync(dest)) {
     writeFile(dest, rendered);

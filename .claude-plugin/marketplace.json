@@ -1,0 +1,14 @@
+{
+  "name": "bluestep",
+  "owner": {
+    "name": "BlueStep Systems"
+  },
+  "description": "BlueStep platform tooling for Claude Code — spec-driven development skills, b6p CLI integration, subagents, hooks, and an on-demand platform reference.",
+  "plugins": [
+    {
+      "name": "bluestep-tools",
+      "source": "./plugin",
+      "description": "Spec-driven BlueStep (B6P) development: /b6p-* platform CLI skills, the /spec-* workflow, BlueStep subagents, guardrail hooks, and an on-demand platform reference."
+    }
+  ]
+}
