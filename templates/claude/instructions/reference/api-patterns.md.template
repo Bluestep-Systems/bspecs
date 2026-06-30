@@ -220,12 +220,12 @@ Access forms and fields by direct property (the FID string). `byFID['...']` is u
 ```typescript
 // ✅ Correct - direct property access
 entry.fields.title.val()
-client.forms.medicalTasks
+client.forms.tasks
 const value = record.forms.formName.fields.fieldName.opt().orElse('default');
 
 // ❌ Wrong - byFID is unnecessary at runtime
 entry.fields.byFID['title'].val()
-client.forms.byFID['medicalTasks']
+client.forms.byFID['tasks']
 ```
 
 ### Linking to a record — `summaryUrl()`
@@ -233,9 +233,9 @@ client.forms.byFID['medicalTasks']
 There is no universal `/records/{id}` route. Use `record.summaryUrl()` for the relative URL to any record's page.
 
 ```typescript
-const url = client.summaryUrl(); // e.g. "/rop/connect/..."
+const url = client.summaryUrl(); // e.g. "/<org>/connect/..."
 // ❌ Wrong - no such universal route
-const url = `/rop/records/${clientId}`;
+const url = `/<org>/records/${clientId}`;
 ```
 
 ### Record lookup by ID — use the `sysId` field, not `id().shortId()`
@@ -252,7 +252,7 @@ const clientId = (name as any).fields.sysId.val();
 const clientId = client.id().shortId();
 ```
 
-<!-- CONFLICT: client-ID field key — 01-Platform-Reference states the field key is `sysId` (not `systemID`/`systemId`) and that `id().shortId()` does NOT resolve with optById; Brandon's bluestep-knowledge merge-report examples read `name.fields.systemID.val()`. This may be form/org-specific (the field key depends on the form's schema). Needs human confirmation of the canonical key. -->
+<!-- CONFLICT: client-ID field key — one reference states the field key is `sysId` (not `systemID`/`systemId`) and that `id().shortId()` does NOT resolve with optById; some merge-report examples read `name.fields.systemID.val()`. This may be form/org-specific (the field key depends on the form's schema). Needs human confirmation of the canonical key. -->
 
 ## Multi-Entry Form (MEF) Entries
 
@@ -260,18 +260,18 @@ const clientId = client.id().shortId();
 
 ```typescript
 // Create a new entry — newEntry() is on the form
-const entry = client.forms.medicalTasks.newEntry();
+const entry = client.forms.tasks.newEntry();
 entry.fields.title.val('Task title');
 entry.fields.status.val(false);
-// ❌ Wrong - client.forms.medicalTasks.mefReports.newEntry();
+// ❌ Wrong - client.forms.tasks.mefReports.newEntry();
 
 // Find a specific entry by ID — iterate the pre-loaded entries
 let foundEntry: any = null;
-for (const e of client.forms.medicalTasks) {
+for (const e of client.forms.tasks) {
   if (e.id().shortId() === entryId) { foundEntry = e; break; }
 }
 // ❌ Wrong - mefReports is undefined at runtime
-// client.forms.medicalTasks.mefReports.allEntries.query().optById(entryId);
+// client.forms.tasks.mefReports.allEntries.query().optById(entryId);
 ```
 
 - **Entry IDs:** use `entry.id().shortId()` to get the string ID for serialization or comparison — it matches when iterating.
@@ -327,7 +327,7 @@ Older modules registered queries by hand in `objects/imports.ts` with `.require(
   const forms = B.queries.byFID['topLevelUnit'].require().forms;
   forms.byFID['unitInformation'].require({fields: ['unitName']});
   // writable was an option INSIDE require(), never a chained .writable():
-  forms.byFID['medicalTasks'].mefReports.allEntries.require({fields: ['title','status'], writable: true});
+  forms.byFID['tasks'].mefReports.allEntries.require({fields: ['title','status'], writable: true});
 }
 ```
 

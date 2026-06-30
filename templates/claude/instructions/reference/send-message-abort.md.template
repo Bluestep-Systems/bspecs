@@ -9,7 +9,7 @@ B.net.sendMessage(message: string | Java.Throwable, abort?: boolean): void
 
 Per the docstring, `abort=true` rolls back the entire transaction; the message is supposed to display in red at the top of the page, contingent on returning the user to "the edit screen" — i.e. the message-rendering path is coupled to the standard Relate edit return.
 
-## Pre-delete limitation (confirmed, summitridge/1470679)
+## Pre-delete limitation (confirmed)
 
 For **pre-delete formulas**, the abort works (DB transaction rolls back, deletion is prevented) but **the message never surfaces in the UI**. Tested all three patterns:
 
@@ -32,6 +32,6 @@ Don't rely on the abort message. Instead, show the relevant info (e.g. linked re
 
 ## What works elsewhere
 
-- **Pre-save (form-attached post-save)** — `throw msg` aborts AND logs the message as a `PolyglotException` (we saw the multi-select error in `applyRoleToStaff` log this way).
+- **Pre-save (form-attached post-save)** — `throw msg` aborts AND logs the message as a `PolyglotException` (e.g. a multi-select error in a role-propagation formula logs this way).
 - **Endpoints / OnDemand / Scheduled** — full UI control, including HTTP responses.
 - **Linking specific forms in HTML messages** — `formEntry.editUrl()` (inherited from `BaseObject`) returns a relative URL to edit that form.

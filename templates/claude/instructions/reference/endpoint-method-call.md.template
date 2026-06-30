@@ -7,4 +7,4 @@ If you write `B.net.request.method` (no parens), TypeScript happily lets it thro
 
 Same pattern likely applies to other `request.*` accessors that look property-shaped — check the .d.ts before assuming.
 
-Confirmed live on alpineacademy `/b/greatHair` endpoint, May 2026.
+Confirmed live on a `/b/<alias>` endpoint.

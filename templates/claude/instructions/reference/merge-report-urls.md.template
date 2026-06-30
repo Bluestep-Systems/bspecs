@@ -47,13 +47,13 @@ Also: `applicableBsJsMergeReportResults(...)` returns `{results, message}` for e
 - `B.siteNavigation()` returns `SiteNavItem` (pages) — **does NOT** have `optLookupMergeReport`. The `optLookup*MergeReport` methods are on `RecordNavItem`, obtainable via `record.nav()`, but `record.nav()` is documented as expensive (30+ sec on uncached orgs). Prefer `B.find.mergeReport` or `optApplicableBsJsMergeReport`.
 - `B.find.mergeReport(id, 'js')` does NOT filter by record applicability — it's an id lookup. Only `optApplicable*` methods on FormEntry filter by applies-to-this-record.
 - Both APIs work in `MergeReportB` and `CommitableB` contexts (read-only).
-- **The `BsJs` prefix names the TARGET, not the caller.** Pick `optApplicableMergeReport` if the merge report you're looking up is a relatescript merge report — even when you're calling from a BSJS endpoint. Pick `optApplicableBsJsMergeReport` only if the target itself is a BSJS merge report. Confirmed in production on summitridge Report Viewer (Apr 2026): looking up the relatescript "unsignedForms" merge report from a BSJS CommitableB endpoint required `optApplicableMergeReport`, not the BsJs variant.
+- **The `BsJs` prefix names the TARGET, not the caller.** Pick `optApplicableMergeReport` if the merge report you're looking up is a relatescript merge report — even when you're calling from a BSJS endpoint. Pick `optApplicableBsJsMergeReport` only if the target itself is a BSJS merge report. Confirmed in practice: looking up a relatescript merge report from a BSJS CommitableB endpoint required `optApplicableMergeReport`, not the BsJs variant.
 
 ## Existing examples in pulled code
 
-- `summitridge/Settings Events/draft/scripts/app.ts:52-54, 81, 276` — `B.find.mergeReport(shortId, 'rs').id()` / `.displayName()`
-- `alpineacademy/1463039/draft/scripts/medFunctions.ts:171` — `optApplicableMergeReport("id","medPrescribed").get().viewUrl()`
-- `beh/1433876/draft/scripts/app.ts:167` — `BaseObject.viewUrl()` on a record
+- `B.find.mergeReport(shortId, 'rs').id()` / `.displayName()` — direct id lookup of a relatescript report.
+- `optApplicableMergeReport("id", "<reportId>").get().viewUrl()` — record-scoped applicable lookup.
+- `BaseObject.viewUrl()` on a record.
 
 ## Declarations source
 

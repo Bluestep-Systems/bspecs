@@ -2,7 +2,7 @@
 description: "The \"merge report + memo field JSON hack\" — core framework for embedding a custom interactive widget on a BlueStep form that persists its state as JSON in a hidden memo field"
 ---
 
-The recurring **"merge report + memo field JSON hack"** — how Brandon and I repeatedly build custom interactive UI on a BlueStep form without creating real sub-forms/MEF entries. This is the foundational framework; [multi entry in multi entry](multi-entry-in-multi-entry.md) and the permission layer [staff query permission gating](staff-query-permission-gating.md) are built on top of it.
+The recurring **"merge report + memo field JSON hack"** — how to build custom interactive UI on a BlueStep form without creating real sub-forms/MEF entries. This is the foundational framework; [multi entry in multi entry](multi-entry-in-multi-entry.md) and the permission layer [staff query permission gating](staff-query-permission-gating.md) are built on top of it.
 
 **The idea:** A BlueStep **merge report placed on a form** renders custom HTML/JS. All widget state is stored as a single JSON blob inside one **hidden memo (or JSON-memo) field** on that same form. The client hijacks the form's own Save to persist — no separate records, no MEF plumbing. One memo field = the entire data model.
 
@@ -22,4 +22,4 @@ The recurring **"merge report + memo field JSON hack"** — how Brandon and I re
 - Borrow native relate icons (`/static/.../relate-icons/pencil.svg`, `trash.svg`) and call `window.fixAllSVG()` after render to recolor them like native lists.
 - File structure: [separate files](../conventions/separate-files.md). For sync, use the `/b6p-push` and `/b6p-pull` skills (`npx b6p`).
 
-**Reference implementations:** kaizenacademy/1465899 "Treatment Plan Review Comments Display" (original inspo, has Domains + lock); kaizenacademy/1466219 "Protocol Update Table" (notes-only + permission gating). Related JSON-in-memo dashboards: [crm dashboard inspo](crm-dashboard-inspo.md), visit dashboard.
+**Variants:** one variant adds a SingleSelect categorization + record lock; another is notes-only with permission gating. The same JSON-in-memo approach also underpins dashboard-style widgets.

@@ -3,7 +3,7 @@ description: BlueStep endpoints are reached at /b/<alias>, not the /files/{id}/d
 ---
 BlueStep endpoint scripts have a configured **friendly URL** at `/b/<alias>` that is what users actually hit in the browser. The `/files/{id}/draft/` path is the editor view, not the runtime endpoint.
 
-Example: Sprint Maestro (file id `1434036`, script name "Sprint Maestro") is exposed at `https://beh.bluestep.net/b/sprints?action=team`, not `https://beh.bluestep.net/files/1434036/draft/?action=team`.
+Example: an endpoint script named "Sprint Maestro" (file id `<fileID>`) is exposed at `https://<org>.bluestep.net/b/sprints?action=team`, not `https://<org>.bluestep.net/files/<fileID>/draft/?action=team`.
 
 The alias is set per-endpoint in BlueStep admin and is not derivable from the script name alone — also not necessarily plural-vs-singular consistent (Sprint Maestro → `sprints`).
 

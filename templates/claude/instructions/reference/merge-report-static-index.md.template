@@ -25,8 +25,8 @@ block in `app.ts` is pointless work. CSS stays in `static/styles.css` per
 **Where each piece goes:**
 - Root mount (`<div id="…-root">`) and static config islands (`<script id="…-config"
   type="application/json">…</script>`) → put in `static/index.html`, before the
-  `<script src=".build/script.js">` tag. (Mirror of the Treatment Targets widget:
-  `<div id="tt-widget"></div>` lives in index.html.)
+  `<script src=".build/script.js">` tag. (E.g. a `<div id="…-widget"></div>` mount
+  lives in index.html, not in `B.out`.)
 - CSS → `static/styles.css`. Client JS → `static/script.ts` (→ `.build/script.js`).
 - `B.out` (from `app.ts`) → **final server-rendered markup only**: HTML with
   server-computed values baked straight in, e.g. record-scoped section URLs (see
@@ -40,13 +40,13 @@ the index.html script) needs server context, don't route it through `B.out` — 
 it from the component's **endpoint** (server-thin/client-fat), or use **index.html
 merge tokens**. Reserve `B.out` for content it renders directly.
 
-Symptom we hit (summitridge Resources Hub merge report 1471799): client JS ran but
-`document.getElementById('rh-root')` and the `#rh-config` blob were both null —
+Symptom seen in practice: client JS ran but
+`document.getElementById('…-root')` and the `#…-config` blob were both null —
 because the mount + config island were emitted from `B.out`, a separate region that
-is injected *after* index.html and disjoint from the index.html client script. We
-*wrongly* concluded `B.out` wasn't injected — it is. The fix is to put the mount +
-config island in `static/index.html` (the client-markup file), and fetch any dynamic
-data from the endpoint.
+is injected *after* index.html and disjoint from the index.html client script. It's
+easy to *wrongly* conclude `B.out` wasn't injected — it is. The fix is to put the
+mount + config island in `static/index.html` (the client-markup file), and fetch any
+dynamic data from the endpoint.
 
 Builds on [merge report memo json](merge-report-memo-json.md) and
-[separate files](../conventions/separate-files.md); relevant to bluestep resources.
+[separate files](../conventions/separate-files.md).

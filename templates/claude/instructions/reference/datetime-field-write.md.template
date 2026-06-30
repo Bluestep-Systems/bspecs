@@ -24,4 +24,4 @@ The class doc literally says `dateTimeVal(localDateTime, zoneId)` is *"the same 
 - For DateField (no time): use `field.val(localDate)` — same pattern, T = LocalDate.
 - For TimeField: same pattern, T = LocalTime.
 
-Confirmed on summitridge/1470299 audit-log endpoint, 2026-05-01.
+Confirmed on an audit-log endpoint.

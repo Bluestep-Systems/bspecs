@@ -5,3 +5,5 @@ build/
 *.log
 .DS_Store
 .claude/settings.local.json
+# Sanitization work files carrying the literal sensitive tokens (must never be committed to this public repo)
+.claude/specs/**/*.local.md

@@ -59,7 +59,7 @@ Organization
 
 Queries, scripts, and permissions are scoped per Unit by default. A local project may pull components from multiple Units; each lives under its own `U######/` folder created by `b6p pull` on first pull.
 
-<!-- CONFLICT: U###### identity — this overview treats U###### as the Unit folder created by `b6p pull` (nested under an Organization). Brandon's platform-overview labels U###### as the Organization's own ID. Needs human resolution. -->
+<!-- CONFLICT: U###### identity — this overview treats U###### as the Unit folder created by `b6p pull` (nested under an Organization). Another platform-overview source labels U###### as the Organization's own ID. Needs human resolution. -->
 
 ## Script types
 

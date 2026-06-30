@@ -1,11 +1,10 @@
 ---
-description: "Brandon's house design language for BlueStep dashboard merge reports — exact tokens (palette, type, cards, tabs). Use this for ALL new BlueStep dashboard UI; do NOT use Material/rounded-tonal styling"
+description: "House design language for BlueStep dashboard merge reports — exact tokens (palette, type, cards, tabs). Use this for ALL new BlueStep dashboard UI; do NOT use Material/rounded-tonal styling"
 ---
 
-Brandon's BlueStep dashboards (Census 1469219, Visit 1471499, DPN rop/1475679,
-Authorization rop/1476379, and now Resources Hub 1471799) share ONE consistent
-house style. Match it for any new dashboard/merge-report UI. **Not Material** — he
-explicitly rejected the Material 3 look (nav rail, FAB, chunky tonal containers,
+A consistent house style for BlueStep dashboard merge reports. Match it for any
+new dashboard/merge-report UI. **Not Material** — it
+explicitly rejects the Material 3 look (nav rail, FAB, chunky tonal containers,
 big radii, floating labels). Clean light enterprise, flat, data-forward.
 
 **Palette (CSS vars):** primary `#1a6bb5`, primary-hover `#155d9e`, primary-active
@@ -34,5 +33,5 @@ bg+fg. Buttons: primary `#1a6bb5` (hover `#155d9e`, focus ring `0 0 0 3px
 rgba(26,107,181,.15-.25)`), outline = blue border that inverts on hover. Transitions
 0.12–0.15s. No gradients (except subtle thumb backgrounds).
 
-Relevant to bluestep resources; pairs with
+Pairs with
 [merge report static index](merge-report-static-index.md) and [separate files](../conventions/separate-files.md).

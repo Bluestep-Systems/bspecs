@@ -43,6 +43,6 @@ const inner = txt.slice(txt.indexOf('B.out = `'), txt.lastIndexOf('`;'));
 // empty = clean; any match = a TS leak in the inline script
 ```
 
-Discovered 2026-05-20 on the RISES Dashboard merge report (`alpineacademy/1515299`): a `var parts: string[] = [];` in the Protocols Gantt code froze the entire dashboard.
+Seen in practice on a dashboard merge report: a `var parts: string[] = [];` in inlined Gantt code froze the entire dashboard.
 
 Related: [single script](single-script.md) — BlueStep only compiles root `static/script.ts`, not subdirs. Merge reports inline their JS into `scripts/app.ts`'s string output instead — a different file but the same class of "TS doesn't process this content" problem.

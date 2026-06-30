@@ -13,4 +13,4 @@ if (d.isAfter(today)) { ... }
 
 **Use `Java.Time.X` only as type annotation; use `B.time.X` at runtime.**
 
-Confirmed on alpineacademy `/b/greatHair`, May 2026.
+Confirmed on a live endpoint.

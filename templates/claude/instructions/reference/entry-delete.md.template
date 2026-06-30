@@ -1,7 +1,7 @@
 ---
 description: Correct runtime API to delete a multi-entry-form entry — entry.entry().delete(), NOT entry.delete() — the typed declaration on the outer interface lies
 ---
-When you have a typed multi-entry-form record entry (e.g. `MEFR_sprints`, `MEFR_medicalTasks`), the typed `B.d.ts` claims `delete(): boolean` exists directly on the outer interface (around line 207-210 in current B.d.ts). **It doesn't, at runtime.** Calling it throws:
+When you have a typed multi-entry-form record entry (e.g. `MEFR_sprints`, `MEFR_tasks`), the typed `B.d.ts` claims `delete(): boolean` exists directly on the outer interface (around line 207-210 in current B.d.ts). **It doesn't, at runtime.** Calling it throws:
 
 ```
 TypeError: invokeMember (delete) on myassn.script.relate.FormRecordEntryScript failed due to: Unknown identifier: delete
@@ -23,14 +23,7 @@ B.commit();
 
 ## Existing usage to confirm pattern
 
-Real BlueStep scripts that use this pattern (all snapshotted and live):
-- `alpineacademy/Parent Opportunity API/draft/scripts/app.ts:82` — `entry.entry().delete()`
-- `summitridge/Videra Proxy-Login/draft/scripts/app.ts:206` — `newNote.entry().delete()`
-- `summitridge/1469686/draft/scripts/app.ts:779` — `entryOpt.get().entry().delete()`
-- `alpineacademy/1458534/draft/scripts/app.ts:183` — `appt.entry().delete()`
-- `summitridge/Report System/Report Data Maestro/draft/scripts/app.ts:825`
-
-Apparently universal — the typed `entry.delete()` may be aspirational or deprecated.
+The `entry.entry().delete()` pattern recurs across BlueStep scripts in practice — e.g. `entry.entry().delete()`, `newNote.entry().delete()`, `entryOpt.get().entry().delete()`. Apparently universal — the typed `entry.delete()` may be aspirational or deprecated.
 
 ## How to apply
 
