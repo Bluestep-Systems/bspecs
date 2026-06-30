@@ -81,16 +81,16 @@ OnDemand formulas execute on the **task pod**, making them appropriate for heavy
 
 ## b6p CLI workflow
 
-`b6p` ships as a devDependency of this project (`@bluestep-systems/b6p-cli`). Invoke it with `npx`, which resolves `node_modules/.bin/b6p` cross-platform — no global install, no shell or PATH detection. Run `npm install` once if `node_modules` is missing. The shape is:
+`b6p` is a standalone binary on the system `PATH` (the b6p-cli standalone artifact, installed separately from this tooling). Invoke it directly — no `npx`, no devDependency, no `npm install`. The shape is:
 
 ```
-npx b6p <subcommand> ...
+b6p <subcommand> ...
 ```
 
 ### Pull a component
 
 ```
-npx b6p pull "<DAV URL>"
+b6p pull "<DAV URL>"
 ```
 
 **`b6p pull` takes a DAV URL, not a display name.** The URL is copied from the component's page in the BlueStep platform UI. There is no name-based lookup; the CLI has no way to find a component by its label.
@@ -121,7 +121,7 @@ Subsequent pulls verify per-file integrity and only rewrite files whose content 
 The cleanest way to push an already-pulled component is `--file`, which lets the CLI derive the destination DAV URL from the recorded sync metadata:
 
 ```
-npx b6p push --file "U######/<Component>/draft/scripts/app.ts"
+b6p push --file "U######/<Component>/draft/scripts/app.ts"
 ```
 
 Any file inside the component works as the `--file` argument; the CLI walks up to find the component root and looks up its recorded sync metadata. Same per-file integrity check applies — only changed files are uploaded. The platform compiles after receiving the push.
@@ -154,7 +154,7 @@ Before referencing a query/form/field in code:
 2. In older modules, `draft/objects/imports.ts` may also exist as a legacy artifact — ignore it for verification; new declarations land in `declarations/index.d.ts`.
 3. If missing:
    - Add the field to **this component's** form-import config on the platform.
-   - `npx b6p pull "<DAV URL>"` to regenerate this component's declarations.
+   - `b6p pull "<DAV URL>"` to regenerate this component's declarations.
    - Then write the TypeScript reference.
 
 If N components all need the same new field, each one needs its own import-config update on the platform and a separate pull.
@@ -165,8 +165,8 @@ Hallucinated names pass local edits but fail on platform compile after push.
 
 Common causes:
 
-- `npx b6p` cannot be resolved — the project's dependencies are not installed. Run `npm install` in the project root.
-- Network/auth issue with the platform. Re-authenticate with `npx b6p auth set`.
+- `b6p` cannot be found — the b6p-cli standalone binary isn't installed or isn't on `PATH`. Install it from its release.
+- Network/auth issue with the platform. Re-authenticate with `b6p auth set`.
 - Local file lock. Close VS Code, retry.
 
 Fallbacks:
