@@ -20,6 +20,6 @@ The recurring **"merge report + memo field JSON hack"** — how to build custom 
 - Injected controls must have **NO `name` attribute** — named controls get submitted with the form → "problem storing the data". See [named controls submit](named-controls-submit.md).
 - Mount modals on `document.body` to escape the form's submit scope.
 - Borrow native relate icons (`/static/.../relate-icons/pencil.svg`, `trash.svg`) and call `window.fixAllSVG()` after render to recolor them like native lists.
-- File structure: [separate files](../conventions/separate-files.md). For sync, use the `/b6p-push` and `/b6p-pull` skills (`npx b6p`).
+- File structure: [separate files](../conventions/separate-files.md). For sync, use the `/b6p-push` and `/b6p-pull` skills (bare `b6p`).
 
 **Variants:** one variant adds a SingleSelect categorization + record lock; another is notes-only with permission gating. The same JSON-in-memo approach also underpins dashboard-style widgets.

@@ -17,7 +17,7 @@ Which existing components this feature touches.
 
 ## Approach
 
-High-level summary of how this will be implemented. Reference existing patterns from `.claude/instructions/bsjs-development.md` where applicable.
+High-level summary of how this will be implemented. Reference existing patterns from the `bluestep-reference` skill's `bsjs-development` overview where applicable.
 
 ## Data flow
 

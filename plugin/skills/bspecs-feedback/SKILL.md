@@ -53,18 +53,12 @@ Adjust whatever the user corrects. Do **not** file without explicit confirmation
 
 ### 4. Build the prefilled issue link
 
-Target the structured issue form (`feedback.yml`) and prefill its fields by `id`, applying the `feedback` label. Assemble and URL-encode with node's `URLSearchParams` (node is guaranteed present — it backs `npx b6p`):
+Target the structured issue form (`feedback.yml`) and prefill its fields by `id`, applying the `feedback` label. **Build the URL yourself** — percent-encode each field value (space → `%20`, newline → `%0A`, and `&`/`#`/`=`/`+` in values) and assemble the query string. Do **not** shell out to `node` or assume any runtime is present — this skill must work anywhere the plugin is enabled (there is no npm/node guarantee).
 
-```
-node -e '
-const fs=require("fs");
-const f=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));   // {title, file_path, current_text, proposal, version}
-const p=new URLSearchParams({template:"feedback.yml", labels:"feedback", ...f});
-process.stdout.write("https://github.com/Bluestep-Systems/bspecs/issues/new?"+p.toString());
-' /path/to/fields.json
-```
+- Base: `https://github.com/Bluestep-Systems/bspecs/issues/new`
+- Query params, each value percent-encoded: `template=feedback.yml`, `labels=feedback`, `title=…`, `file_path=…`, `current_text=…`, `proposal=…`, `version=…`.
 
-Write the field values to a temp JSON file first (in the scratchpad) so multi-line `current_text` / `proposal` survive without shell-quoting pitfalls.
+Multi-line `current_text` / `proposal` are fine — encode newlines as `%0A`.
 
 **Kind/target safety net.** The form's `kind` and `target` are multi-select dropdowns, and GitHub's query-param prefill for multi-selects is unreliable — and we use a **single `feedback` label** (no `kind:*` labels), so kind cannot ride the `labels=` param either. Therefore **embed kind(s) and target(s) as text** so the signal never gets lost:
 

@@ -29,7 +29,7 @@ If the design says "no platform-side changes needed," every task is `[CODE]` and
 
 Once all `[CODE]` tasks above are checked, push the affected components back to the platform. Use `/b6p-push` or run manually:
 
-- `U######/<ComponentName>` — `npx b6p push --file "U######/<ComponentName>/draft/scripts/app.ts"`
+- `U######/<ComponentName>` — `b6p push --file "U######/<ComponentName>/draft/scripts/app.ts"`
 - (List every component touched by `[CODE]` tasks. One push per component.)
 
 ## Verification
