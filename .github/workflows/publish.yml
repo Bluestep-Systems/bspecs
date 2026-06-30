@@ -1,94 +1,34 @@
 # ============================================================================
-# bspecs Publish
+# bspecs Release
 # ============================================================================
-# Purpose: On a version tag (v*.*.*), validate then publish
-#          @bluestep-systems/bspecs to the public npm registry with
-#          provenance.
+# Purpose: On a version tag (v*.*.*), create a GitHub Release for the tag.
 #
-# Requires: an NPM_TOKEN repo secret (npm automation token with publish
-#           rights to the @bluestep-systems scope). Provenance additionally
-#           needs id-token: write, granted in-workflow below.
+# bspecs is distributed as a Claude Code plugin via the in-repo marketplace
+# (.claude-plugin/marketplace.json) — there is no npm publish and no binary
+# build. Tagging a version cuts a Release (users/marketplaces can pin to it).
+# The npm CLI is retained dormant in the repo but is no longer published.
 # ============================================================================
 
-name: Publish
+name: Release
 
 on:
   push:
     tags:
       - 'v[0-9]+.[0-9]+.[0-9]+*'  # v0.1.0, v1.2.3, v1.2.3-rc.1, ...
 
-# Least privilege: read the repo + mint an OIDC token for npm provenance.
+# Least privilege at the top; the job elevates to contents: write to cut the release.
 permissions:
   contents: read
-  id-token: write
 
 concurrency:
-  group: publish-${{ github.ref }}
-  cancel-in-progress: false  # Never cancel a publish in progress.
+  group: release-${{ github.ref }}
+  cancel-in-progress: false  # Never cancel a release in progress.
 
 jobs:
-  publish:
-    name: Publish to npm
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install dependencies
-        run: |
-          for i in 1 2 3; do
-            npm ci --prefer-offline --no-audit && break
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
-        shell: bash
-
-      # Guard against publishing a tag whose version doesn't match package.json.
-      - name: Verify tag matches package.json version
-        run: |
-          set -euo pipefail
-          PKG_VERSION="$(node -p "require('./package.json').version")"
-          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
-            echo "::error::Tag v$TAG_VERSION does not match package.json version $PKG_VERSION"
-            exit 1
-          fi
-          echo "::notice::Publishing version $PKG_VERSION"
-        shell: bash
-
-      # Smoke test: the CLI must start and print version + usage.
-      - name: Smoke-run CLI (version)
-        run: node cli.js -v
-
-      - name: Smoke-run CLI (help)
-        run: node cli.js -h
-
-      # Scaffold a scratch project end-to-end and verify its layout.
-      - name: Smoke-run scaffold
-        run: node test-scaffold.mjs
-
-      - name: Publish (provenance, public)
-        run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  # Create the GitHub Release for this tag (once) so the binary jobs can upload
-  # assets to it. Also closes the long-standing gap where published tags never
-  # got a Release object. Idempotent: skips if the release already exists.
+  # Create the GitHub Release for this tag (idempotent: skips if it already exists).
+  # Closes the long-standing gap where published tags never got a Release object.
   create-release:
     name: Create GitHub Release
-    needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -109,70 +49,4 @@ jobs:
           else
             gh release create "$TAG" --verify-tag --generate-notes
           fi
-        shell: bash
-
-  # Build the self-contained SEA binary on each target OS (SEA cannot
-  # cross-compile) and upload it to the release. The binary embeds Node 22 (the
-  # runner's node) plus the bundled CLI + template tree, so it runs with no Node
-  # or npm on the user's machine.
-  build-binaries:
-    name: Build SEA binary (${{ matrix.target }})
-    needs: create-release
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            target: win-x64
-            asset: bspecs-win-x64.exe
-          - os: macos-13          # Intel
-            target: macos-x64
-            asset: bspecs-macos-x64
-          - os: macos-14          # Apple Silicon
-            target: macos-arm64
-            asset: bspecs-macos-arm64
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Setup Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: npm ci --no-audit
-        shell: bash
-
-      - name: Build binary
-        run: npm run build:binary -- --out "build/${{ matrix.asset }}"
-        shell: bash
-
-      # Smoke: the binary must start AND report the tag version (validates the
-      # build-time version injection inside the real SEA, not just the dev path).
-      - name: Smoke-run binary
-        run: |
-          set -euo pipefail
-          BIN="build/${{ matrix.asset }}"
-          ACTUAL="$("./$BIN" -v)"
-          EXPECTED="${GITHUB_REF#refs/tags/v}"
-          if [ "$ACTUAL" != "$EXPECTED" ]; then
-            echo "::error::Binary version '$ACTUAL' does not match tag '$EXPECTED'"
-            exit 1
-          fi
-          "./$BIN" -h | head -1
-          echo "::notice::$BIN reports version $ACTUAL"
-        shell: bash
-
-      - name: Upload binary to release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload "${GITHUB_REF#refs/tags/}" "build/${{ matrix.asset }}" --clobber
         shell: bash

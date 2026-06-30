@@ -1,7 +1,0 @@
-{
-  "main": "build/bspecs.cjs",
-  "output": "build/bspecs.blob",
-  "disableExperimentalSEAWarning": true,
-  "useSnapshot": false,
-  "useCodeCache": false
-}

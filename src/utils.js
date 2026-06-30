@@ -2,7 +2,6 @@ import { mkdirSync, writeFileSync, readFileSync, existsSync, chmodSync, readdirS
 import { createHash } from 'node:crypto';
 import { dirname, join, relative } from 'path';
 import { fileURLToPath } from 'url';
-import { getEmbeddedTemplates } from './templates-embed.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 export const TEMPLATES_DIR = join(__dirname, '..', 'templates');
@@ -22,23 +21,13 @@ export function writeFile(path, content) {
   writeFileSync(path, content, 'utf8');
 }
 
-// Read one template by its TEMPLATES_DIR-relative path. Reads from the embedded
-// map when running as a baked binary, else from disk (the `node cli.js` dev path).
+// Read one template by its TEMPLATES_DIR-relative path (from disk).
 export function readTemplate(relativePath) {
-  const rel = relativePath.split('\\').join('/');
-  const embedded = getEmbeddedTemplates();
-  if (embedded) {
-    if (!(rel in embedded)) throw new Error(`Embedded template missing: ${rel}`);
-    return embedded[rel];
-  }
   return readFileSync(join(TEMPLATES_DIR, relativePath), 'utf8');
 }
 
-// Whether a template exists in the active source (embedded map or disk).
+// Whether a template exists on disk.
 export function templateExists(relativePath) {
-  const rel = relativePath.split('\\').join('/');
-  const embedded = getEmbeddedTemplates();
-  if (embedded) return rel in embedded;
   return existsSync(join(TEMPLATES_DIR, relativePath));
 }
 
@@ -55,32 +44,6 @@ export function copyTemplateTree(srcRel, destAbs, vars, opts = {}) {
     exclude = [],
   } = opts;
   const skip = new Set(exclude);
-  const embedded = getEmbeddedTemplates();
-
-  // Embedded (baked binary): walk the in-memory map's keys under srcRel. Mirrors
-  // the disk walk below — same .template stripping, exclude, skipExisting,
-  // collect, and .sh chmod — only the byte source differs.
-  if (embedded) {
-    const prefix = srcRel.replace(/\/+$/, '') + '/';
-    for (const key of Object.keys(embedded).sort()) {
-      if (!key.startsWith(prefix)) continue;
-      const relFromSrc = key.slice(prefix.length); // forward-slashed, relative to srcRel
-      if (skip.has(relFromSrc)) continue;
-      const targetRel = stripTemplateExt ? relFromSrc.replace(/\.template$/, '') : relFromSrc;
-      const destFile = join(destAbs, ...targetRel.split('/'));
-      if (skipExisting && existsSync(destFile)) {
-        if (collect) collect.skipped.push(destFile);
-        continue;
-      }
-      const rendered = applyTemplate(embedded[key], vars);
-      writeFile(destFile, rendered);
-      if (makeExecutable && destFile.endsWith('.sh')) {
-        try { chmodSync(destFile, 0o755); } catch { /* Windows can't chmod, ignore */ }
-      }
-      if (collect) collect.written.push(destFile);
-    }
-    return;
-  }
 
   const srcAbs = join(TEMPLATES_DIR, srcRel);
   if (!existsSync(srcAbs)) return;
@@ -131,16 +94,6 @@ function walk(rootSrc, src, dest, vars, opts) {
 // the escape hatch for any future scaffold-once file under claude/.
 export function enumerateClaudeTargets(exclude = []) {
   const skip = new Set(exclude);
-  const embedded = getEmbeddedTemplates();
-  if (embedded) {
-    const targets = [];
-    for (const key of Object.keys(embedded).sort()) {
-      if (!key.startsWith('claude/') || skip.has(key)) continue;
-      const destRel = '.claude/' + key.slice('claude/'.length).replace(/\.template$/, '');
-      targets.push({ templateSrc: key, destRel });
-    }
-    return targets;
-  }
   const root = join(TEMPLATES_DIR, 'claude');
   if (!existsSync(root)) return [];
   const targets = [];

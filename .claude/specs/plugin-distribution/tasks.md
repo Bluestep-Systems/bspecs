@@ -64,13 +64,13 @@ referenced by Phase 0 live in the gitignored `sanitization-tokens.local.md` (nev
 
 ## Phase 2 — Decommission the CLI + binary as delivery paths (leave CLI dormant)
 
-- [ ] **11.** [CODE] Stop publishing + remove the binary build/CI: in `.github/workflows/publish.yml`
+- [x] **11.** [CODE] Stop publishing + remove the binary build/CI: in `.github/workflows/publish.yml`
   remove the npm `publish` job and the `build-binaries` job, **keeping** the `gh release create` step
   (now tags releases for the marketplace repo); in `.github/workflows/ci.yml` remove the `binary`
   build job; delete `sea-config.json`, `scripts/build-binary.mjs`, and `INSTALL.md`. — files:
   `.github/workflows/publish.yml`, `.github/workflows/ci.yml`, `sea-config.json`,
   `scripts/build-binary.mjs`, `INSTALL.md`.
-- [ ] **12.** [CODE] Revert the SEA source hooks and leave the CLI dormant: simplify `src/version.js`
+- [x] **12.** [CODE] Revert the SEA source hooks and leave the CLI dormant: simplify `src/version.js`
   back to a plain on-disk `package.json` read (keep `getVersion()` for any dormant caller), remove
   `src/templates-embed.js` and its embedded-read fallbacks in `src/utils.js`/`src/scaffold.js`, and
   delete the orphaned `templates/claude/settings.json.template` (superseded by `/bluestep-init`).
