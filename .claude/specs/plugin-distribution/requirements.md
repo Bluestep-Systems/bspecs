@@ -30,12 +30,21 @@ managed-settings story. The binary and the plugin are two answers to the *same* 
 question, and the plugin wins on every axis (native delivery, native versioning/enforcement, no
 per-OS SEA matrix, and it sidesteps the clack-prompt problem the binary spec punted on).
 
-**Decision (settled with the requester): collapse to two delivery paths and drop the binary.**
+**Decision (settled with the requester): ONE delivery path — the plugin. Drop the binary, and drop
+the npm CLI as a supported path (keep its code dormant).**
 
-- **Plugin** — internal, no-npm; the primary tooling-delivery + admin-enforcement + project-init
-  path, run inside Claude Code.
-- **npm package** (`@bluestep-systems/bspecs`) — external / terminal / CI users who want an actual
-  CLI command and can run Node.
+- **Plugin** — the *single* tooling source for everyone: internal (managed-settings-enforced) and
+  external alike, via the public `bluestep` marketplace, run inside Claude Code.
+- **Project bootstrap** moves to a new **`/bluestep-init` plugin skill** that Claude runs in-session
+  (writes the per-project `CLAUDE.md`/`README`/`package.json` + a plugin-enabling `settings.json`,
+  guides `git init`). This serves *everyone*, including no-npm internal staff who could never run the
+  npm CLI — and avoids the clack-prompt-hang the binary spec punted on.
+- **The bspecs npm CLI** (`cli.js` / `src/*`) is **dropped as a delivery path** — no longer
+  published, not the documented onboarding — but its code is **left in the repo dormant** as a
+  fallback in case the approach is revisited. There are no real npm users to break.
+
+This collapses the earlier "two paths" to one, retiring the scaffolder-maintenance surface while
+preserving the option to resurrect it. The standalone SEA binary remains fully reverted.
 
 **Marketplace is public.** The plugin is distributed via a **public** git marketplace — consistent
 with `Bluestep-Systems/bspecs` already being a public repo and the `templates/` tree already
@@ -141,11 +150,12 @@ public-npm-no-token reality in `CLAUDE.md` / `package.json.template` — stale d
 - [ ] An **admin-enforcement** path is documented (and validated as far as possible without an
       MDM): managed/project settings that pre-register the marketplace and enable the pinned
       plugin version (`extraKnownMarketplaces` + `enabledPlugins`, `strictKnownMarketplaces`).
-- [ ] **Per-project bootstrap still works** for the 3 templated root files and the `.claude/specs/`
-      workspace — via a decided mechanism (a thinned `bspecs init`, a `/…-init` plugin skill, or
-      both). The decision and its rationale are recorded.
-- [ ] **The standalone binary is dropped; exactly two delivery paths exist** — plugin (internal)
-      and npm package (external/terminal/CI) — sharing one source tree.
+- [ ] **Per-project bootstrap works via a `/bluestep-init` plugin skill** (the single bootstrap
+      path): Claude writes the 3 templated root files + a plugin-enabling `.claude/settings.json` and
+      guides `git init`, in-session — no npm CLI required.
+- [ ] **One delivery path: the plugin.** The standalone binary is dropped (Part A reverted) and the
+      npm CLI is dropped as a supported/published path — its `cli.js`/`src/*` code is left dormant in
+      the repo (unpublished, unsupported) as a revisitable fallback, not deleted.
 - [ ] **`standalone-binary-distribution` is marked Superseded.** Part B (`{{B6P}}` profile, B1–B6)
       is stopped; the committed Part A binary code (A1 SEA-safe version read, A2 build config/script,
       A2.5 template embedding, A4 CI binary smoke, A5 `INSTALL.md`, and the `publish.yml`

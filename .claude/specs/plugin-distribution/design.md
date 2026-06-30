@@ -16,10 +16,12 @@ retire the sync machinery, **then revert** Part A and write docs/ADRs. Each is i
 2. **Single source of truth — the plugin is canonical for the shared tooling.**
    `templates/claude/**` is *migrated into* the plugin and removed as a scaffolder source. The
    scaffolder stops copying the `.claude/**` tree entirely; the plugin delivers it natively.
-3. **Per-project bootstrap — split by channel.** External/npm: a thinned `bspecs init`/`new` writes
-   only the per-project files + a project `.claude/settings.json` that registers the marketplace and
-   enables the plugin. Internal/no-npm: a `/bluestep-init` **plugin skill** has Claude write the
-   per-project files in-session (also sidesteps the clack-prompt-hang the binary spec punted on).
+3. **Per-project bootstrap — one path, a `/bluestep-init` plugin skill.** Claude writes the
+   per-project files + a plugin-enabling `.claude/settings.json` and guides `git init`, in-session,
+   for *everyone* (incl. no-npm staff who can't run the npm CLI). The npm CLI/scaffolder
+   (`cli.js`/`src/*`) is **dropped as a path and left dormant** in the repo (unpublished,
+   unsupported) — not shrunk into a new role, not deleted. This sidesteps the clack-prompt-hang the
+   binary spec punted on and retires the scaffolder-maintenance surface.
 4. **Sync machinery — retired.** `bspecs sync`, `bspecs.lock`'s file map, `enumerateClaudeTargets`,
    `SYNC_TARGETS`, and the `SessionStart` sync hook are removed; native marketplace update
    (`/plugin marketplace update` / `autoUpdate`) replaces them.
@@ -96,10 +98,16 @@ init` stays. For no-npm users the `/bluestep-init` plugin skill does the same wr
 
 ## Data / control flow
 
-**Install (internal):** managed settings pre-register the marketplace + `enabledPlugins` → plugin is
-present on every staff session, no npm, no git creds (public repo). **Install (external):**
-`bspecs init` writes a project `settings.json` with `extraKnownMarketplaces` + `enabledPlugins` →
-plugin loads on next session. **Update:** `autoUpdate`/`/plugin marketplace update` — no `bspecs sync`.
+**Install (internal):** managed settings install the plugin at **managed scope** + pre-register the
+marketplace → plugin is present and enforced on every staff session, no npm, no git creds (public
+repo), **no user action**. **Install (external):** `bspecs init` writes a project `settings.json`
+with `extraKnownMarketplaces` + `enabledPlugins` → this **pre-registers + enables but does not
+silently auto-install** (Claude Code v2.1.195+): on folder-trust Claude Code **prompts** the user to
+install, and until then reports the plugin not-installed with the `claude plugin install
+bluestep-tools@bluestep` command. So the external path is **one-time confirm, not zero-touch** — the
+`bspecs init` outro and the README MUST surface this install step (tasks 11/12/18) rather than
+implying skills appear automatically. **Update:** `autoUpdate` / `/plugin marketplace update` — no
+`bspecs sync`.
 
 **Scaffold:** `bspecs new` → write `templates/root/**` (still `{{VAR}}`-substituted via
 `applyTemplate`) + plugin-enabling `settings.json` + `git init`. No `.claude/**` tree, no lock.
