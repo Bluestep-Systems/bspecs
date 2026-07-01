@@ -6,6 +6,19 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.2.0] — 2026-07-01
+
+Plugin manifest `version` → `0.2.0` (`plugin/.claude-plugin/plugin.json`). This is the release that ships the changes merged since the initial `0.1.0` plugin install — existing installs receive them on `/plugin marketplace update` / `autoUpdate` only because the version changed.
+
+### Changed
+
+- **`/bluestep-init`**: prompts are now clickable (`AskUserQuestion`) instead of a free-text questionnaire; can bootstrap into a **new subfolder** as well as the current directory; removed the project-description prompt and the `{{PROJECT_DESCRIPTION}}` template field.
+- **`/bspecs-feedback`**: de-staled for the plugin model — quotes tooling files from `${CLAUDE_PLUGIN_ROOT}` (not the retired scaffolded `.claude/` copy), reads the version from the plugin manifest (not `.claude/bspecs.lock`), and is reframed around the read-only plugin install updated via `/plugin marketplace update`.
+
+### Added
+
+- **ADR `docs/decisions/plugin-context-delivery-model.md`** — confirms a plugin cannot ship always-on context (so `CLAUDE.md` is written by `/bluestep-init`) and that the on-demand `bluestep-reference` is reachable by subagents; records the residual gaps found while auditing the migration.
+
 ## [Unreleased] — plugin distribution
 
 > **Version-scheme note (needs a human call):** the npm package `@bluestep-systems/bspecs` is **no
