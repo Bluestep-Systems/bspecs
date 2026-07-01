@@ -6,6 +6,17 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.3.0] — 2026-07-01
+
+### Changed
+
+- **`plugin/README.md`**: refreshed the contents list (added `/bluestep-init`) and removed the stale
+  "manifest skeleton / spec tasks 5–8" note left over from the migration; points at the repo README
+  for usage and the release process.
+
+> Also serves as the first end-to-end auto-update test after the marketplace was re-registered via
+> claude.ai — verifying a fresh version bump propagates to installed clients without manual steps.
+
 ## [plugin 0.2.0] — 2026-07-01
 
 Plugin manifest `version` → `0.2.0` (`plugin/.claude-plugin/plugin.json`). This is the release that ships the changes merged since the initial `0.1.0` plugin install — existing installs receive them on `/plugin marketplace update` / `autoUpdate` only because the version changed.
