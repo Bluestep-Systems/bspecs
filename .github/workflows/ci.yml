@@ -92,7 +92,12 @@ jobs:
           set -euo pipefail
           MANIFEST="plugin/.claude-plugin/plugin.json"
 
-          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -q '^plugin/'; then
+          # Compare against the merge-base so we evaluate only THIS PR's own
+          # changes. A two-dot "git diff BASE HEAD" would also flag commits main
+          # gained after this branch was cut, misattributing them to the PR.
+          MB="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
+
+          if git diff --name-only "$MB" "$HEAD_SHA" | grep -q '^plugin/'; then
             echo "plugin/** changed in this PR — a version bump is required."
           else
             echo "No plugin/** changes — version bump not required."
@@ -106,9 +111,9 @@ jobs:
             node -e "const fs=require('fs');try{process.stdout.write((JSON.parse(fs.readFileSync('/tmp/m.json','utf8')).version)||'')}catch(e){process.stdout.write('')}"
           }
 
-          BASE_VER="$(read_ver "$BASE_SHA")"
+          BASE_VER="$(read_ver "$MB")"
           HEAD_VER="$(read_ver "$HEAD_SHA")"
-          echo "version: base='${BASE_VER:-<none>}' head='${HEAD_VER:-<none>}'"
+          echo "version: merge-base='${BASE_VER:-<none>}' head='${HEAD_VER:-<none>}'"
 
           if [ -z "$HEAD_VER" ]; then
             echo "::error file=$MANIFEST::No \"version\" field. This repo uses explicit plugin versions — add and bump it (see README 'Releasing')."
