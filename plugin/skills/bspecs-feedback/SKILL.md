@@ -1,15 +1,15 @@
 ---
 name: bspecs-feedback
-description: Send a bspecs tooling-change request (a rule, skill, subagent, hook, instruction, spec/module template, or the CLI) to the canonical bspecs repo as a prefilled GitHub issue. Use when you or the user notice something about the bspecs tooling itself that should change — local `.claude/` edits do not survive `bspecs sync`, so the fix has to go upstream.
+description: Send a bspecs tooling-change request (a rule, skill, subagent, hook, reference file, spec/module template, or a shipped CLAUDE.md rule) to the canonical bspecs repo as a prefilled GitHub issue. Use when you or the user notice something about the bluestep-tools plugin itself that should change — the plugin is a read-only shared install, so a lasting fix has to land upstream in the repo.
 ---
 
 # /bspecs-feedback — Send a tooling-change request upstream
 
-This project's `.claude/` tree (skills, hooks, instructions, settings, this very file) is a **scaffolded copy** that `bspecs sync` overwrites. Editing it locally does not reach the canonical repo and does not survive the next sync. This skill routes feedback to **`github.com/Bluestep-Systems/bspecs`** as a prefilled GitHub issue, so a fix can land there and ship to every project.
+The shared tooling (skills, subagents, hooks, the `bluestep-reference` platform rules, this very file) ships from the **`bluestep-tools` plugin** — a read-only install pulled from the `bluestep` marketplace, not a copy in this project's `.claude/` tree. Editing the installed plugin files does not reach the canonical repo and is overwritten on the next `/plugin marketplace update`. This skill routes feedback to **`github.com/Bluestep-Systems/bspecs`** as a prefilled GitHub issue, so a fix can land there and ship to every project on the next plugin update.
 
 It needs **no token and no backend**: the repo is public, the issue form is prefilled via a deep link, and GitHub authenticates the user through their existing browser session.
 
-**Scope check first.** This skill is for the **bspecs tooling** (a skill is wrong, a hook misfires, an instruction template is misleading, a `CLAUDE.md` rule is stale, a missing capability), or for a B6P rule general enough to belong in **every** scaffolded project. For project-local B6P domain knowledge that only matters here, capture it locally instead (see the Self-improvement section of this project's `CLAUDE.md`).
+**Scope check first.** This skill is for the **bluestep-tools plugin** (a skill is wrong, a hook misfires, a `bluestep-reference` file is misleading, a shipped `CLAUDE.md` rule is stale, a missing capability), or for a B6P rule general enough to belong in **every** project. For project-local B6P domain knowledge that only matters here, capture it locally instead (see the Self-improvement section of this project's `CLAUDE.md`).
 
 ## Steps
 
@@ -27,21 +27,13 @@ Only when there is nothing to infer from (e.g. the user just types `/bspecs-feed
 
 The kind set drives what you collect (pull from the conversation first; read the tree to fill gaps):
 
-- **change rule / remove rule** → the affected **file path** + the **current rule text quoted verbatim** (read it from the `.claude/` tree). Keep the excerpt focused — do not paste a whole file.
+- **change rule / remove rule** → the affected **file path** + the **current rule text quoted verbatim**. Read it from wherever the artifact actually lives: a plugin file under `${CLAUDE_PLUGIN_ROOT}/` (`skills/`, `agents/`, `hooks/`, or `skills/bluestep-reference/` for a platform rule), or this project's own `CLAUDE.md` for a project rule. In the issue, quote the plugin-relative path (e.g. `skills/b6p-push/SKILL.md`), not the absolute `${CLAUDE_PLUGIN_ROOT}` path. Keep the excerpt focused — do not paste a whole file.
 - **report error/bug** → a repro: what was run, what happened, what was expected.
 - **request capability** → the use case: what the user is trying to do that no skill/hook/CLI feature supports.
 - **add rule** → where the guidance should live + the proposed text.
 - **report friction** → what is painful and why (no fix required).
 
-Always capture the **bspecs version** — read `bspecs_version` from `.claude/bspecs.lock`:
-
-```
-node -e "try{const fs=require('fs');process.stdout.write(JSON.parse(fs.readFileSync('.claude/bspecs.lock','utf8')).bspecs_version||'unknown')}catch(e){process.stdout.write('unknown')}"
-```
-
-(Read + `JSON.parse` explicitly — `require('./.claude/bspecs.lock')` does **not** work, because Node's `require` only resolves `.js`/`.json`/`.node`, not a `.lock` extension.)
-
-Fall back to `unknown` if the lock is missing; never block on it.
+Always capture the **plugin version** — `Read` `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and take its `version` field. Use the Read tool, not a shelled-out runtime (step 4 assumes no `node`/`npm` is present). Fall back to `unknown` if the manifest is missing or unreadable; never block on it.
 
 ### 3. Confirm with the user
 
@@ -85,7 +77,7 @@ If auto-open fails (headless, no opener), the printed URL is the fallback — th
 ## What this skill must NOT do
 
 - **No token, no backend, no server call.** The only network action is the user's browser opening a public GitHub URL.
-- **No local file fallback** (no `.jsonl`, no scratch capture as the "real" record). A scaffolded project is never meaningfully offline (the platform needs connectivity), and a local file never reaches the repo. The sole fallback for a failed auto-open is printing the URL.
-- **Do not edit the local `.claude/` tree to "fix" the rule.** `bspecs sync` overwrites it; the fix must land in the repo via the issue.
+- **No local file fallback** (no `.jsonl`, no scratch capture as the "real" record). A project using this tooling is never meaningfully offline (the platform and marketplace need connectivity), and a local file never reaches the repo. The sole fallback for a failed auto-open is printing the URL.
+- **Do not edit the installed plugin files to "fix" the rule.** They are a read-only shared install, overwritten on the next `/plugin marketplace update`; the fix must land in the repo via the issue.
 - **Do not create `kind:*` labels** or pass them on `labels=` — only the `feedback` label exists; kind travels as text.
 - **Do not file without the user's confirmation** (step 3).
