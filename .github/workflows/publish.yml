@@ -1,12 +1,14 @@
 # ============================================================================
 # bspecs Release
 # ============================================================================
-# Purpose: On a version tag (v*.*.*), create a GitHub Release for the tag.
+# Purpose: On a plugin version tag (plugin-v*.*.*), create a GitHub Release.
 #
 # bspecs is distributed as a Claude Code plugin via the in-repo marketplace
 # (.claude-plugin/marketplace.json) — there is no npm publish and no binary
 # build. Tagging a version cuts a Release (users/marketplaces can pin to it).
-# The npm CLI is retained dormant in the repo but is no longer published.
+# Plugin releases use the `plugin-vX.Y.Z` namespace to avoid colliding with the
+# historic npm-package tags (`v0.2.0`..`v0.15.0`), which are frozen. The npm CLI
+# is retained dormant in the repo but is no longer published.
 # ============================================================================
 
 name: Release
@@ -14,7 +16,7 @@ name: Release
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+*'  # v0.1.0, v1.2.3, v1.2.3-rc.1, ...
+      - 'plugin-v[0-9]+.[0-9]+.[0-9]+*'  # plugin-v0.2.0, plugin-v1.2.3-rc.1, ...
 
 # Least privilege at the top; the job elevates to contents: write to cut the release.
 permissions:
