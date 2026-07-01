@@ -1,7 +1,5 @@
 # {{CLIENT_NAME}} — {{PROJECT_NAME}}
 
-{{PROJECT_DESCRIPTION}}
-
 ## Layout
 
 A project is a collection of B6P components, organised by Unit. `b6p pull "<DAV URL>"` creates the `U######/` folder and the component skeleton on first pull — you do not create Unit folders by hand. A single project commonly spans multiple Unit folders, and each Unit folder holds components of different types (Endpoint, MergeReport, Formula, etc.).

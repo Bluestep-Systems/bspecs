@@ -2,10 +2,6 @@
 
 **Scaffolded:** {{SCAFFOLD_DATE}}
 
-## Project description
-
-{{PROJECT_DESCRIPTION}}
-
 ## Workspace model
 
 This workspace is a **local copy** of components that live on the BlueStep platform. The platform is the source of truth.
