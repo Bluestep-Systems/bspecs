@@ -59,7 +59,7 @@ Once bootstrapped, drive features through `/spec-create` → `/spec-execute` →
 
 ## Distribution
 
-The plugin lives in `plugin/`; the repo-root `.claude-plugin/marketplace.json` lists it (`source: ./plugin`). There is **no npm publish and no binary build**. A GitHub Release is cut on each version tag (`vX.Y.Z`) by `.github/workflows/publish.yml`; `.github/workflows/ci.yml` runs smoke checks on every pull request and push to the default branch.
+The plugin lives in `plugin/`; the repo-root `.claude-plugin/marketplace.json` lists it (`source: ./plugin`). There is **no npm publish and no binary build**. A GitHub Release is cut on each plugin version tag (`plugin-vX.Y.Z`) by `.github/workflows/publish.yml`; `.github/workflows/ci.yml` runs smoke checks on every pull request and push to the default branch.
 
 The npm CLI that previously scaffolded these files (`cli.js`/`src/*`) is retained in the repo but **dormant** — unpublished and unsupported. See [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md) and [`docs/decisions/content-sanitization-for-public-tooling.md`](docs/decisions/content-sanitization-for-public-tooling.md).
 
@@ -75,13 +75,13 @@ Merging a PR to `main` does **not** ship it to installed users. The plugin's `ve
 2. Merge the bump to `main`. Users get everything since the previous version on their next `autoUpdate` (Claude Code startup) or manual `/plugin marketplace update`.
 3. Tag it and push, so a GitHub Release is recorded (and admins can pin to it):
    ```sh
-   git tag v0.2.0 && git push origin v0.2.0
+   git tag plugin-v0.2.0 && git push origin plugin-v0.2.0
    ```
-   `.github/workflows/publish.yml` cuts the Release for the tag.
+   `.github/workflows/publish.yml` cuts the Release for the tag. **Use the `plugin-vX.Y.Z` namespace** — the plain `vX.Y.Z` tags (`v0.2.0`..`v0.15.0`) belong to the frozen npm-package history and must not be reused.
 
 **Enforced:** CI fails any PR that changes `plugin/**` without bumping the version (the `plugin-version-bump` job), so a release can't be silently forgotten. Repo-only changes (docs, CI, the dormant CLI) don't touch `plugin/**`, need no bump, and don't affect installs.
 
-The marketplace tracks this repo's default branch, so the bump on `main` is what propagates to users; the `vX.Y.Z` tag is for the Release record and version pinning. See [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md).
+The marketplace tracks this repo's default branch, so the bump on `main` is what propagates to users; the `plugin-vX.Y.Z` tag is for the Release record and version pinning. See [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md).
 
 ## Proposing changes
 
