@@ -63,6 +63,26 @@ The plugin lives in `plugin/`; the repo-root `.claude-plugin/marketplace.json` l
 
 The npm CLI that previously scaffolded these files (`cli.js`/`src/*`) is retained in the repo but **dormant** — unpublished and unsupported. See [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md) and [`docs/decisions/content-sanitization-for-public-tooling.md`](docs/decisions/content-sanitization-for-public-tooling.md).
 
+## Releasing
+
+Merging a PR to `main` does **not** ship it to installed users. The plugin's `version` in [`plugin/.claude-plugin/plugin.json`](plugin/.claude-plugin/plugin.json) is the update signal: Claude Code caches each install by that version and, on `/plugin marketplace update` or `autoUpdate`, **skips the plugin when the version is unchanged**. Merged `plugin/**` changes stay dormant until a version bump ships them.
+
+**When to release** — whenever you want merged `plugin/**` changes to reach installed users. Batch several merged PRs into one release if you like; the release *is* the bump, not the merge.
+
+**How to release:**
+
+1. Bump `version` in `plugin/.claude-plugin/plugin.json` (semver — patch = fix, minor = feature, major = breaking).
+2. Merge the bump to `main`. Users get everything since the previous version on their next `autoUpdate` (Claude Code startup) or manual `/plugin marketplace update`.
+3. Tag it and push, so a GitHub Release is recorded (and admins can pin to it):
+   ```sh
+   git tag v0.2.0 && git push origin v0.2.0
+   ```
+   `.github/workflows/publish.yml` cuts the Release for the tag.
+
+**Enforced:** CI fails any PR that changes `plugin/**` without bumping the version (the `plugin-version-bump` job), so a release can't be silently forgotten. Repo-only changes (docs, CI, the dormant CLI) don't touch `plugin/**`, need no bump, and don't affect installs.
+
+The marketplace tracks this repo's default branch, so the bump on `main` is what propagates to users; the `vX.Y.Z` tag is for the Release record and version pinning. See [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md).
+
 ## Proposing changes
 
 Found something that should improve across all BlueStep projects — a skill, hook, reference rule, or subagent? Use the `/bspecs-feedback` skill (or open an issue/PR in this repo). Once merged and released, `/plugin marketplace update` propagates it.

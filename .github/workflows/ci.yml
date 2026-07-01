@@ -12,7 +12,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
 
 # Least privilege: read-only is all validation needs.
@@ -68,4 +68,55 @@ jobs:
         run: |
           node -e "JSON.parse(require('fs').readFileSync('.claude-plugin/marketplace.json','utf8')); console.log('marketplace.json OK')"
           node -e "JSON.parse(require('fs').readFileSync('plugin/.claude-plugin/plugin.json','utf8')); console.log('plugin.json OK')"
+        shell: bash
+
+  # Release gate: any PR that changes plugin/** must bump the plugin version, or
+  # installed users never receive the change (Claude Code skips an unchanged
+  # version on update). See the "Releasing" section of README.md.
+  plugin-version-bump:
+    name: Plugin version bump check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need base + head to compare the manifest across the PR
+          persist-credentials: false
+
+      - name: Require a version bump when plugin/** changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          MANIFEST="plugin/.claude-plugin/plugin.json"
+
+          if git diff --name-only "$BASE_SHA" "$HEAD_SHA" | grep -q '^plugin/'; then
+            echo "plugin/** changed in this PR — a version bump is required."
+          else
+            echo "No plugin/** changes — version bump not required."
+            exit 0
+          fi
+
+          # Read the manifest version at a given ref (empty if absent/unparseable).
+          # fs.readFileSync (not require) avoids Node's module cache across calls.
+          read_ver() {
+            git show "$1:$MANIFEST" 2>/dev/null > /tmp/m.json || echo '{}' > /tmp/m.json
+            node -e "const fs=require('fs');try{process.stdout.write((JSON.parse(fs.readFileSync('/tmp/m.json','utf8')).version)||'')}catch(e){process.stdout.write('')}"
+          }
+
+          BASE_VER="$(read_ver "$BASE_SHA")"
+          HEAD_VER="$(read_ver "$HEAD_SHA")"
+          echo "version: base='${BASE_VER:-<none>}' head='${HEAD_VER:-<none>}'"
+
+          if [ -z "$HEAD_VER" ]; then
+            echo "::error file=$MANIFEST::No \"version\" field. This repo uses explicit plugin versions — add and bump it (see README 'Releasing')."
+            exit 1
+          fi
+          if [ "$BASE_VER" = "$HEAD_VER" ]; then
+            echo "::error file=$MANIFEST::plugin/** changed but version is still $HEAD_VER. Bump it so installed users receive the update (see README 'Releasing')."
+            exit 1
+          fi
+          echo "Version bumped ${BASE_VER:-<none>} -> $HEAD_VER. OK."
         shell: bash
