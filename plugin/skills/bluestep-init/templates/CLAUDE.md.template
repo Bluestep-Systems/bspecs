@@ -65,17 +65,17 @@ Available skills (provided by the `bluestep-tools` plugin):
 | `/spec-create <feature-name>` | Plan a new feature (requirements → design → tasks) |
 | `/spec-execute <feature> <task#>` | Implement one specific task from a spec |
 | `/spec-status` | Show progress across all in-flight specs |
-| `/bug-fix` | Quick workflow for clearly-scoped bugs (no full 3-phase spec) |
+| `/quick-task` | Quick workflow for clearly-scoped changes and bugs (no full 3-phase spec; keeps one living doc) |
 
 ### Mandatory routing rule (spec-driven changes)
 
 **Before editing any TypeScript or static file under `U######/<Component>/draft/`**, you MUST route through one of these workflows — never edit directly because the user asked "change X":
 
 1. If the user describes a **feature** (new behavior, anything that requires designing): require `/spec-create` first. If a spec already exists for it (`.claude/specs/<feature>/tasks.md`), use `/spec-execute`.
-2. If the user describes a **bug** (incorrect existing behavior): require `/bug-fix` first.
+2. If the user describes a **bug** or a small, clearly-scoped change (no design needed): require `/quick-task` first.
 3. If the user explicitly says "this is trivial, just do it" or similar (typo fix, log message, comment, rename of a local variable): you may skip the workflow, but say what you're about to do and wait for "ok" before touching files.
 
-The point: the spec/bug workflow exists so changes are reviewed and traceable. Skipping it loses the value of the system. Ask once if a request is ambiguous; never assume.
+The point: the spec/quick-task workflow exists so changes are reviewed and traceable. Skipping it loses the value of the system. Ask once if a request is ambiguous; never assume.
 
 ### Soft routing (everything else)
 
