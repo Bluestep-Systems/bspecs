@@ -46,17 +46,29 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 - Briefly summarise the diff scope: "X files changed in `U######/<Component>/draft/`".
 - Confirm the component was pulled with `b6p` (so its sync metadata is recorded) — `--file` resolves the destination URL from that metadata. If the component was never pulled here, pull it first.
 
-### 3. Confirm with the user
+### 3. Choose the push mode (this also confirms the push)
 
-Show the summary and ask:
-> Push `<ComponentName>` now?
+Show the diff summary, then **always** offer the user a choice with the AskUserQuestion tool — do not push without an explicit selection. Present two options, neutrally (neither marked "recommended"):
 
-Do not push without explicit confirmation.
+- **Plain push** — overwrites the draft on the platform; records **no** server-side history.
+- **Snapshot** — pushes *and* records a versioned server-side snapshot (`--snapshot --message`), so the platform keeps a restorable history entry for this change.
+
+Selecting either option is the confirmation to push; if the user cancels, do not push.
+
+If the user picks **Snapshot**, draft a concise commit-style message from the diff (a short one-line summary of what changed), show it, and let the user accept or edit it before you run the push. Reuse the repo's commit-message habit — imperative, scoped.
 
 ### 4. Run the push
 
+**Plain push:**
+
 ```
 b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"
+```
+
+**Snapshot push** (when the user chose Snapshot in step 3):
+
+```
+b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts" --snapshot --message "<summary>"
 ```
 
 Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
@@ -66,13 +78,15 @@ The `--yes` is **required** — without it, b6p may show an interactive confirma
 ### 5. Report
 
 - The platform compiles after receiving the push. Surface any compile errors the CLI reports.
+- If the push was a **snapshot**, confirm that a versioned history entry was recorded (with the message used) — otherwise note that no server-side history was recorded.
 - Remind the user to verify behaviour on the platform itself — there is no local compile to fall back on.
 - If `draft/README.md` was modified locally, note that the platform now has the updated docs (useful for other devs pulling the same component).
 
 ## What this skill must NOT do
 
 - Do NOT invoke `b6p` any way other than the bare `b6p` binary.
-- Do NOT push without showing the user the diff and getting confirmation.
+- Do NOT push without showing the user the diff and getting an explicit plain-vs-snapshot selection (step 3).
+- Do NOT snapshot silently or automatically. The snapshot is always the user's explicit choice for *this* push — this skill never turns pushes into snapshots on its own (e.g. it does not auto-snapshot on task completion).
 - Do NOT loop on CLI failures — fall back to the VS Code b6p extension.
 
 ## If the CLI fails

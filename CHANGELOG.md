@@ -6,6 +6,32 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.6.0] — 2026-07-03
+
+Adds a snapshot path to `/b6p-push`. The b6p CLI has always supported `push --snapshot --message`
+(a restorable server-side version entry), but the skill only ever ran a plain push, so the
+scaffolded flow recorded **no** platform history. `/b6p-push` now offers the choice on every push.
+Existing installs receive it on `/plugin marketplace update` / `autoUpdate` only because the version
+changed.
+
+### Changed
+
+- **`/b6p-push` always offers plain-vs-snapshot** (`plugin/skills/b6p-push/SKILL.md`, step 3). The
+  skill now presents a neutral two-option choice (no default) via the AskUserQuestion tool on every
+  push; the selection doubles as the push confirmation. On **Snapshot** it drafts a concise
+  commit-style message from the diff for the user to accept or edit, then runs
+  `b6p --yes push --file "…" --snapshot --message "<summary>"`; **Plain push** runs the existing
+  command unchanged. Step 5 reports whether a versioned history entry was recorded. The skill
+  explicitly never snapshots silently or automatically — the snapshot is always the user's explicit
+  choice for that push (it does not auto-snapshot on task completion); the separate **auto-snapshot**
+  convention remains deferred in `TODO.md`.
+- **Plain-vs-snapshot promoted to a project-level rule** (`plugin/skills/bluestep-init/templates/CLAUDE.md.template`).
+  The choice previously lived only in the `/b6p-push` skill, so it bound only when the skill was the
+  entry point — a bare `b6p push` run by hand would plain-push silently. The scaffolded project
+  `CLAUDE.md` now carries it as Critical rule 9 (always present the choice, never snapshot or
+  plain-push silently, never auto-snapshot) and reinforces it in the "Sync workflow (b6p CLI)"
+  section, so the rule holds regardless of how the push is triggered.
+
 ## [plugin 0.5.0] — 2026-07-03
 
 Renames and broadens the `/bug-fix` skill into `/quick-task` — a short workflow for **small
