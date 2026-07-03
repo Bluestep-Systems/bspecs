@@ -4,7 +4,7 @@ Completed work for `@bluestep-systems/bspecs`, archived from `TODO.md` to keep t
 
 ## Unreleased
 
-### vite-merge-report-tooling (in progress)
+### vite-merge-report-tooling (complete)
 
 Spec: `.claude/specs/vite-merge-report-tooling/` (kept local — gitignored, not pushed). Documents and tools the **off-platform Vite/Preact SPA merge-report build model** (build off-platform, deploy `dist/` into the report's `static/` via deploy-lib — the platform compiler is bypassed). Branch `feature/vite-merge-report-tooling`.
 

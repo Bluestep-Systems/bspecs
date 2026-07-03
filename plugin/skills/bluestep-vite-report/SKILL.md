@@ -109,7 +109,9 @@ Drive `create-vite` **live** — this skill does **not** vendor a template tree;
    - The `repository` `url` is a `git+https://github.com/<owner>/<repo>.git` placeholder — fill in after creating the GitHub repo in step 4.
    - **Keep the default `build` script** the `preact-ts` template ships (`tsc -b && vite build`). Do **not** strip the `tsc -b`. It does **not** trip the `block-tsc` hook (that hook only matches a literal top-level Bash `tsc`; here `tsc` runs inside an npm script / as a child of deploy-lib) — see the gotchas file linked in step 5.
 
-5. **Non-destructive.** If any file you would write/edit already exists with real content that isn't the fresh scaffold output (e.g. you're re-running in a populated dir), skip it and report it as skipped rather than overwriting.
+5. **Protect the deploy token.** deploy-lib reads a bearer token from `.env-local` (hyphen) in the project root. `create-vite`'s default `.gitignore` uses `*.local`, which does **not** match `.env-local` — so append a line `.env-local` to the project's `.gitignore` so the token file can never be committed. (Full auth options are in the deploy-lib workflow file linked in step 5.)
+
+6. **Non-destructive.** If any file you would write/edit already exists with real content that isn't the fresh scaffold output (e.g. you're re-running in a populated dir), skip it and report it as skipped rather than overwriting.
 
 ### 4. Print (do NOT run) the [PLATFORM] + repo steps
 

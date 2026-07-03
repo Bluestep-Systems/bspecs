@@ -73,12 +73,17 @@ deploy-lib resolves its credential in this order and stops at the first one it f
 
 1. `--token-file <path>` — read the token from a file.
 2. `BLUESTEP_TOKEN` environment variable.
-3. `.env-local` — a local dotenv file (git-ignore it).
+3. `.env-local` — a dotenv file holding `BLUESTEP_TOKEN`, read from `process.cwd()`.
 4. Otherwise, an **interactive prompt**.
 
 Whichever it resolves, deploy-lib sends it as `Authorization: Bearer <token>`. The BlueStep platform token
-works as the bearer token. **Never commit a token or echo its value** — put it in a git-ignored `.env-local`
-or pass `--token-file` pointing outside the repo.
+works as the bearer token. **Never commit a token or echo its value.**
+
+> **`.env-local` is not `.env.local`.** deploy-lib hardcodes the filename `.env-local` (hyphen) in
+> `process.cwd()` — it does **not** read `.env.local` (dot). The trap: the common gitignore globs (`*.local`,
+> `.env`, `.env*.local`) do **not** match `.env-local`, so a token file created there is **not** ignored by
+> default and can be committed by accident. Either add `.env-local` explicitly to the project's `.gitignore`,
+> or prefer `--token-file` pointing outside the repo (or the `BLUESTEP_TOKEN` env var).
 
 ## Node 20+ required
 
