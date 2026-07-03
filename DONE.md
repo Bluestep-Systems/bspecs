@@ -4,6 +4,14 @@ Completed work for `@bluestep-systems/bspecs`, archived from `TODO.md` to keep t
 
 ## Unreleased
 
+### quick-task (plugin 0.5.0)
+
+Branch `feature/quick-task-skill` (PR #11). Renames and broadens `/bug-fix` into `/quick-task` — a short workflow for small changes **and** bug fixes that don't warrant a full 3-phase spec, now with light structure.
+
+- [x] **`/bug-fix` → `/quick-task`.** ([`plugin/skills/quick-task/SKILL.md`](plugin/skills/quick-task/SKILL.md), renamed via `git mv` from `plugin/skills/bug-fix/`.) Now covers small clearly-scoped changes as well as bugs; keeps **one living doc** at `.claude/quick-tasks/<slug>.md` that stays open for review and gets ticked off during implementation. Retains the scoped-read discipline and the platform-push / README-sync reminders from the old flow. Added the bundled `quick-task.template.md` (Summary, Root cause, Approach checklist, Notes).
+- [x] **Folded in the `[PLATFORM]` / `[CODE]` task distinction** (previously a standalone TODO). The quick-task doc's approach checklist tags each item, so a change that needs both a platform edit and a code edit has an explicit, reviewable handoff.
+- [x] **Docs + templates updated to match.** `bluestep-init` root templates (`CLAUDE.md.template` routing rule + skill table, `README.md.template`), plus `README.md`, `plugin/README.md`, `CLAUDE.md` inventories, and `docs/bspecs-builder/requirements.md` now reference `/quick-task`. Version `0.4.0` → `0.5.0`; CHANGELOG `## [plugin 0.5.0]` block added.
+
 ### push-snapshot (plugin 0.6.0)
 
 Branch `feature/b6p-push-snapshot`. Restores the snapshot path the scaffolded flow never had: the b6p CLI has always supported `push --snapshot --message` (a restorable server-side version entry), but the skill only ever ran a plain push, so pushes recorded **no** platform history.

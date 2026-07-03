@@ -43,7 +43,6 @@ The full b6p CLI audit (see git history for the conversation) surfaced two more 
 - [ ] **`design.template.md` line 13 lint warning.** The `**Does this change require modifying the component on the BlueStep platform? (Yes / No)**` line is rendered as bold but the markdown linter flags it as "emphasis used instead of heading". Either rewrite as a heading or accept the warning permanently. Cosmetic only.
 - [ ] **Skill messages in mixed languages.** The hard-coded "STOP" messages in `SKILL.md` files are in English; Claude sometimes reads them literally and breaks the Spanish flow the user is in. Consider whether SKILL.md should be language-neutral or have a localisation hook.
 - [ ] **`block-tsc` hook does not catch `tsc -p tsconfig.json`.** The pattern matches `tsc*` at start, so `tsc -p ...` is blocked correctly. But verify edge cases like `./node_modules/.bin/tsc`, `yarn tsc`, etc.
-- [x] ~~**`/bug-fix` could use the `[PLATFORM]/[CODE]` distinction too.**~~ — **Resolved in plugin 0.5.0.** `/bug-fix` was renamed and broadened into `/quick-task`, which drafts a single living doc (`.claude/quick-tasks/<slug>.md`) whose approach checklist tags each item `[PLATFORM]`/`[CODE]`, giving the mixed-change handoff explicit structure. See `CHANGELOG.md` (plugin 0.5.0).
 
 ## Rules consolidation follow-ups
 
