@@ -25,6 +25,12 @@ changed.
   explicitly never snapshots silently or automatically — the snapshot is always the user's explicit
   choice for that push (it does not auto-snapshot on task completion); the separate **auto-snapshot**
   convention remains deferred in `TODO.md`.
+- **Plain-vs-snapshot promoted to a project-level rule** (`plugin/skills/bluestep-init/templates/CLAUDE.md.template`).
+  The choice previously lived only in the `/b6p-push` skill, so it bound only when the skill was the
+  entry point — a bare `b6p push` run by hand would plain-push silently. The scaffolded project
+  `CLAUDE.md` now carries it as Critical rule 9 (always present the choice, never snapshot or
+  plain-push silently, never auto-snapshot) and reinforces it in the "Sync workflow (b6p CLI)"
+  section, so the rule holds regardless of how the push is triggered.
 
 ## [plugin 0.5.0] — 2026-07-03
 

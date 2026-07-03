@@ -21,6 +21,7 @@ This workspace is a **local copy** of components that live on the BlueStep platf
 6. In **MergeReports**: frontend (HTML/CSS/JS) lives in `static/`, NOT in `scripts/`.
 7. The workspace is a local copy — the platform is source of truth.
 8. **NEVER** fabricate query/form/field references. They must exist in the **specific component's** `declarations/index.d.ts` before use. Form-field imports are per-component — a field visible in component A is not visible in component B unless B's import config was updated on the platform and B was pulled. If missing, update that component's import config on the platform and pull it.
+9. **ALWAYS** present the plain-vs-snapshot choice on every `b6p push` — whether via `/b6p-push` or run by hand — and **NEVER** snapshot (or plain-push) silently. A snapshot (`--snapshot --message`) records a restorable server-side history entry; a plain push overwrites the draft with no history. The choice is always the user's explicit decision for that push; never auto-snapshot (e.g. on task completion).
 
 ## Module structure
 
@@ -91,6 +92,8 @@ You don't need explicit confirmation to invoke these — they're either read-onl
 ## Sync workflow (b6p CLI)
 
 The `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills own the exact `b6p …` invocations and their guidance — prefer them over running the CLI by hand. `b6p` is a standalone binary installed separately on the machine and invoked as bare `b6p` — not an npm dependency. If `b6p` is not on PATH, install the b6p-cli binary from its release.
+
+**Push is never plain-by-default.** Every push decision — plain vs. snapshot — is the user's to make explicitly (Critical rule 9), *regardless of how the push is triggered*. `/b6p-push` presents this choice as a step; if you ever run `b6p push` by hand instead of through the skill, you still owe the user that same choice before pushing. A plain push overwrites the draft with **no** server-side history; a snapshot (`--snapshot --message "<summary>"`) records a restorable version entry. Never pick for the user, and never auto-snapshot.
 
 **One-time platform auth:** `b6p` needs BlueStep credentials stored in `~/.b6p/` (once per machine). The first command on a fresh machine prompts interactively and would hang Claude, so run `b6p auth set` once before the first sync. The `/b6p-*` skills preflight this automatically.
 
