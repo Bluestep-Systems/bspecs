@@ -1,5 +1,5 @@
 {
   "name": "bluestep-tools",
   "description": "Spec-driven BlueStep (B6P) development tooling for Claude Code: b6p platform CLI skills, the spec-* workflow, BlueStep subagents, guardrail hooks, and an on-demand platform reference.",
-  "version": "0.5.0"
+  "version": "0.6.0"
 }
