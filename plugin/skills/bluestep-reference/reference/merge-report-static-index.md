@@ -2,6 +2,11 @@
 description: BlueStep merge report with a static/ bundle — B.out (server content) and static/index.html (client markup) BOTH render but are completely disjoint (B.out is injected as a tag that runs AFTER index.html), and static/styles.css + .build/script.js load automatically. Put the mount/config/markup/CSS in static/, use B.out only for final server-rendered markup; never fetch/inline your own styles.css and never use a B.out config island as a data channel to the index.html client script.
 ---
 
+> This file describes the **platform-compiled** `static/script.ts` path (`B.out` +
+> `static/index.html` + the autoloaded `.build/script.js`). For an **off-platform**
+> Vite/Preact SPA bundle deployed to `static/` via deploy-lib (the platform compiler
+> bypassed), see [vite spa merge report](vite-spa-merge-report.md).
+
 In a BlueStep merge report that ships a `static/` bundle (`static/index.html` +
 `static/.build/script.js` + `static/styles.css`), **both entry points render into
 the page together** (see [file execution](file-execution.md)):

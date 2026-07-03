@@ -30,6 +30,8 @@ Only two files execute automatically:
 
 All other files must be explicitly imported or referenced. Creating files that aren't imported = wasted code.
 
+> The "`app.ts` is a no-op, `static/index.html` is the SPA" case (an off-platform Vite/Preact bundle) fits this same server/client split — see [vite spa merge report](vite-spa-merge-report.md).
+
 ### HTML structure
 
 Merge-report HTML (`static/index.html`) is **embedded into an existing BlueStep page**, so it must NOT include `<!DOCTYPE html>`, `<html>`, `<head>`, or `<body>`. Include only external `<script>`/`<link>` references, the content markup, and the application script at the end.

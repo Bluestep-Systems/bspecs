@@ -5,5 +5,11 @@ build/
 *.log
 .DS_Store
 .claude/settings.local.json
-# Sanitization work files carrying the literal sensitive tokens (must never be committed to this public repo)
-.claude/specs/**/*.local.md
+# Spec/handoff working docs — kept local, not shipped to this public repo. They can reference
+# disposable spike details (org subdomains, file IDs, etc.); the shipped artifacts are the plugin
+# reference files, skills, and the ADRs under docs/decisions/. NOTE: specs committed before this
+# rule was added stay tracked until removed with `git rm --cached`.
+.claude/specs/
+# Disposable experiment workspaces (vite-merge-report-test etc.) — nested projects with
+# their own git repos and pulled reference components; never ship with the plugin.
+experiments/

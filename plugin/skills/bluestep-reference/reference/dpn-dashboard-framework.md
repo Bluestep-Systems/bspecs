@@ -4,6 +4,8 @@ description: "Parameterized data-endpoint + dashboard framework — one endpoint
 
 A reference architecture for a dashboard that pulls per-entity, per-date-range data from a single parameterized JSON endpoint. Two components, server-thin/client-fat: a **data endpoint** (the service) and a **MergeReport dashboard** (the consumer/UI).
 
+> This is a **related but different build model**: a `B.out` JSON island + endpoint on a **platform-compiled** bundle, NOT an off-platform Vite bundle. For the off-platform Vite/Preact SPA model, see [vite spa merge report](vite-spa-merge-report.md).
+
 ## Endpoint: parameterized data service
 `scripts/app.ts` reads a few URL params and returns JSON. The point of the pattern: **one endpoint, many shapes of data via params.**
 
