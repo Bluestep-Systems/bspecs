@@ -140,7 +140,7 @@ This workspace's mechanism is **prose + absence of `@`-imports**, not a special 
 - **Tier 2 — overviews, on-demand:** `b6p-platform.md` + `bsjs-development.md`, pointed to (not `@`-imported) from CLAUDE.md's "Deep reference" section.
 - **Tier 3 — atomic reference, on-demand:** `index.md` is the manifest. One line per topic file with a **"load this when you're doing X"** trigger hint, so Claude can pick the right file for the task without scanning the tree. `reference/`, `conventions/`, `gotchas/` sit under it.
 - **The rule for the build:** no `@`-imports of Tier 2/3 anywhere in CLAUDE.md (that is what forces content into every session — the regression a1adf55 fixed). The index + trigger hints are the only always-on cost beyond Tier 1.
-- **Optional reinforcement (consider, not required):** the existing skills (`/bug-fix`, `/spec-execute`, etc.) can name the specific reference file to read for a given workflow, since skills are themselves only loaded when invoked. This gives a second, action-driven path to the right file without inflating CLAUDE.md.
+- **Optional reinforcement (consider, not required):** the existing skills (`/quick-task`, `/spec-execute`, etc.) can name the specific reference file to read for a given workflow, since skills are themselves only loaded when invoked. This gives a second, action-driven path to the right file without inflating CLAUDE.md.
 - Update `CLAUDE.md.template` to add `index.md` to the "Deep reference" pointer list; keep the existing on-demand wording.
 
 ### B3. Generalize the GitHub mirror

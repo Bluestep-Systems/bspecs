@@ -6,6 +6,37 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.5.0] — 2026-07-03
+
+Renames and broadens the `/bug-fix` skill into `/quick-task` — a short workflow for **small
+changes and bug fixes** (not just bugs) that don't warrant a full 3-phase spec, now with light
+structure: it keeps **one living markdown doc** at `.claude/quick-tasks/<slug>.md` that stays open
+for review and gets ticked off during implementation, the middle ground between an ad-hoc edit and a
+full spec. Existing installs receive it on `/plugin marketplace update` / `autoUpdate` only because
+the version changed.
+
+### Changed
+
+- **`/bug-fix` → `/quick-task`** (`plugin/skills/quick-task/SKILL.md`, renamed via `git mv` from
+  `plugin/skills/bug-fix/`). The skill now covers small clearly-scoped changes as well as bugs, and
+  its `description` reflects the broader scope. Step 3 drafts a single quick-task doc from a bundled
+  template; step 5 keeps that doc current (ticking items, noting divergences) so it's reviewable
+  during implementation. Retains the scoped-read discipline and the platform-push / README-sync
+  reminders from the old bug-fix flow.
+- **Folded in the `[PLATFORM]` / `[CODE]` task distinction** (previously a standalone TODO): the
+  quick-task doc's approach checklist tags each item, so a change that needs both a platform edit and
+  a code edit has an explicit, reviewable handoff.
+- **`bluestep-init` root templates** now reference `/quick-task` instead of `/bug-fix`
+  (`CLAUDE.md.template` routing rule + skill table, `README.md.template` skills list).
+- **Repo docs** updated to match: `README.md`, `plugin/README.md`, `CLAUDE.md` skill inventories,
+  and `docs/bspecs-builder/requirements.md`.
+
+### Added
+
+- **`plugin/skills/quick-task/quick-task.template.md`** — the single-doc template (Summary, Root
+  cause, Approach checklist with `[PLATFORM]`/`[CODE]` tags, Notes), bundled with the skill and
+  copied to `.claude/quick-tasks/<slug>.md` at draft time.
+
 ## [plugin 0.4.0] — 2026-07-03
 
 Documents and tools the **off-platform Vite/Preact SPA merge-report build model** — building a full SPA

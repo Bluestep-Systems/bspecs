@@ -47,7 +47,7 @@ const expected = [
   '.claude/skills/spec-create/SKILL.md',
   '.claude/skills/spec-execute/SKILL.md',
   '.claude/skills/spec-status/SKILL.md',
-  '.claude/skills/bug-fix/SKILL.md',
+  '.claude/skills/quick-task/SKILL.md',
   '.claude/spec-templates/requirements.template.md',
   '.claude/spec-templates/design.template.md',
   '.claude/spec-templates/tasks.template.md',

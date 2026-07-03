@@ -18,7 +18,7 @@ Internal staff normally get it pre-enabled via managed settings (`extraKnownMark
 ## Contents
 
 - `skills/` — `/bluestep-init` (project bootstrap), the `/b6p-*` platform CLI skills, the `/spec-*`
-  workflow, `bug-fix`, `task-comment`, `bspecs-feedback`, and `bluestep-reference` (the on-demand
+  workflow, `quick-task`, `task-comment`, `bspecs-feedback`, and `bluestep-reference` (the on-demand
   platform reference).
 - `agents/` — BlueStep subagents (`b6p-task-implementer`, `b6p-commenter`, `b6p-code-review`).
 - `hooks/` — guardrail hooks (block-generated-files, block-tsc, prettier-on-save).

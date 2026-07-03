@@ -13,7 +13,7 @@ plugin/
   .claude-plugin/
     plugin.json           ← plugin manifest (name "bluestep-tools", version)
   skills/                 ← /b6p-pull, /b6p-push, /b6p-audit, /spec-create, /spec-execute,
-                            /spec-status, /bug-fix, /task-comment, /bspecs-feedback, /bluestep-init,
+                            /spec-status, /quick-task, /task-comment, /bspecs-feedback, /bluestep-init,
                             /bluestep-vite-report, and bluestep-reference (the on-demand platform reference)
   agents/                 ← three subagents (b6p-task-implementer, b6p-commenter, b6p-code-review)
   hooks/                  ← hooks.json + three scripts (block-generated-files, block-tsc, prettier-on-save)

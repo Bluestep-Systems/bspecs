@@ -36,7 +36,7 @@ Use Claude skills for spec-driven development:
 - `/spec-create <feature>` — generate requirements/design/tasks with approval gates.
 - `/spec-execute <feature> <task#>` — implement one task.
 - `/spec-status` — see progress.
-- `/bug-fix` — shorter workflow for bug fixes.
+- `/quick-task` — shorter workflow for small changes and bug fixes (keeps one living doc).
 
 ## Configuration
 
