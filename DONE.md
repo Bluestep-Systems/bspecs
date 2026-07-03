@@ -4,6 +4,22 @@ Completed work for `@bluestep-systems/bspecs`, archived from `TODO.md` to keep t
 
 ## Unreleased
 
+### quick-task (plugin 0.5.0)
+
+Branch `feature/quick-task-skill` (PR #11). Renames and broadens `/bug-fix` into `/quick-task` — a short workflow for small changes **and** bug fixes that don't warrant a full 3-phase spec, now with light structure.
+
+- [x] **`/bug-fix` → `/quick-task`.** ([`plugin/skills/quick-task/SKILL.md`](plugin/skills/quick-task/SKILL.md), renamed via `git mv` from `plugin/skills/bug-fix/`.) Now covers small clearly-scoped changes as well as bugs; keeps **one living doc** at `.claude/quick-tasks/<slug>.md` that stays open for review and gets ticked off during implementation. Retains the scoped-read discipline and the platform-push / README-sync reminders from the old flow. Added the bundled `quick-task.template.md` (Summary, Root cause, Approach checklist, Notes).
+- [x] **Folded in the `[PLATFORM]` / `[CODE]` task distinction** (previously a standalone TODO). The quick-task doc's approach checklist tags each item, so a change that needs both a platform edit and a code edit has an explicit, reviewable handoff.
+- [x] **Docs + templates updated to match.** `bluestep-init` root templates (`CLAUDE.md.template` routing rule + skill table, `README.md.template`), plus `README.md`, `plugin/README.md`, `CLAUDE.md` inventories, and `docs/bspecs-builder/requirements.md` now reference `/quick-task`. Version `0.4.0` → `0.5.0`; CHANGELOG `## [plugin 0.5.0]` block added.
+
+### push-snapshot (plugin 0.6.0)
+
+Branch `feature/b6p-push-snapshot`. Restores the snapshot path the scaffolded flow never had: the b6p CLI has always supported `push --snapshot --message` (a restorable server-side version entry), but the skill only ever ran a plain push, so pushes recorded **no** platform history.
+
+- [x] **On-demand snapshot in `/b6p-push`.** ([`plugin/skills/b6p-push/SKILL.md`](plugin/skills/b6p-push/SKILL.md), steps 3–5.) The skill now **always** presents a neutral plain-vs-snapshot choice via `AskUserQuestion` on every push (no default); the selection doubles as the push confirmation. On **Snapshot** it drafts a concise commit-style message from the diff for the user to accept/edit, then runs `b6p --yes push --file "…" --snapshot --message "<summary>"`; **Plain push** is unchanged. Step 5 reports whether a versioned history entry was recorded. Guardrail: the skill never snapshots (or plain-pushes) silently or automatically — always the user's explicit choice for that push. Landed slightly stronger than the original "opt-in only when asked" framing (it prompts every time).
+- [x] **Plain-vs-snapshot promoted to a project-level rule.** ([`plugin/skills/bluestep-init/templates/CLAUDE.md.template`](plugin/skills/bluestep-init/templates/CLAUDE.md.template).) The choice previously bound only when `/b6p-push` was the entry point — a bare `b6p push` run by hand would plain-push silently. Now carried as **Critical rule 9** (always present the choice, never snapshot/plain-push silently, never auto-snapshot) and reinforced in the "Sync workflow (b6p CLI)" section, so the rule holds regardless of how the push is triggered.
+- [x] **Version bump + CHANGELOG.** `plugin/.claude-plugin/plugin.json` `0.5.0` → `0.6.0`; added the `## [plugin 0.6.0] — 2026-07-03` block to [`CHANGELOG.md`](CHANGELOG.md). Satisfies the CI `plugin-version-bump` gate. The **auto-snapshot** half (tie a push to `/spec-execute` completion) remains deferred in [`TODO.md`](TODO.md).
+
 ### vite-merge-report-tooling (complete)
 
 Spec: `.claude/specs/vite-merge-report-tooling/` (kept local — gitignored, not pushed). Documents and tools the **off-platform Vite/Preact SPA merge-report build model** (build off-platform, deploy `dist/` into the report's `static/` via deploy-lib — the platform compiler is bypassed). Branch `feature/vite-merge-report-tooling`.

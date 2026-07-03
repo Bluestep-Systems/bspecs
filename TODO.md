@@ -35,9 +35,7 @@ For deeper context behind any decision, see `docs/decisions/`. Completed work is
 
 The full b6p CLI audit (see git history for the conversation) surfaced two more capabilities worth considering, both deferred until we have a concrete use case:
 
-- **`--snapshot` + `--message` in push — restore a snapshot path.** The b6p CLI supports `b6p push --file <path> --snapshot --message "..."`. Split in two:
-  - ~~**On-demand snapshot.**~~ **Done** — `/b6p-push` now always offers a neutral plain-vs-snapshot choice via AskUserQuestion on every push (step 3); on snapshot it drafts a commit-style message from the diff for the user to accept/edit, then pushes with `--snapshot --message "<summary>"`. Plain push records no server-side history; snapshot records a restorable version entry. Landed slightly stronger than the original "opt-in only when asked" framing — the skill prompts every time rather than waiting for the user to ask.
-  - [ ] **Auto-snapshot (still undecided).** Whether a push should *automatically* become a snapshot — e.g. tied to `/spec-execute` task completion ("push task N as snapshot with message `feat(spec/FEATURE): task N done`"). This is the part that needs a convention decision: when does a push become a snapshot vs. a plain draft push? Keep deferred until there's a concrete use case. The `/b6p-push` skill explicitly does **not** auto-snapshot today.
+- [ ] **Auto-snapshot in push (still undecided).** Whether a push should *automatically* become a snapshot — e.g. tied to `/spec-execute` task completion ("push task N as snapshot with message `feat(spec/FEATURE): task N done`"). This is the part that needs a convention decision: when does a push become a snapshot vs. a plain draft push? Keep deferred until there's a concrete use case. The `/b6p-push` skill explicitly does **not** auto-snapshot today. (The **on-demand** snapshot half shipped in plugin 0.6.0 — `/b6p-push` always offers a plain-vs-snapshot choice, promoted to a project-level rule in the scaffolded `CLAUDE.md`. See [`DONE.md`](DONE.md).)
 - [ ] **`/b6p-deploy <feature>` skill.** Wrap `b6p deploy <config>` for multi-target deployment using the `## Deployment` section of a spec's `tasks.md`. Useful when a feature touches multiple components that all need to ship together to one or more environments. Defer until the multi-environment story for B6P is clearer.
 
 ## Polish / nice-to-have
@@ -45,7 +43,6 @@ The full b6p CLI audit (see git history for the conversation) surfaced two more 
 - [ ] **`design.template.md` line 13 lint warning.** The `**Does this change require modifying the component on the BlueStep platform? (Yes / No)**` line is rendered as bold but the markdown linter flags it as "emphasis used instead of heading". Either rewrite as a heading or accept the warning permanently. Cosmetic only.
 - [ ] **Skill messages in mixed languages.** The hard-coded "STOP" messages in `SKILL.md` files are in English; Claude sometimes reads them literally and breaks the Spanish flow the user is in. Consider whether SKILL.md should be language-neutral or have a localisation hook.
 - [ ] **`block-tsc` hook does not catch `tsc -p tsconfig.json`.** The pattern matches `tsc*` at start, so `tsc -p ...` is blocked correctly. But verify edge cases like `./node_modules/.bin/tsc`, `yarn tsc`, etc.
-- [x] ~~**`/bug-fix` could use the `[PLATFORM]/[CODE]` distinction too.**~~ — **Resolved in plugin 0.5.0.** `/bug-fix` was renamed and broadened into `/quick-task`, which drafts a single living doc (`.claude/quick-tasks/<slug>.md`) whose approach checklist tags each item `[PLATFORM]`/`[CODE]`, giving the mixed-change handoff explicit structure. See `CHANGELOG.md` (plugin 0.5.0).
 
 ## Rules consolidation follow-ups
 
