@@ -4,6 +4,8 @@ description: "Multi-page dashboard SPA pattern — server flattens forms to a JS
 
 A reusable **multi-page dashboard SPA** pattern for a data-dense MergeReport: a thin server that flattens form data into one JSON payload, and a fat single-file client bundle that renders a tabbed single-page app. Server-thin/client-fat.
 
+> This is a **related but different build model**: a `B.out` JSON island + endpoint on a **platform-compiled** bundle, NOT an off-platform Vite bundle. For the off-platform Vite/Preact SPA model, see [vite spa merge report](vite-spa-merge-report.md).
+
 **Architecture (the pattern to reuse):**
 - `scripts/app.ts` (server): iterates the top-level query ONCE, flattens each record plus its sub-form entries into plain `*Lite` objects (one flat type per sub-form), builds a `{meta, ...collections}` payload, and emits it as `<script id="data" type="application/json">…</script>` alongside an empty `<div id="app">` mount. **Escape the JSON before embedding** — `.replace(/</g, '\\u003c')` — so a stray `</script>` in the data can't break out of the tag.
 - `static/script.ts` (client): reads the JSON payload, renders the SPA — a global filter bar + tab dispatch (`renderActiveTab`) + one page renderer per tab + a shared detail modal.

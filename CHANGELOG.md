@@ -6,6 +6,44 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.4.0] — 2026-07-03
+
+Documents and tools the **off-platform Vite/Preact SPA merge-report build model** — building a full SPA
+off-platform (Node 20 + npm), producing a minified `dist/`, and deploying it into the report's `static/`
+folder via deploy-lib, bypassing the platform's `static/script.ts` compiler entirely. Existing installs
+receive it on `/plugin marketplace update` / `autoUpdate` only because the version changed.
+
+### Added
+
+- **Three `bluestep-reference` files for the off-platform Vite/Preact SPA merge report**, each with a
+  `SKILL.md` manifest entry:
+  - `reference/vite-spa-merge-report.md` — the pattern: architecture (SPA in `static/`, report serves
+    `index.html`, `app.ts` is a no-op or a `B.out` window-bootstrap), when to use it vs. the
+    platform-compiled `static/script.ts` path, the two data models (endpoint fetch carrying the session vs.
+    server bootstrap needing `objects/imports.ts`), history in GitHub, Preact-default/React-alternative.
+  - `conventions/deploy-lib-workflow.md` — install deploy-lib from git, the `package.json` `config` block
+    (the camelCase `deployUrl` trap vs. lowercase `deploypathsuffix`/`builddir`), `npm run deploy -- --build
+    --clean` (draft+snapshot upload), auth resolution, Node 20+. Owns the deploy-lib issue #30 link.
+  - `gotchas/vite-merge-report-gotchas.md` — `base: './'` (the headline trap), `<head>` stripping,
+    mount-id match, Node 20+ (`crypto is not defined` on 18), config-key casing, `Swal`/site-CSS absent in
+    local dev, and "don't 'fix' the `build` script."
+- **`/bluestep-vite-report` scaffold skill** (`plugin/skills/bluestep-vite-report/SKILL.md`) — a guided
+  scaffold modeled on `/bluestep-init`: Node-20 precheck (STOP, don't install) → `create-vite`
+  (`preact-ts`) → `base: './'` + deploy-lib `config`/`repository`/`deploy` wiring → printed (not run)
+  `[PLATFORM]` report-creation, GitHub-repo, and deploy steps. Links the three reference files.
+- **ADR `docs/decisions/off-platform-bundler-build-model.md`** — records keeping both merge-report build
+  models and the load-bearing constraints (`base: './'`, Node 20+, deploy-lib config-key casing,
+  GitHub-hosted history).
+
+### Changed
+
+- **Cross-linked the six platform-compiled `static/` docs** to the new off-platform pattern with an
+  additive one-line disambiguator each (no rule reworded): `reference/merge-report-static-index.md`,
+  `conventions/single-script.md` (now scopes its "only root `static/script.ts` compiles" rule to the
+  platform-compiled path — it does not apply to a Vite bundle), `conventions/separate-files.md`,
+  `reference/file-execution.md`, `reference/crm-dashboard-inspo.md`, `reference/dpn-dashboard-framework.md`.
+- **`CLAUDE.md`** plugin skills inventory now lists `/bluestep-vite-report`.
+
 ## [plugin 0.3.0] — 2026-07-01
 
 ### Changed
