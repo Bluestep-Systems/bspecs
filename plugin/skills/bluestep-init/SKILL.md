@@ -104,17 +104,35 @@ List which files were written and which were skipped because they already existe
 
 If the target directory is not already a git repo, run `git init` in it (or tell the user to). A git repo matters because the spec-execute implementer agent reviews its work via `git diff` — without a repo there is no baseline diff to review.
 
-### 7. If a new subfolder — point the user at it
+### 7. (Optional) Connect a BlueStep org MCP
+
+Offer — do not force — to connect the project to a BlueStep org's platform MCP now. A project is often
+created before the org or token exists, so this must be skippable.
+
+Ask with `AskUserQuestion`:
+
+- **Question:** "Connect this project to a BlueStep org's platform MCP now?"
+- **Options:**
+  - `Skip for now` — *(recommended)* set it up later with `/bluestep-mcp-connect`.
+  - `Connect an org` — register the org's platform MCP (global by default, so it works in every workspace).
+
+On **Connect an org**, run the `/bluestep-mcp-connect` flow (token preflight → ask the org URL → register at
+user scope via `claude mcp add`, or per-workspace `.mcp.json` if the user wants containment → handshake →
+tell the user a fresh session is needed). Do not re-implement it here; defer to that skill so the two stay
+in sync. On **Skip for now**, note that `/bluestep-mcp-connect` adds it whenever they are ready.
+
+### 8. If a new subfolder — point the user at it
 
 When the project was set up in a **new subfolder**, the current session is still rooted in the parent, so finish by telling the user:
 
 > Project created in `./<name>`. Open that folder as a new Claude Code session (or reopen your workspace rooted there) to work in it — the `bluestep-tools` skills and hooks apply to whichever folder the session is opened in.
 
-### 8. (Optional) plugin availability and b6p on PATH
+### 9. (Optional) plugin availability, b6p on PATH, and the MCP token
 
 - If the plugin is enabled globally (via Claude's plugin settings / Customize), the skills and hooks are already available in every session — the `.claude/settings.json` block above mainly declares the dependency for teammates and CI. If it is **not** globally enabled, Claude Code offers a one-time install on the next folder-trust prompt, or the user can run `claude plugin install bluestep-tools@bluestep`.
 - If you can tell `b6p` is not on PATH, note that it is a standalone binary installed separately (not an npm dependency) — install the b6p-cli binary from its release, and run `b6p auth set` once per machine, before using the `/b6p-*` skills.
+- The **platform MCP** (used by `/bluestep-mcp-connect`) authenticates with a **separate** credential from the b6p CLI: a global `b6pt_` access token, created once in the BlueStep UI and stored in the `B6PT_TOKEN` environment variable. It is *not* the same as the `b6p auth set` WebDAV credentials.
 
 ## Done
 
-Summarize: the files written vs. skipped, the target directory, that `.claude/settings.json` enables the plugin, and that `git init` ran. If a new subfolder was created, repeat the "open a session in `./<name>`" instruction. Point the user at `/b6p-pull <DAV URL>` to bring down their first component.
+Summarize: the files written vs. skipped, the target directory, that `.claude/settings.json` enables the plugin, that `git init` ran, and whether an org MCP was connected (or that `/bluestep-mcp-connect` can add one later). If a new subfolder was created, repeat the "open a session in `./<name>`" instruction. Point the user at `/b6p-pull <DAV URL>` to bring down their first component.
