@@ -59,4 +59,10 @@ Report any match — already planned, already shipped, or covered by an ADR — 
 
 ## After approval
 
-Tell the user to run `/spec-execute <feature-name> <task#>` to start implementing tasks one at a time.
+Tell the user to start implementing tasks one at a time. Present the first command on its own line as a **fenced code block** — with the real feature name and first task number filled in, e.g.
+
+```
+/spec-execute add-validation-on-intake 1
+```
+
+so the terminal UI renders a copy button. Do **not** bury the command in inline backticks inside a sentence (no copy button there).

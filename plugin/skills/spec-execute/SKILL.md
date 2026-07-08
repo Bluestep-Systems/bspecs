@@ -41,7 +41,13 @@ description: Execute one task from a feature spec. By default delegates implemen
    - If this task changed behavior that the README describes (Overview, Behavior, Fields used, External dependencies), update the README in the same change so the platform doc stays in sync.
    - If the change is internal-only (refactor, comment, log message) and doesn't alter documented behavior, leave the README alone.
    - When unsure, ask the user: "This task changed `<what>` — should I reflect it in `draft/README.md`?"
-8. **STOP. Tell the user: "Task <N> done. Review and approve before /spec-execute <feature> <N+1>."** Do not auto-continue. In the same message, surface the implementer's summary + diff (default path) and offer the optional, user-invoked follow-ups — these never fire automatically:
+8. **STOP.** Tell the user the task is done and to review and approve before running the next one. Present the next command on its own line as a **fenced code block** — with `<feature>` and `<N+1>` filled in with the real values, e.g.
+
+   ```
+   /spec-execute add-validation-on-intake 4
+   ```
+
+   so the terminal UI renders a copy button. Do **not** bury the command in inline backticks inside a sentence (no copy button there). Do not auto-continue. In the same message, surface the implementer's summary + diff (default path) and offer the optional, user-invoked follow-ups — these never fire automatically:
    - `@b6p-commenter` — update the component's `draft/README.md` from the new code.
    - `@b6p-code-review` — a BlueStep-aware, report-only review of the change.
 

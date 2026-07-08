@@ -6,6 +6,20 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.8.1] — 2026-07-08
+
+Removes a small UX friction in the spec flow: the "run the next task" suggestion is now presented as a
+copyable command instead of buried in a sentence. Existing installs receive it on
+`/plugin marketplace update` / `autoUpdate` only because the version changed.
+
+### Changed
+
+- **`/spec-create` "After approval"** (`plugin/skills/spec-create/SKILL.md`) and **`/spec-execute` step 8**
+  (`plugin/skills/spec-execute/SKILL.md`) now instruct the agent to present the next `/spec-execute`
+  command on its own line as a **fenced code block** (with the real feature name and task number filled
+  in), so the terminal UI renders a copy button — rather than embedding it in inline backticks inside a
+  sentence, which shows no copy button. Repo-local mirror skills (`.claude/skills/spec-*`) updated to match.
+
 ## [plugin 0.8.0] — 2026-07-08
 
 Makes `[PLATFORM]` authoring/wiring **agent-executable in-session** over the per-org platform MCP,

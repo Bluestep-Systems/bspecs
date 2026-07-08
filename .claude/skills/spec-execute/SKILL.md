@@ -31,7 +31,13 @@ description: Execute one task from a feature spec. By default delegates implemen
    - Check the most recent `ide_diagnostics` blocks for any `Error` in a file this task touched. If present, **STOP**, fix, and re-verify before marking done. `Warning`/`Information` can be ignored unless they point to a real problem.
 6. **Mark the task done:** update `.claude/specs/<feature>/tasks.md` — change `[ ]` to `[x]` for the completed task.
 7. **Keep docs in sync.** If this task changed behavior described in `CLAUDE.md` or `README.md`, or completed a `TODO.md` item, update them in the same change. If an instruction file was added under `templates/claude/instructions/`, confirm it has a matching `index.md` entry.
-8. **STOP. Tell the user: "Task <N> done. Review and approve before /spec-execute <feature> <N+1>."** Do not auto-continue.
+8. **STOP.** Tell the user the task is done and to review and approve before running the next one. Present the next command on its own line as a **fenced code block** — with `<feature>` and `<N+1>` filled in with the real values, e.g.
+
+   ```
+   /spec-execute add-validation-on-intake 4
+   ```
+
+   so the terminal UI renders a copy button. Do **not** bury the command in inline backticks inside a sentence (no copy button there). Do not auto-continue.
 
 ## When all tasks are done
 
