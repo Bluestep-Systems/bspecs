@@ -1,7 +1,7 @@
 ---
 name: bluestep-mcp-connect
 description: Connect to a BlueStep org's platform MCP server so the agent can run [PLATFORM] operations directly. Registers globally (user scope) via the claude CLI when available so it persists across all workspaces; falls back to a per-workspace .mcp.json (no CLI needed) otherwise. Use when the user wants to add or set up a BlueStep MCP connection for an org.
-allowed-tools: Read Write Edit AskUserQuestion Bash(curl:*) Bash(test *) Bash(printenv B6PT_TOKEN) Bash(claude mcp:*)
+allowed-tools: Read Write Edit AskUserQuestion Bash(curl:*) Bash(test -n *) Bash(command -v *) Bash(claude mcp:*)
 ---
 
 # /bluestep-mcp-connect — Connect to a BlueStep org MCP
@@ -145,14 +145,14 @@ A live `initialize` handshake confirms the URL + token before the user restarts.
 file (an inline shell string gets mangled → `400 Invalid message format`), then:
 
 ```
-printf '%s' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"bluestep-mcp-connect","version":"1.0"}}}' > /tmp/mcp-init.json
+printf '%s' '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"bluestep-mcp-connect","version":"1.0"}}}' > "${TMPDIR:-/tmp}/mcp-init.json"
 
 curl -sS -i --max-time 25 -X POST "https://<subdomain>.bluestep.net/mcp" \
   -H "Authorization: Bearer $B6PT_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
   -H "MCP-Protocol-Version: 2025-06-18" \
-  --data-binary @/tmp/mcp-init.json
+  --data-binary @"${TMPDIR:-/tmp}/mcp-init.json"
 ```
 
 Interpret the response:
@@ -203,9 +203,10 @@ across every org. Handle it accordingly, and be honest with the user about its l
   Expires columns; a never-expiring, unscoped global-super token is the riskiest shape. Setting an expiry
   and scopes (and questioning whether it needs to be a global-super token at all) reduces risk more than
   anything about where the token is stored.
-- **Never print or transmit the token**, and never write the literal value into any file. It grants global
-  admin — a leaked value is a full platform compromise. If exposed, tell the user to **Revoke** it on that
-  same screen and rotate.
+- **Never print or leak the token, and never send it anywhere other than the org's own MCP endpoint** (as
+  the `Authorization` header, over HTTPS — which steps 3a/4 do). Never write the literal value into a
+  committed file or echo it to the transcript. It grants global admin — a leaked value is a full platform
+  compromise. If exposed, tell the user to **Revoke** it on that same screen and rotate.
 
 ## What this skill must NOT do
 

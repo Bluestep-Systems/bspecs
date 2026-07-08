@@ -1,7 +1,7 @@
 # ADR: Integrate the BlueStep platform MCP (connection now, operation migration phased)
 
-**Status:** Proposed — connection tooling accepted and shipped; the migration of `[PLATFORM]` /
-`/b6p-*` operations onto MCP tools is a phased follow-up, not yet implemented.
+**Status:** Partially accepted — the connection tooling is accepted and shipped; the migration of
+`[PLATFORM]` / `/b6p-*` operations onto MCP tools is a phased follow-up, not yet implemented.
 
 **Date:** 2026-07-08
 
