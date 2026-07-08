@@ -10,6 +10,12 @@ The BlueStep platform exposes a **per-org MCP server** at `https://<org>.blueste
 transport). Connecting lets the agent perform `[PLATFORM]` operations directly (read/write a script
 draft, create forms/fields/queries, wire dependencies, etc.) instead of the manual b6p-CLI / UI flow.
 
+> This skill may also be invoked conversationally as the "not connected → offer to connect" step of the
+> shared MCP `[PLATFORM]` authoring procedure (the `bluestep-reference` skill's
+> `conventions/mcp-platform-authoring.md`). Per the fresh-session caveat below, connecting here does **not**
+> unblock an in-flight authoring request in the current session — the tools register only in a new session,
+> so that request must be re-asked after restart.
+
 **Three facts drive this skill:**
 
 - **One token, many orgs.** A single **global** `b6pt_` access token authorizes *every* org's MCP. The
