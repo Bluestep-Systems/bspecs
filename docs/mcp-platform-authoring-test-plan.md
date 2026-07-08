@@ -1,6 +1,7 @@
 # MCP `[PLATFORM]` authoring/wiring — test plan (bkplayground)
 
-**Status:** Ready to run (human-runnable; not automated — needs a live playground org)
+**Status:** Ran 2026-07-08 against **bkplayground** (Task 9 live prove-out). Wiring trio + oracle: **PASS, clean**.
+Schema authoring (`option_list`): **create/assert PASS; teardown has NO MCP path → 1 residue object** (see §3, deleted manually in UI).
 
 This is a committed, human-runnable checklist for the **Phase-4 authoring/wiring tools** that the
 `mcp-platform-authoring` feature calls. It is the artifact **Task 9** (the live prove-out) executes against
@@ -42,19 +43,17 @@ siblings, `view`, `record_type`, `batch_fields`).
 
 ### Prerequisites (all required before you start)
 
-- [ ] **A FRESH connected session where the MCP tools actually register in-app.** The
-      `mcp__bluestep-bkplayground__*` tools must be **live in this session** — i.e. callable from the
-      agent, not merely added via `claude mcp add` in a prior session. **The curl `initialize` handshake
-      alone is NOT sufficient** (it proves the server answers, not that the tools registered in the host).
-      This is the open fresh-session prereq/gate; confirm it first by listing the available
-      `mcp__bluestep-bkplayground__*` tools in this session before running anything below.
-- [ ] **Global `B6PT_TOKEN`** is set (the single global `b6pt_` token from `/bluestep-mcp-connect`). Note:
+- [x] **A FRESH connected session where the MCP tools actually register in-app.** **CONFIRMED** — all 88
+      `mcp__bluestep-bkplayground__*` tools were live/callable in this session (in-app registration held, not
+      merely a prior `claude mcp add`). The curl handshake was **not** relied on.
+- [x] **Global `B6PT_TOKEN`** is set (the single global `b6pt_` token from `/bluestep-mcp-connect`). Note:
       this token is **global-super** — every mutation below runs as global admin, so run only against
-      **bkplayground**, never a real org.
-- [ ] **A throwaway target script** on bkplayground for the wiring trio — record its topId as `<scriptId>`
-      below. A throwaway **target form / field parent** as needed for schema tests.
-- [ ] The org is the sanctioned disposable playground (**bkplayground**). If multiple orgs are connected,
-      confirm you are targeting `mcp__bluestep-bkplayground__*` specifically.
+      **bkplayground**, never a real org. **CONFIRMED** — all mutations targeted `mcp__bluestep-bkplayground__*`.
+- [x] **A throwaway target script** on bkplayground for the wiring trio — `<scriptId>` =
+      **`530024__FID_testMcp`** ("FC Test mcp", MERGE_REPORT). Schema test used a self-contained option list
+      (no form/field parent needed).
+- [x] The org is the sanctioned disposable playground (**bkplayground**). Only `mcp__bluestep-bkplayground__*`
+      was targeted.
 
 ### Fill-in placeholders
 
@@ -71,6 +70,17 @@ Leave org-specific ids as placeholders here; fill in the **real bkplayground top
 | `<optionListId>` | topId of a created option list |
 | `<viewId>` | topId of a created view |
 | `<recordTypeId>` | topId of a created / imported record type |
+
+**Resolved values (Task 9 run, bkplayground, 2026-07-08):**
+
+| Placeholder | Resolved value |
+| --- | --- |
+| `<scriptId>` | `530024__FID_testMcp` ("FC Test mcp", MERGE_REPORT) |
+| `<queryId>` / `<groupId>` | `1000019__FID_allUsers` ("All Users") / `probeGroup` |
+| `<formId>` / `<formulaId>` | `1000001__FID_name` ("Name and E-mail", current-record) / `probeForm` |
+| `<fieldId>` (wiring) | `1000101__SID_PERSONALINFO-FIRST-NAME` (`firstName`, TextField) |
+| `<optionListId>` | `1000012___532116` ("FC Test MCP Probe List"; items `1000013___1281144` Alpha, `1000013___1281145` Beta) — created, then **deleted manually in UI 2026-07-08** (see §3) |
+| `<viewId>` / `<recordTypeId>` | not exercised (one schema tool sufficed per Step 4) |
 
 ---
 
@@ -93,10 +103,15 @@ Returns the script's generated TS declarations — the `B` type plus wired query
 `formulaId`s, and granted fields with their exact script types. Call it now to capture the **baseline**
 (before any wiring), and again after each `add_*` below.
 
-- [ ] Baseline captured (record which groups / forms / fields are present *before* wiring).
-- [ ] Returned declarations are well-formed TS and sufficient to code against (the prove-out bar is
-      **"sufficient to code against," not byte-parity** with `/b6p-pull`).
-- **Description self-sufficient? (Y/N + note):** ______________________________________________
+- [x] Baseline captured — declarations were exactly `declare const B: Bluestep.Relate.MergeReportB;` (no
+      wired groups/forms/fields). Every `add_*` produced a clean, observable delta against this baseline, and
+      all three `remove_*` returned it to this exact baseline byte-for-byte.
+- [x] Returned declarations are well-formed TS and **sufficient to code against** — after the trio,
+      `probeGroup` was a typed `RecordQuery`, `probeForm` a `FormEntry_CurrentRecord`, and
+      `probeForm.fields.firstName` was typed `Bluestep.Relate.TextField<any>`. A dependent `[CODE]` task
+      could code against these directly; no `/b6p-pull` needed. **Prove-out bar met.**
+- **Description self-sufficient? (Y/N + note):** **Y** — description states exactly when to call it (after
+      wiring, before writing draft code) and that identifiers must come from it, not display labels. Correct.
 
 ---
 
@@ -133,10 +148,12 @@ run this after the form teardown (2.2) if you wired a query-backed form.
 { "scriptId": "<scriptId>", "queryIds": ["<queryId>"] }
 ```
 
-- [ ] `add_queries` succeeded and `<groupId>` appears in declarations.
-- [ ] `remove_queries` succeeded and `<groupId>` is **gone** from declarations (matches baseline).
-- [ ] Teardown clean — no residual query group (else log in the ledger).
-- **Description self-sufficient? (Y/N + note):** ______________________________________________
+- [x] `add_queries` succeeded (`queriesAdded: 1`) and `probeGroup` appeared as
+      `declare const probeGroup: RecordQuery_probeGroup;` (keyed to `1000019__FID_allUsers` "All Users").
+- [x] `remove_queries` succeeded (`queriesRemoved: 1`) and `probeGroup` is **gone** (matches baseline).
+- [x] Teardown clean — no residual query group.
+- **Description self-sufficient? (Y/N + note):** **Y** — clear that `queryId` is the CustomDBView topId and
+      `groupId` is the formula variable name, and that forms attach to the same `groupId` afterward.
 
 ---
 
@@ -181,10 +198,13 @@ removes it — teardown either way and confirm.)
 }
 ```
 
-- [ ] `add_forms` succeeded and `<formulaId>` appears in declarations.
-- [ ] `remove_forms` succeeded and `<formulaId>` is **gone** from declarations.
-- [ ] Teardown clean — no residual form dep (else log in the ledger).
-- **Description self-sufficient? (Y/N + note):** ______________________________________________
+- [x] `add_forms` succeeded (`formsAdded: 1`) with **`groupId` omitted** (current-record on a MergeReport)
+      and `probeForm` appeared as `declare const probeForm: FormEntry_CurrentRecord_probeForm;` — the
+      `CurrentRecord` in the type name confirms the no-`groupId` path resolved correctly.
+- [x] `remove_forms` succeeded (`formsRemoved: 1`, `groupId` omitted to match) and `probeForm` is **gone**.
+- [x] Teardown clean — no residual form dep.
+- **Description self-sufficient? (Y/N + note):** **Y** — the omit-`groupId`-for-current-record rule, the
+      query-backed / EndPoint `groupId` requirement, and the MEFR/multi-entry guidance are all spelled out.
 
 ---
 
@@ -218,13 +238,16 @@ their script types.
 }
 ```
 
-- [ ] `add_field_access` succeeded and `<fieldId>` appears in declarations with a type.
-- [ ] Optionally re-run `add_field_access` to confirm **idempotency** (no duplicate, no error).
-- [ ] Optionally grant `writable: true` and confirm read vs. write track **independently**.
-- [ ] `remove_field_access` succeeded and `<fieldId>` access is **gone** (matches baseline). If you granted
-      both read and write, remove **both** (one call per `writable` value).
-- [ ] Teardown clean — no residual field access (else log in the ledger).
-- **Description self-sufficient? (Y/N + note):** ______________________________________________
+- [x] `add_field_access` succeeded (returned `{fieldId, fieldName:"First Name", writable:false}`) and
+      `firstName` appeared under `Fields_CurrentRecord_probeForm` typed `Bluestep.Relate.TextField<any>`.
+- [ ] Idempotency re-run — **not exercised** (single grant was sufficient for the prove-out).
+- [ ] `writable: true` independence — **not exercised** (read grant only; description documents the
+      independent read/write tracking).
+- [x] `remove_field_access` succeeded (returned `fieldAccess: []`) and `firstName` access is **gone**
+      (matches baseline). Only a read grant was made, so a single `writable:false` removal sufficed.
+- [x] Teardown clean — no residual field access.
+- **Description self-sufficient? (Y/N + note):** **Y** — states access is by field topId, `writable`
+      semantics, that the field-access relationship is the source of truth, and that it is idempotent per field.
 
 ---
 
@@ -293,12 +316,18 @@ persist.
 > `option_list_item`, and `option_group` — and which one actually creates the list vs. adds items/groups —
 > was **not** verified for this plan. Read the live descriptions during Task 9; do not invent args.
 
-**Create (intent)** — create an option list, then (if separate tools) add an item / group:
+**Create — ACTUAL args used (Task 9).** `create_option_list` is the dedicated creator: `name` + `items`
+required (initial items mandatory), optional `description` + `folderId` (defaults to Relate Structure root).
+The generic `option_list` tool overlaps it (`name`→create / `listId`→update). `option_list_item` /
+`option_group` add items/groups to an existing list (not exercised — `create_option_list`'s `items` sufficed).
 
 ```json
-// mcp__bluestep-bkplayground__create_option_list  → { /* args TBD */ }   (or option_list)
-// mcp__bluestep-bkplayground__option_list_item     → { /* args TBD */ }
-// mcp__bluestep-bkplayground__option_group          → { /* args TBD */ }
+// mcp__bluestep-bkplayground__create_option_list
+{ "name": "FC Test MCP Probe List",
+  "description": "Throwaway — Task 9 MCP prove-out. Safe to delete.",
+  "items": ["Alpha", "Beta"] }
+// → topId 1000012___532116; items 1000013___1281144 (Alpha), 1000013___1281145 (Beta)
+// NOTE: `description` was SILENTLY DROPPED — the created list came back with description:null.
 ```
 
 **Assert** — the list appears via `list_option_lists`; `get_option_list` returns it with its items/groups:
@@ -308,13 +337,27 @@ persist.
 // mcp__bluestep-bkplayground__get_option_list   → { "optionListId": "<optionListId>" }
 ```
 
-**Teardown — CONFIRM LIVE; report residue if the object persists.** Delete OR `discard_pending_change` —
-verify live. Report residue for the list and any items/groups if they persist.
+**Teardown — CONFIRMED LIVE: NO MCP PATH EXISTS → RESIDUE.** Findings:
+- **No `delete_option_list` tool** in the bkplayground MCP set (only create / update / get / list, plus
+  `option_list_item` / `option_group`, all of which are create-or-update — **none delete**).
+- **`discard_pending_change` does NOT apply.** It errored `"list_pending_changes requires a chat session"`
+  — the pending-change queue is the **`stage_form_entry` data-entry staging** mechanism (staged record/form
+  field-writes awaiting user approval), *not* a schema-object rollback queue. `create_option_list` commits
+  immediately; it is never staged, so there is nothing to discard.
+- The only remaining avenue is a hand-authored `graphql_mutation` delete — **not attempted** (guessing an
+  unverified destructive mutation as global-super admin violates the "never guess a mutation" rule).
+- **Resolution:** option list `1000012___532116` was deleted **manually in the bkplayground UI** on
+  2026-07-08; no MCP teardown exists.
 
-- [ ] Option list (+ item/group) create succeeded and appears via `list_option_lists` / `get_option_list`.
-- [ ] Teardown mechanism **confirmed live**: ______________________________________________
-- [ ] Teardown clean (list + items + groups) — else report residue in the ledger.
-- **Description self-sufficient? (Y/N + note):** ______________________________________________
+- [x] Option list create succeeded and appears via `list_option_lists` (count 4→5) / `get_option_list`.
+- [x] Teardown mechanism **confirmed live**: **none via MCP** — no delete tool; `discard_pending_change` is
+      data-entry-only. Manual UI deletion required.
+- [x] Teardown clean via **manual UI deletion** (2026-07-08) — option list `1000012___532116` (+ items
+      Alpha/Beta) removed in the bkplayground UI; logged in §3. No MCP path exists.
+- **Description self-sufficient? (Y/N + note):** **Y (create) / N (lifecycle).** `create_option_list`'s own
+      args are clear and it worked, BUT: (a) the `description` arg was silently dropped, and (b) the tool set
+      exposes no delete — the create half is documented, the teardown half is undiscoverable from the
+      descriptions alone. Also the `create_option_list` vs generic `option_list` overlap is unexplained.
 
 ---
 
@@ -388,21 +431,24 @@ Tick each row **only** after you have confirmed the object is gone from bkplaygr
 be torn down, set **Residue? = YES** and describe it — a dirty playground is a reportable result, not a
 silent pass.
 
-| # | Object created | Id (fill in) | Teardown call run | Confirmed gone | Residue? (YES/NO + note) |
+| # | Object created | Id | Teardown call run | Confirmed gone | Residue? (YES/NO + note) |
 | --- | --- | --- | --- | --- | --- |
-| 2.1 | query-group dep | `<queryId>`/`<groupId>` | `remove_queries` | [ ] | |
-| 2.2 | form dep | `<formOrReportId>`/`<formulaId>` | `remove_forms` | [ ] | |
-| 2.3 | field access grant | `<fieldId>` | `remove_field_access` | [ ] | |
-| 2.4 | form | `<formId>` | delete / discard (TBD) | [ ] | |
-| 2.5 | field(s) | `<fieldId>` | delete / discard (TBD) | [ ] | |
-| 2.6 | option list (+items/groups) | `<optionListId>` | delete / discard (TBD) | [ ] | |
-| 2.7 | view | `<viewId>` | delete / discard (TBD) | [ ] | |
-| 2.8 | record type (+ import) | `<recordTypeId>` | `remove_record_types` / delete / discard (TBD) | [ ] | |
+| 2.1 | query-group dep | `1000019__FID_allUsers`/`probeGroup` | `remove_queries` | [x] | NO — gone from declarations |
+| 2.2 | form dep | `1000001__FID_name`/`probeForm` | `remove_forms` (no groupId) | [x] | NO — gone from declarations |
+| 2.3 | field access grant | `1000101__SID_PERSONALINFO-FIRST-NAME` | `remove_field_access` | [x] | NO — `fieldAccess:[]`, gone |
+| 2.4 | form | — | not exercised | n/a | n/a — one schema tool sufficed |
+| 2.5 | field(s) | — | not exercised | n/a | n/a |
+| 2.6 | option list (+items) | `1000012___532116` (Alpha `1000013___1281144`, Beta `1000013___1281145`) | manual UI deletion (no MCP delete path) | [x] | NO — deleted manually in bkplayground UI 2026-07-08. **Note:** no `delete_option_list` via MCP (`discard_pending_change` is data-entry-only) — captured as platform feedback |
+| 2.7 | view | — | not exercised | n/a | n/a |
+| 2.8 | record type (+ import) | — | not exercised | n/a | n/a |
 
-**Final state:** [ ] bkplayground confirmed clean — the target `<scriptId>` matches its baseline
-declarations and no test-created schema object remains. If unticked, list outstanding residue here:
+**Final state:** [x] bkplayground **confirmed clean** (2026-07-08). The wiring subject `530024__FID_testMcp`
+matches its baseline declarations exactly (`declare const B: Bluestep.Relate.MergeReportB;` — wiring trio 100%
+torn down), and the one schema-authoring residue has been cleared:
 
-_____________________________________________________________________________________________
+- **Option list `1000012___532116` ("FC Test MCP Probe List")** + items Alpha/Beta — created by
+  `create_option_list`, **not removable via any MCP tool**, so it was **deleted manually in the bkplayground
+  UI on 2026-07-08**. (The no-MCP-teardown gap is captured as platform feedback in the audit TODO.)
 
 ---
 
@@ -413,22 +459,31 @@ Collect the per-tool **description self-sufficiency** findings here after the ru
 
 | Tool | Self-sufficient? (Y/N) | Gap / note (what was missing to call it correctly) |
 | --- | --- | --- |
-| `get_script_declarations` | | |
-| `add_queries` / `remove_queries` | | |
-| `add_forms` / `remove_forms` | | |
-| `add_field_access` / `remove_field_access` | | |
-| `form` | | |
-| `field` / `batch_fields` | | |
-| `option_list` / `create_option_list` / `option_list_item` / `option_group` | | |
-| `view` | | |
-| `record_type` / `add_record_types` / `remove_record_types` | | |
+| `get_script_declarations` | Y | Clear on when to call and that identifiers must come from it. |
+| `add_queries` / `remove_queries` | Y | `queryId`=CustomDBView topId, `groupId`=formula var; clean inverse. |
+| `add_forms` / `remove_forms` | Y | Omit-`groupId`-for-current-record + EndPoint/MEFR rules all documented. |
+| `add_field_access` / `remove_field_access` | Y | topId + `writable` semantics + idempotency stated; read/write independent. |
+| `form` | — | Not exercised this run. |
+| `field` / `batch_fields` | — | Not exercised this run. |
+| `option_list` / `create_option_list` / `option_list_item` / `option_group` | **Partial (Y create / N lifecycle)** | `create_option_list` args clear + worked, BUT: (1) `description` arg **silently dropped** (created with `description:null`); (2) **no delete tool exists** and `discard_pending_change` is data-entry-only, so the object cannot be torn down via MCP — undiscoverable from descriptions; (3) `create_option_list` vs generic `option_list` **overlap unexplained** (which to prefer?). |
+| `view` | — | Not exercised this run. |
+| `record_type` / `add_record_types` / `remove_record_types` | — | Not exercised this run. |
 
 **Also record:**
-- The confirmed **teardown mechanism** for each schema tool (delete vs. `discard_pending_change` vs. a
-  dedicated `remove_*`) — this resolves the uncertainty flagged in §2.4–2.8 and should be folded back into
-  the `bluestep-reference` procedure page if it changes the destructive-tool discipline.
-- Whether `get_script_declarations` was **sufficient to code against** for each wiring op (the prove-out
-  bar), or whether a CLI `/b6p-pull` was needed for the full `declarations/` tree.
+- **Confirmed teardown mechanisms:**
+  - Wiring trio (`add_queries`/`add_forms`/`add_field_access`) → dedicated `remove_*` inverse, **clean**,
+    asserted via `get_script_declarations`. Verified.
+  - `create_option_list` (schema authoring) → **NO MCP teardown.** No `delete_option_list`;
+    `discard_pending_change` applies only to the `stage_form_entry` **data-entry** queue (it errors
+    `"requires a chat session"`), not to committed schema objects. **Action for the audit TODO:** the
+    §2.4–2.8 "delete vs. discard" uncertainty is resolved in the *negative* for option lists — there is no
+    MCP delete path at all. Confirm whether `form`/`field`/`view`/`record_type` authoring share this gap,
+    and feed it back to the platform team as MCP feedback (no delete tools for authored schema objects).
+    The `bluestep-reference` procedure page should note that MCP-authored schema objects currently have no
+    MCP teardown (UI cleanup required) so callers do not create disposable schema objects expecting rollback.
+- **`get_script_declarations` sufficient to code against:** **YES** for all three wiring ops — the reduced
+  declarations carried real types (`RecordQuery`, `FormEntry_CurrentRecord`, `TextField<any>`). No
+  `/b6p-pull` fallback was needed. Prove-out bar met.
 
 ## See also
 

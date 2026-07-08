@@ -98,6 +98,13 @@ next task. Conversationally there is no checkbox — just report what ran.
   guardrail.
 - **Destructive tools** (`remove_*`, `record` delete, `user` deactivate) run **only** when the task
   explicitly requires them, with **extra** confirmation. Out of default scope.
+- **Schema creation is not (currently) MCP-reversible.** The wiring trio (`add_*`) has clean `remove_*`
+  inverses, but **schema-authoring** ops (`form` / `field` / `option_list` / `view` / `record_type`) do
+  **not** — verified 2026-07-08 on bkplayground: an option list created via `create_option_list` has no
+  `delete_option_list`, and `discard_pending_change` only rolls back the data-entry staging queue (it
+  errors "requires a chat session"), **not** schema objects. Treat every schema-authoring op as
+  **effectively irreversible via MCP** — removal is a manual step in the platform UI. This raises the bar
+  on the approval echo for schema creation; **never** guess a `graphql_mutation` delete to clean up.
 - **Approval denied / partial failure** → leave the task `[ ]`; report exactly what did and didn't apply;
   **never** mark done on partial success.
 

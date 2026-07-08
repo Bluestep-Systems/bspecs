@@ -15,7 +15,9 @@ tasks), `/quick-task`, and the scaffolded project `CLAUDE.md`'s always-on conver
 wiring op it reads declarations back via `get_script_declarations` so the dependent `[CODE]` task can
 code against the new import. **Coexistence unchanged:** component sync (pull/push/audit) stays on the b6p
 CLI permanently. Live prove-out against **bkplayground** (in-app tool registration + create/assert/teardown)
-is a separate human step. Existing installs receive it on `/plugin marketplace update` / `autoUpdate` only
+passed on 2026-07-08. **Known limitation:** MCP-authored *schema* objects (e.g. option lists) currently
+have **no MCP teardown** — removal is a manual platform-UI step (see the procedure page's destructive-tool
+discipline). Existing installs receive it on `/plugin marketplace update` / `autoUpdate` only
 because the version changed.
 
 ### Added
