@@ -69,7 +69,7 @@ The URL is `https://<org-subdomain>.bluestep.net/mcp`. You cannot infer or guess
 ### 2. Derive the server key
 
 The key namespaces the entry so multiple orgs coexist: `bluestep-<subdomain>`
-(e.g. `https://bkplayground.bluestep.net/mcp` → `bluestep-bkplayground`).
+(e.g. `https://acme.bluestep.net/mcp` → `bluestep-acme`).
 
 ### 3. Choose the registration path
 
