@@ -38,6 +38,15 @@ The full b6p CLI audit (see git history for the conversation) surfaced two more 
 - [ ] **Auto-snapshot in push (still undecided).** Whether a push should *automatically* become a snapshot — e.g. tied to `/spec-execute` task completion ("push task N as snapshot with message `feat(spec/FEATURE): task N done`"). This is the part that needs a convention decision: when does a push become a snapshot vs. a plain draft push? Keep deferred until there's a concrete use case. The `/b6p-push` skill explicitly does **not** auto-snapshot today. (The **on-demand** snapshot half shipped in plugin 0.6.0 — `/b6p-push` always offers a plain-vs-snapshot choice, promoted to a project-level rule in the scaffolded `CLAUDE.md`. See [`DONE.md`](DONE.md).)
 - [ ] **`/b6p-deploy <feature>` skill.** Wrap `b6p deploy <config>` for multi-target deployment using the `## Deployment` section of a spec's `tasks.md`. Useful when a feature touches multiple components that all need to ship together to one or more environments. Defer until the multi-environment story for B6P is clearer.
 
+## Platform MCP integration — wave 3 (migrate operations onto MCP tools)
+
+The `/bluestep-mcp-connect` skill + the [`platform-mcp-integration.md`](docs/decisions/platform-mcp-integration.md) ADR shipped the **connection** (plugin `0.7.0`, merged but **unreleased** — the release tag is deliberately deferred until this migration lands, so staff get a working capability rather than a bare connect skill; each PR touching `plugin/**` still needs its own version bump for CI). Next: move operations off the manual b6p-CLI / UI flow onto the platform MCP tools (MCP-primary, b6p-CLI fallback), following the ADR's phased sequence.
+
+- [ ] **Phase 2 — pilot a read op.** Route a read/pull through `read_script_draft` + `get_script_declarations` as an opt-in alternative to `/b6p-pull`; verify parity against a real component **in a connected session**. Prereq: confirm the connection registers in-app (the curl `initialize` handshake was verified; in-session tool registration was not).
+- [ ] **Phase 3 — pilot a write op.** `write_script_draft` for push-to-draft, keeping the human "save to publish" gate explicit (it writes the draft only).
+- [ ] **Phase 4 — automate `[PLATFORM]` tasks.** Teach `/spec-execute` (or a new subagent) to run `add_queries` / `add_forms` / `add_field_access` + the schema-authoring tools for `[PLATFORM]`-tagged tasks, turning today's human hand-back into an in-session, approval-gated action.
+- [ ] **Phase 5 — fold into skills + `bluestep-reference` + the scaffolded `CLAUDE.md`, then release** (tag the then-current `plugin-vX.Y.Z`).
+
 ## Polish / nice-to-have
 
 - [ ] **`design.template.md` line 13 lint warning.** The `**Does this change require modifying the component on the BlueStep platform? (Yes / No)**` line is rendered as bold but the markdown linter flags it as "emphasis used instead of heading". Either rewrite as a heading or accept the warning permanently. Cosmetic only.
