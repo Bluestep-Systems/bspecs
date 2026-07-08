@@ -6,6 +6,47 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.7.0] — 2026-07-08
+
+Adds platform-MCP integration. BlueStep now exposes a **per-org MCP server**
+(`https://<org>.bluestep.net/mcp`) that can perform `[PLATFORM]` operations directly. This release ships
+the **connection** tooling; migrating the actual `/b6p-*` and `[PLATFORM]` operations onto MCP tools is a
+phased follow-up. Existing installs receive it on `/plugin marketplace update` / `autoUpdate` only
+because the version changed.
+
+### Added
+
+- **`/bluestep-mcp-connect` skill** (`plugin/skills/bluestep-mcp-connect/SKILL.md`) — connects to a
+  BlueStep org's platform MCP. Registers a `bluestep-<subdomain>` entry per org, authed by a **single
+  global `b6pt_` token** the user creates once in the UI (*Tools → Organization Admin → Super → Global
+  Users → Access Tokens → Create New Token*) and stores in the `B6PT_TOKEN` env var. **Default scope is
+  user/global** (`claude mcp add … --scope user`) so one setup persists across every workspace; the token
+  is injected from `$B6PT_TOKEN` (never a literal) into the user-private, uncommitted `~/.claude.json`.
+  A **per-workspace `.mcp.json`** with `${B6PT_TOKEN}` (runtime-expanded — works only in `.mcp.json`) is
+  the opt-in for containment, secret-only-in-env, or team-shared config. The **`claude` CLI is not a hard
+  dependency**: the global path is used only when `claude` is on PATH, and the skill **falls back to
+  `.mcp.json`** (no external tool) otherwise — never auto-installing. When the CLI is absent it *offers*
+  (does not run) the **npm-free** native Claude Code installer and otherwise proceeds per-workspace;
+  desktop-app users are pointed at claude.ai custom-connector settings. The skill preflights the token, refuses to guess
+  the org URL, merges `.mcp.json` non-destructively, verifies with a curl `initialize` handshake (200),
+  and tells the user a **fresh session** is required for the tools to register. Mirrors the discipline of
+  `/b6p-pull`.
+- **ADR `docs/decisions/platform-mcp-integration.md`** — records the auth model (two coexisting credential
+  systems: MCP `b6pt_` token vs. b6p CLI `~/.b6p/` WebDAV creds), the per-org / multi-per-workspace
+  connection model, the ~80-tool surface the probe found, the manual→MCP operation mapping
+  (`read_script_draft`/`write_script_draft`/`get_script_declarations` ≈ pull/push; `add_queries`/`add_forms`/
+  `add_field_access` ≈ the currently-manual `[PLATFORM]` imports), the MCP-primary/CLI-fallback coexistence
+  policy, and the phased migration sequence.
+
+### Changed
+
+- **`/bluestep-init` offers an optional MCP connection step** (`plugin/skills/bluestep-init/SKILL.md`, new
+  step 7) — an `AskUserQuestion` after `git init` that defers to `/bluestep-mcp-connect`; skippable, since a
+  project is often created before the org/token exists. Step 9 now also documents the `B6PT_TOKEN` MCP
+  credential as distinct from the b6p CLI's `b6p auth set`.
+- **Skill inventories updated** to list `/bluestep-mcp-connect` — `README.md`, `plugin/README.md`, and the
+  `CLAUDE.md` plugin skills inventory + a new Key-behaviors entry.
+
 ## [plugin 0.6.0] — 2026-07-03
 
 Adds a snapshot path to `/b6p-push`. The b6p CLI has always supported `push --snapshot --message`

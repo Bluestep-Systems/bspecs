@@ -6,7 +6,7 @@ A **Claude Code plugin** that sets up BlueStep projects with spec-driven develop
 
 The `bluestep-tools` plugin provides:
 
-- Claude Code skills — `/spec-create`, `/spec-execute`, `/spec-status`, `/b6p-pull`, `/b6p-push`, `/b6p-audit`, `/quick-task`, `/task-comment`, `/bspecs-feedback`, and `/bluestep-init`
+- Claude Code skills — `/spec-create`, `/spec-execute`, `/spec-status`, `/b6p-pull`, `/b6p-push`, `/b6p-audit`, `/quick-task`, `/task-comment`, `/bspecs-feedback`, `/bluestep-init`, and `/bluestep-mcp-connect` (connect an org's platform MCP)
 - BlueStep subagents — `b6p-task-implementer` (isolated task execution; `/spec-execute` delegates to it), `b6p-commenter` (component README), `b6p-code-review` (report-only review)
 - Guardrail hooks — prettier on save, generated-file blocking, `tsc` blocking
 - `bluestep-reference` — an on-demand platform/BsJs/RelateScript reference Claude reads as needed
