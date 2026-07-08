@@ -6,6 +6,55 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.8.0] — 2026-07-08
+
+Makes `[PLATFORM]` authoring/wiring **agent-executable in-session** over the per-org platform MCP,
+approval-gated, instead of always handing back to a human UI round-trip. The flow is defined once as a
+`bluestep-reference` procedure and driven from **three entry points** — `/spec-execute` (`[PLATFORM]`
+tasks), `/quick-task`, and the scaffolded project `CLAUDE.md`'s always-on conversational rule. After a
+wiring op it reads declarations back via `get_script_declarations` so the dependent `[CODE]` task can
+code against the new import. **Coexistence unchanged:** component sync (pull/push/audit) stays on the b6p
+CLI permanently. Live prove-out against **bkplayground** (in-app tool registration + create/assert/teardown)
+passed on 2026-07-08. **Known limitation:** MCP-authored *schema* objects (e.g. option lists) currently
+have **no MCP teardown** — removal is a manual platform-UI step (see the procedure page's destructive-tool
+discipline). Existing installs receive it on `/plugin marketplace update` / `autoUpdate` only
+because the version changed.
+
+### Added
+
+- **Shared MCP `[PLATFORM]`-authoring procedure** (`plugin/skills/bluestep-reference/conventions/mcp-platform-authoring.md`,
+  new) — the single source of truth for the flow: connection-check → offer-to-connect-else-hand-back →
+  resolve org → map op to tool (with the optional `op:` hint) → approval echo (tool + target + args) →
+  execute → `get_script_declarations` read-back → idempotency (detect-and-skip) → destructive-tool
+  discipline. Covers the tool set `add_queries` / `add_forms` / `add_field_access` +
+  `form` / `field` / `option_list` / `view` / `record_type`. A one-line trigger entry was added to the
+  reference manifest (`plugin/skills/bluestep-reference/SKILL.md`).
+- **Authoring-tool test plan** (`docs/mcp-platform-authoring-test-plan.md`, new) — a committed,
+  human-runnable checklist + re-runnable MCP call sequence: run each authoring/wiring tool against
+  bkplayground, assert the effect (`get_script_declarations` / `list_*` reflects it), then tear down,
+  reporting residue on failure, with a per-tool "description self-sufficient?" note feeding the
+  MCP tool-inventory audit.
+
+### Changed
+
+- **`/spec-execute` `[PLATFORM]` branch** (`plugin/skills/spec-execute/SKILL.md`, step 3) — no longer an
+  unconditional hand-back: when a live org MCP connection is present it follows the shared procedure
+  (approval → execute → read-back → mark `[x]`); when not, it follows the procedure's
+  offer-to-connect-else-hand-back path. The prereq scan (step 4) is unchanged.
+- **`/quick-task`** (`plugin/skills/quick-task/SKILL.md`) — a small conversational change that needs a
+  platform authoring/wiring op now follows the same shared procedure (connected) or offers to
+  connect / hands back (not connected).
+- **Scaffolded `CLAUDE.md` always-on rule** (`plugin/skills/bluestep-init/templates/CLAUDE.md.template`) —
+  the pull/push "round-trip" wording was adjusted and a new rule added so platform authoring/wiring may be
+  performed in-session via the MCP procedure (approval-gated) when connected, else handed back — enabling
+  the no-skill conversational path.
+- **Tasks template** (`plugin/skills/spec-create/spec-templates/tasks.template.md`) — documents that
+  `[PLATFORM]` tasks are agent-executable when connected, adds the optional `op:` hint (tool + key args),
+  and softens "done in the BlueStep UI" to "UI or MCP."
+- **`/bluestep-mcp-connect` cross-reference** (`plugin/skills/bluestep-mcp-connect/SKILL.md`) — a one-line
+  note that the skill may be reached as the procedure's "not connected → offer to connect" step, with the
+  fresh-session caveat. No functional change to the skill's own steps.
+
 ## [plugin 0.7.0] — 2026-07-08
 
 Adds platform-MCP integration. BlueStep now exposes a **per-org MCP server**

@@ -1,7 +1,9 @@
 # ADR: Integrate the BlueStep platform MCP (connection now, operation migration phased)
 
-**Status:** Partially accepted — the connection tooling is accepted and shipped; the migration of
-`[PLATFORM]` / `/b6p-*` operations onto MCP tools is a phased follow-up, not yet implemented.
+**Status:** Accepted, scope narrowed. The connection tooling is accepted and shipped. **Component sync
+(`/b6p-pull` / `/b6p-push` / `/b6p-audit`) stays on the b6p CLI permanently — it is not migrating to MCP.**
+The MCP integration's job is the non-overlapping piece: automating `[PLATFORM]` authoring/wiring tasks the
+CLI cannot do. See the **2026-07-08 scope-narrowing addendum** at the end.
 
 **Date:** 2026-07-08
 
@@ -61,8 +63,9 @@ this is different — the **platform itself** is now the MCP server, so we consu
 - **Now (shipped in this change):** the `/bluestep-mcp-connect` skill (per-org; global user-scope by
   default, per-workspace opt-in; token injected from `$B6PT_TOKEN`) and an optional MCP step in
   `/bluestep-init`. No behavior change to the existing `/b6p-*` skills.
-- **Phased (this ADR's roadmap):** migrate operations onto MCP tools, MCP-primary with the b6p CLI as
-  fallback, only after each mapping is proven against a live org.
+- **Follow-up (this ADR's roadmap, scope-narrowed 2026-07-08):** automate the `[PLATFORM]` authoring/wiring
+  operations on MCP tools, approval-gated, proven against a live org. Component sync (pull/push/audit) is
+  **not** in scope — it stays on the b6p CLI.
 
 ### MCP tool surface (probe inventory, grouped)
 
@@ -81,35 +84,47 @@ this is different — the **platform itself** is now the MCP server, so we consu
 
 | Manual today | MCP path | Notes / caveat |
 |---|---|---|
-| `/b6p-pull` (fetch source + `.d.ts`) | `read_script_draft` + `get_script_declarations` | Reads the **draft** folder + generated declarations. |
-| `/b6p-push` (deploy source) | `write_script_draft` | **Writes to the draft only** — a human must open the editor and **save to publish**. Not a silent deploy; keep that gate explicit. |
-| `/b6p-audit` (local vs platform) | `read_script_draft` + local diff | Compare fetched draft against the local tree. |
-| `[PLATFORM]`: add query/form/field import | `add_queries`, `add_forms`, `add_field_access` (+ `list_applicable_*`) | **Biggest payoff** — removes the human round-trip that blocks `/spec-execute`. |
+| `/b6p-pull` (fetch source + `.d.ts`) | **stays on the b6p CLI — no MCP read/pull skill** (`read_script_draft` / `get_script_declarations` used only *inside* the Phase-4 authoring flow, to read declarations back after wiring) | Decided 2026-07-08: sync is not migrating. `get_script_declarations` returns a *reduced* declaration (script-type line + wired deps), not the full ambient typedef tree — fine for coding-against post-wiring, not a `/b6p-pull` replacement. |
+| `/b6p-push` (deploy source) | **stays on the b6p CLI** | `write_script_draft` push pilot dropped. The CLI records sync metadata and has the VS Code fallback. |
+| `/b6p-audit` (local vs platform) | **stays on the b6p CLI** | Depends on CLI sync metadata; not migrating. |
+| `[PLATFORM]`: add query/form/field import | `add_queries`, `add_forms`, `add_field_access` (+ `list_applicable_*`) | **The payoff and the actual target** — removes the human round-trip that blocks `/spec-execute`. |
 | `[PLATFORM]`: create form/field/option list/view/record type | `form`, `field`, `option_list`, `view`, `record_type`, … | Was UI-only; now agent-runnable. |
 | New component | `create_script` | Returns a script id + editor URL. |
 
 ### Coexistence policy
 
-- **MCP-primary, b6p-CLI fallback**, decided per operation as each mapping is proven. Reuse the existing
-  "if the CLI fails, fall back to the VS Code extension" pattern in the `/b6p-*` skills, inverted:
-  prefer MCP when the connection is live, fall back to `b6p` when it is not.
-- **Publish stays human-gated.** `write_script_draft` never publishes; the "review the diff, save to
-  publish" step remains a person's call — consistent with the `/spec-execute` approval gate and the
-  data-entry `stage_*` / `list_pending_changes` approval queue the platform itself enforces.
-- **Two credentials coexist** until (and if) the CLI path is retired — documented in `/bluestep-init`.
+- **Division of labor, not a transition.** The **b6p CLI owns component pull/push/audit** — permanently.
+  **MCP owns `[PLATFORM]` authoring/wiring** (adding imports, creating forms/fields/option-lists/views/
+  record-types) — the operations the CLI cannot do. There is no "MCP-primary, CLI-fallback" for sync and no
+  planned CLI retirement; the earlier framing is superseded by the 2026-07-08 scope decision.
+- **No MCP read/pull skill.** `read_script_draft` / `get_script_declarations` are used only *inside* the
+  Phase-4 authoring flow — to read declarations back after wiring so a dependent `[CODE]` task can code
+  against the new import. They do **not** replace a `/b6p-pull` (no CLI sync metadata, reduced
+  declarations), there is no standalone MCP read/pull skill, and they must never be used to push.
+- **`[PLATFORM]` authoring stays human-gated.** Each automated op is opt-in and surfaced for approval —
+  consistent with the `/spec-execute` approval gate and the data-entry `stage_*` / `list_pending_changes`
+  approval queue the platform itself enforces.
+- **Two credentials coexist by design** — the b6p CLI's encrypted `~/.b6p/secrets.enc` (sync) and the
+  `B6PT_TOKEN` MCP token (`[PLATFORM]` authoring). Not transitional; documented in `/bluestep-init`.
 
 ## Phased sequencing
 
-1. **Connect + inventory** — `/bluestep-mcp-connect` + `bluestep-init` step (this change). ✅
-2. **Pilot one read op** — route `/b6p-audit` (or a read-only pull) through `read_script_draft` behind a
-   feature flag / opt-in, verify parity against the CLI on a real component.
-3. **Pilot one write op** — `write_script_draft` for push-to-draft, with the human publish gate loud.
-4. **Automate `[PLATFORM]` tasks** — teach `/spec-execute` (or a new subagent) to run `add_queries` /
-   `add_forms` / `add_field_access` / schema-authoring tools for `[PLATFORM]`-tagged tasks, turning
-   today's hand-back into an in-session action (still surfaced for approval).
-5. **Fold into skills + reference** — update `/b6p-*` skills or add `/mcp-*` skills; update
-   `bluestep-reference` and the scaffolded project `CLAUDE.md` to describe MCP-first operation.
-6. **Revisit CLI retirement** — decide whether `b6p` becomes fallback-only.
+1. **Connect + inventory** — `/bluestep-mcp-connect` + `bluestep-init` step. ✅
+2. **~~Pilot one read op / parity gate~~** — **DESCOPED** (2026-07-08). The read-parity gate presupposed
+   replacing `/b6p-pull`; sync stays on the CLI, so parity is moot and **no MCP read/pull skill ships** (an
+   early `/b6p-pull-mcp` prototype was removed). Parity was measured once for the record (source pass,
+   declarations structurally reduced) — see the addendum. Reading declarations back after wiring folds into
+   Phase 4 as a step. ✅ (closed by descope)
+3. **~~Pilot one write op~~** — **DESCOPED** (2026-07-08). `write_script_draft` push-to-draft dropped;
+   push stays on the CLI.
+4. **Automate `[PLATFORM]` tasks (now the primary work)** — teach `/spec-execute` (or a new subagent) to run
+   `add_queries` / `add_forms` / `add_field_access` / schema-authoring tools for `[PLATFORM]`-tagged tasks,
+   surfaced for approval. Prove-out bar: `get_script_declarations` output is **sufficient to code against**
+   after wiring (not byte-parity); ambient typedefs come from the CLI-pulled tree or a bundled static set.
+   Confirm in-session tool registration works in-app (curl handshake alone was verified before).
+5. **Fold into skills + reference** — teach `/spec-execute` / a subagent + `bluestep-reference` + the
+   scaffolded project `CLAUDE.md` the MCP `[PLATFORM]`-authoring flow (not an MCP-first sync story), then
+   cut the release tag.
 
 ## Consequences
 
@@ -160,6 +175,47 @@ radius. What the integration does and does not protect:
   non-expiring. The mitigation that matters most is at creation time — set an expiry + least-privilege
   scopes, question whether it must be global-super, and revoke on exposure — more than where the token is
   stored.
+
+## 2026-07-08 scope-narrowing addendum
+
+After shipping the connection (`0.7.0`), we prototyped an MCP read to run the Phase-2 read-parity test,
+then **narrowed the ADR's scope** and **removed the prototype** (there is no MCP read/pull skill).
+
+**Decision: component sync stays on the b6p CLI permanently.** We are not migrating `/b6p-pull` /
+`/b6p-push` / `/b6p-audit` onto MCP, and we ship **no MCP read/pull skill**. The CLI is the stronger home:
+encrypted creds
+(`~/.b6p/secrets.enc`) vs the plaintext `b6pt_` token; it records the sync metadata `/b6p-push` /
+`/b6p-audit` depend on; it materializes the full `declarations/` tree; and it has the VS Code fallback.
+This retires the "MCP-primary, CLI-fallback" coexistence idea and the "revisit CLI retirement" phase.
+MCP's value is the **non-overlapping** `[PLATFORM]` authoring/wiring the CLI cannot do — the ADR's own
+"single biggest workflow unblock."
+
+**Parity test (for the record, not a gate).** Component "Teacher Header" (`MERGE_REPORT`, topId
+`530024___463`, DAV `https://bkplayground.bluestep.net/files/1436589/`) on `bkplayground`, in a live MCP
+session:
+
+- **Source — PASS.** `draft/scripts/app.ts` byte-identical (27 B, no CRLF). `draft/info/{config,metadata}.json`
+  absent in both (this MR has none). Other `read_script_draft` files (tsconfig, `static/*`, README,
+  `.build/*`) matched the CLI file set. `read_script_draft` is faithful.
+- **Declarations — structurally reduced (would fail a byte-parity gate).** `get_script_declarations`
+  returns only the reduced script-type line (`declare const B: Bluestep.Relate.MergeReportB;`). It omits
+  the CLI's `index.d.ts` `/// <reference>` preamble and all 7 ambient typedef files (`B.d.ts` ~747 KB,
+  `Java.d.ts` ~205 KB, `Globals`, `Graal`, `Polyglot`, `console.graal`, `scriptlibrary`). Structural, not
+  component-specific.
+
+This is **not** recorded as a Phase-2 parity pass — but Phase 2 is closed by the descope, not by the
+failure. The reduced declaration output is expected to be **sufficient to code against** post-wiring
+(Phase 4's weak bar); the missing ambient typedefs come from the CLI-pulled tree or a bundled static set.
+
+**In-session registration confirmed.** A newly-added connection does not hot-load into a running session
+(verified: `claude mcp add` + a `200` handshake + `claude mcp list` "Connected", yet the
+`mcp__bluestep-<subdomain>__*` tools were absent from the running session's tool registry). The tools
+appear in a **fresh** session — which is where the parity test above was run.
+
+**Consequences of the narrowing.** Phase 2 & 3 are closed/dropped; Phase 4 (`[PLATFORM]` authoring) is the
+active work; the "revisit CLI retirement" phase is deleted; the deferred release tag is re-anchored (gate
+on Phase 4, or cut a `0.7.0` tag now since the connection is complete standalone). The two credential
+systems are now a **permanent** design property, not a transition state.
 
 ## References
 

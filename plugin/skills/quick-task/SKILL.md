@@ -23,11 +23,11 @@ The lightweight counterpart to `/spec-create`. Instead of three files (requireme
 3. **Draft the quick-task doc.** Copy `${CLAUDE_PLUGIN_ROOT}/skills/quick-task/quick-task.template.md` to `.claude/quick-tasks/<slug>.md` (create the folder if it doesn't exist; `<slug>` is a short kebab-case name for the task). Fill in:
    - **Summary** — one line.
    - **Root cause** (bugs only) — one or two sentences; delete the section for a non-bug change.
-   - **Approach** — a short checklist of the changes to make, each tagged `[PLATFORM]` (must be done on the BlueStep platform first, then pulled) or `[CODE]` (local source edit). This is the whole plan — keep it minimal.
+   - **Approach** — a short checklist of the changes to make, each tagged `[PLATFORM]` (a platform authoring/wiring op — agent-executable via the shared procedure when connected, else handled on the platform) or `[CODE]` (local source edit). This is the whole plan — keep it minimal.
 
 4. **STOP. Tell the user the doc path and ask them to approve the approach before you edit any code.**
 
-5. **Implement the `[CODE]` items.** Touch only the files in the approved approach. **Keep the doc current as you go** — tick each checklist item (`[x]`) when it's done so the doc stays an accurate record during implementation, and if reality diverges from the plan, update the doc rather than silently drifting. `[PLATFORM]` items are the user's to do on the platform — never fabricate imports; follow the platform round-trip rule in `CLAUDE.md`.
+5. **Implement the `[CODE]` items.** Touch only the files in the approved approach. **Keep the doc current as you go** — tick each checklist item (`[x]`) when it's done so the doc stays an accurate record during implementation, and if reality diverges from the plan, update the doc rather than silently drifting. For each **`[PLATFORM]`** item (a platform authoring/wiring op), follow the shared procedure at `${CLAUDE_PLUGIN_ROOT}/skills/bluestep-reference/conventions/mcp-platform-authoring.md`: when an org MCP is connected it's agent-executable (connection-check → approval echo → execute → declaration read-back), so tick it `[x]` when done; when not connected, that same procedure's path applies — offer `/bluestep-mcp-connect` (with the fresh-session caveat) or hand back to the user on the BlueStep platform. Do **not** restate its steps here; its approval echo and detect-and-skip preserve the never-fabricate-imports rule.
 
 6. **Wrap up / remind the user:**
    - Push via `/b6p-push <component>`.
