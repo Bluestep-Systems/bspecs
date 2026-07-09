@@ -4,6 +4,13 @@ Completed work for `@bluestep-systems/bspecs`, archived from `TODO.md` to keep t
 
 ## Unreleased
 
+### feedback-to-clickup (repo CI — no plugin release)
+
+Realizes the `TODO.md` "auto-create a linked ClickUp task when a `feedback` issue is filed" item. **Repo-infra only** (a GitHub Actions workflow) — no `plugin/**` change, so no version bump and nothing ships to plugin users; `/bspecs-feedback` is unchanged (it still just files the GitHub issue).
+
+- [x] **`.github/workflows/feedback-to-clickup.yml`.** On `issues: opened` guarded by the `feedback` label, creates an `ai-plugin`-tagged ClickUp task on the `ai-plugin` list (`901414350506`) via the `CLICKUP_API_TOKEN` repo secret, then comments the task URL back on the issue to link the two. **Server-side by design** — the token lives only in GitHub's encrypted Actions store, so no user-side ClickUp auth is needed (the client-side approach was rejected in [`docs/decisions/bspecs-feedback-mechanism.md`](docs/decisions/bspecs-feedback-mechanism.md) Option B). Untrusted issue content is passed via `env:` (not `${{ }}` interpolation) and JSON-encoded with `jq` to avoid script injection; a missing secret warns and no-ops; a failed API call prints the response and fails the run. Required secret documented in [`README.md`](README.md). Commits `991b13b` (workflow + docs) and `b93c907` (fix: pass `--repo "$GITHUB_REPOSITORY"` to `gh issue comment` — the workflow has no repo checkout to infer it from).
+- [x] **Verified end-to-end** on a throwaway `feedback` issue: the ClickUp task was created and the `🔗 Linked ClickUp task:` comment posted back on the issue (workflow run `completed success`). Follow-on lifecycle automations (assignee sync, issue-closed → complete task) discussed and left as open ideas, not built.
+
 ### quick-task (plugin 0.5.0)
 
 Branch `feature/quick-task-skill` (PR #11). Renames and broadens `/bug-fix` into `/quick-task` — a short workflow for small changes **and** bug fixes that don't warrant a full 3-phase spec, now with light structure.
