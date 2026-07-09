@@ -4,10 +4,6 @@ Living list of pending work for `@bluestep/bspecs`. Items roughly ordered by pri
 
 For deeper context behind any decision, see `docs/decisions/`. Completed work is archived in [`DONE.md`](DONE.md).
 
-## Blocking publication / cross-machine use
-
-- [ ] **`bspecs doctor` command.** Deprioritised — Option 2 removes most of its reason to exist (no PAT, no `~/.npmrc` to validate). The remaining value is checking the Node version and the one-time `b6p auth set` platform credential. Revisit if first-run auth issues become common. (The `init` name is now taken by `bspecs init` — install-into-current-directory, see the `init-current-directory` spec — so this env-validation idea must use `doctor` or another name.) See [`docs/decisions/install-friction-and-registry.md`](docs/decisions/install-friction-and-registry.md).
-
 ## Build / tooling
 
 - [ ] **Convert the source to TypeScript.** Org policy: no raw JS in source. Convert `cli.js` and `src/*.js` (`prompts.js`, `scaffold.js`, `utils.js`, `sync.js`) to TypeScript. The mechanical rename is quick, but the wiring is the real work: add `tsconfig.json` + a `tsc` build step, emit to `dist/`, point `package.json` `bin`/`main` at the compiled output, update the published `files` list (currently `cli.js`, `src/`, `templates/` → likely `dist/`, `templates/`), and update the dev/run instructions in `CLAUDE.md` (`node cli.js`) plus `test-scaffold.mjs`'s import of `./src/scaffold.js`. **Out of scope:** the `templates/` tree — its `.js`/`.template` files are scaffolded *content* for generated projects, not bspecs source, so they stay as-is. (Requested by an engineer.)
@@ -15,10 +11,6 @@ For deeper context behind any decision, see `docs/decisions/`. Completed work is
 - [x] ~~**GitHub Releases aren't created on publish.**~~ — **Resolved by the plugin-distribution change.** `.github/workflows/publish.yml` no longer runs `npm publish`; on every `vX.Y.Z` tag it now creates a GitHub **Release** (`gh release create "$TAG" --verify-tag --generate-notes`, with `permissions: contents: write`), so tags and Releases stay in step. See [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md). _(Remaining backfill of old release-less tags and the `actions/checkout@v4`/`setup-node@v4` Node-runner bump are minor CI hygiene — do opportunistically.)_
 
 - [x] ~~**npm-free delivery via the VSCode extension (explore).**~~ — **Resolved by distributing the tooling as a Claude Code plugin** via the public `bluestep` marketplace (no npm, no binary, no PATH setup), with `/bluestep-init` as the in-session project bootstrap. This supersedes the VSCode-extension route (and the standalone-binary route) for the no-npm audience. See [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md); the VSCode-extension feasibility analysis in [`docs/decisions/npm-free-scaffolding-via-vscode-extension.md`](docs/decisions/npm-free-scaffolding-via-vscode-extension.md) is amended to point at it.
-
-## Template staleness
-
-- [ ] **`bspecs sync` command.** Add a `bspecs sync` subcommand that updates infrastructure files (skills, hooks, settings, instructions, spec-templates) in an existing project. Uses a `.claude/bspecs.lock` file (written at scaffold time) with SHA-256 hashes of each file to detect user edits — files the user modified locally are skipped. The `SessionStart` hook in generated projects runs `bspecs sync --silent` automatically on every workspace open, resume, and compaction, so projects stay up to date without manual intervention.
 
 ## Flow improvements
 

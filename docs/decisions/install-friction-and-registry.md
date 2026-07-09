@@ -81,21 +81,17 @@ If `b6p-cli` cannot go public but `bspecs` can → Option 3. If both can → Opt
 
 These reduce steps in every scenario and close off none of the three paths:
 
-1. **Auto-run `npm install` in the scaffolded project — best-effort, with a fallback.**
-   `scaffold.js` attempts the install (`installDependencies`) instead of only printing a
-   reminder, and falls back to the reminder on failure. It must *not* assume the install
-   succeeds: the project `.npmrc` reads the token from `${GITHUB_TOKEN}` (env-var indirection,
-   per our own README), and that variable's presence in the scaffold process's environment is
-   **not** guaranteed — a fresh shell/session may never have exported it (notably PowerShell on
-   Windows, where a bash-rc `export` does not apply), the token may have expired since the
-   global `bspecs` install, or the machine may be offline. (An earlier draft of this ADR claimed
-   the token is "already configured by scaffold time"; that was wrong — only the scope *mapping*
-   reliably persists in `~/.npmrc`, not the secret. The scaffolder's existing comment was
-   correct.) So this removes a step in the common case without regressing the token-absent case.
-2. **A `bspecs doctor` / `bspecs init` command.** Checks the Node version, writes/validates
-   the `~/.npmrc` scope mapping, and tells the user exactly which PAT scope to create if the
-   token is missing. It cannot mint the token (only GitHub can), but it turns "read three
-   README steps" into "run one command and follow one prompt."
+**Auto-run `npm install` in the scaffolded project — best-effort, with a fallback.**
+`scaffold.js` attempts the install (`installDependencies`) instead of only printing a
+reminder, and falls back to the reminder on failure. It must *not* assume the install
+succeeds: the project `.npmrc` reads the token from `${GITHUB_TOKEN}` (env-var indirection,
+per our own README), and that variable's presence in the scaffold process's environment is
+**not** guaranteed — a fresh shell/session may never have exported it (notably PowerShell on
+Windows, where a bash-rc `export` does not apply), the token may have expired since the
+global `bspecs` install, or the machine may be offline. (An earlier draft of this ADR claimed
+the token is "already configured by scaffold time"; that was wrong — only the scope *mapping*
+reliably persists in `~/.npmrc`, not the secret. The scaffolder's existing comment was
+correct.) So this removes a step in the common case without regressing the token-absent case.
 
 ## Decision
 
@@ -111,9 +107,8 @@ These reduce steps in every scenario and close off none of the three paths:
 - Releases are automated via `.github/workflows/publish.yml` (tag-triggered) and validated
   by `.github/workflows/ci.yml` (PR + push). See the `public-npm-publishing` spec.
 
-The two independent improvements shipped earlier: best-effort `npm install` in `scaffold.js`
-(0.8.0) and the `bspecs doctor` / `bspecs init` idea remains in `TODO.md` (deprioritised —
-Option 2 removes most of its reason to exist).
+The independent improvement shipped earlier: best-effort `npm install` in `scaffold.js`
+(0.8.0).
 
 ## References
 
