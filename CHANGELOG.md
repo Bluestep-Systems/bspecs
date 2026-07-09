@@ -6,6 +6,22 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.8.2] — 2026-07-09
+
+Reframes the `/bluestep-init` description-only, no behavior change ([#18](https://github.com/Bluestep-Systems/bspecs/issues/18)):
+the always-in-context line now says the skill works on a project **new or existing** and that a key
+purpose is **activating the always-on platform rules** (the project `CLAUDE.md`), not only scaffolding
+greenfield projects. The skill is not renamed and no `/bluestep-activate` split was introduced. Existing
+installs receive it on `/plugin marketplace update` / `autoUpdate` only because the version changed.
+
+### Changed
+
+- **`/bluestep-init` description** (`plugin/skills/bluestep-init/SKILL.md` frontmatter) — reworded to lead
+  with "new or existing" and "activate the always-on platform rules," reassuring a mature-repo user who
+  might read "init" as "this will reinitialize my project."
+- **`/bluestep-init` body intro** — added a one-line note that the project `CLAUDE.md` written by this
+  skill is what makes the Tier-1 platform rules always-on, since a plugin alone can't ship always-on context.
+
 ## [plugin 0.8.1] — 2026-07-08
 
 Removes a small UX friction in the spec flow: the "run the next task" suggestion is now presented as a

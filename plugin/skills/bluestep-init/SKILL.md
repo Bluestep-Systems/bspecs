@@ -1,6 +1,6 @@
 ---
 name: bluestep-init
-description: Bootstrap a new BlueStep (B6P) project — in the current directory or a new subfolder — as the project-setup entry point. Writes the per-project CLAUDE.md, README.md, package.json, .gitignore, .prettierrc, and a plugin-enabling .claude/settings.json, then guides git init. Use when starting a new BlueStep project or setting up tooling in an empty/existing directory.
+description: Set up BlueStep (B6P) tooling in a project — new or existing — and activate the always-on platform rules. Non-destructive/idempotent: writes any missing per-project files (CLAUDE.md, README.md, package.json, .gitignore, .prettierrc) and a plugin-enabling .claude/settings.json, skips files that already exist, then guides git init. Use it to bootstrap a new project or to activate the BlueStep rules in an existing repo that doesn't have the project CLAUDE.md yet.
 allowed-tools: Read Write Edit AskUserQuestion Bash(git:*) Bash(ls:*) Bash(basename:*) Bash(date:*) Bash(mkdir:*)
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit AskUserQuestion Bash(git:*) Bash(ls:*) Bash(basen
 
 This skill sets up a BlueStep project in-session — either in the **current directory** or in a **new subfolder** — by writing the genuinely per-project files (a project `CLAUDE.md`, `README.md`, `package.json`, `.gitignore`, `.prettierrc`) and a `.claude/settings.json` that enables the `bluestep-tools` plugin, then guiding `git init`. The shared tooling — skills, subagents, hooks, and the BlueStep reference — comes from the `bluestep-tools` plugin, not from files written here.
 
-It is **non-destructive**: any file that already exists is left untouched and reported as skipped.
+It is **non-destructive**: any file that already exists is left untouched and reported as skipped. That makes it just as much an **activation** step for an existing repo as a bootstrap step for a new one — a plugin can't ship always-on context, so the project `CLAUDE.md` written here is what makes the Tier-1 platform rules always-on.
 
 ## Collecting answers — use the picker, not a written questionnaire
 
