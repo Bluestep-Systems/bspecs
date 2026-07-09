@@ -90,6 +90,9 @@ jobs:
           fi
 
           echo "::notice::Created ClickUp task $task_url"
+          # --repo is required: the workflow doesn't check out the repo, so gh
+          # has no local git context to infer it from.
           gh issue comment "$ISSUE_NUMBER" \
+            --repo "$GITHUB_REPOSITORY" \
             --body "🔗 Linked ClickUp task: ${task_url}"
         shell: bash
