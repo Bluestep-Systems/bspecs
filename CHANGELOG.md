@@ -6,6 +6,30 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.9.0] — 2026-07-09
+
+Removes the `prettier-on-save` hook. `prettier` is a Node CLI and these projects are no longer
+Node-dependent, so an auto-format-on-save hook could only ever fire for the subset of users who
+happen to have Node + a global `prettier` installed and silently no-op for everyone else — it can
+never "work for any user." Formatting moves to where it belongs: the scaffolded `.prettierrc` still
+ships (pure config, zero runtime) and each developer's editor formats on save through its own
+prettier integration. The two guardrail hooks (`block-generated-files`, `block-tsc`) are unaffected.
+Existing installs receive this on `/plugin marketplace update` / `autoUpdate` only because the
+version changed.
+
+### Removed
+
+- **`prettier-on-save` hook** — deleted `plugin/hooks/prettier-on-save.sh` and its `PostToolUse`
+  wiring in `plugin/hooks/hooks.json`; the plugin now ships two hooks, not three.
+- **`prettier` prerequisite** — dropped the `prettier` bullet from the repo `README.md` Prerequisites
+  section; it is no longer required to run the tooling.
+
+### Changed
+
+- Docs updated to reflect two hooks: `CLAUDE.md` (architecture + Hooks + testing sections),
+  `plugin/README.md`, and a note in `docs/decisions/npm-free-scaffolding-via-vscode-extension.md`
+  (the prettier hook was the last item on that ADR's "remaining npm surface" list).
+
 ## [plugin 0.8.2] — 2026-07-09
 
 Reframes the `/bluestep-init` description-only, no behavior change ([#18](https://github.com/Bluestep-Systems/bspecs/issues/18)):

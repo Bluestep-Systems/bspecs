@@ -4,6 +4,130 @@ A public **Claude Code plugin marketplace** for BlueStep (B6P) development. This
 repo *is* the marketplace: add it once, then install the plugins you want. It
 currently ships one plugin — **`bluestep-tools`** — with more on the way.
 
+## Prerequisites
+
+Install these before (or shortly after) enabling the plugin — the sync skills
+and hooks depend on them.
+
+- **`b6p` CLI** — powers the `/b6p-*` platform-sync skills. It's distributed on
+  npm as
+  [`@bluestep-systems/b6p-cli`](https://www.npmjs.com/package/@bluestep-systems/b6p-cli):
+
+  ```sh
+  npm install -g @bluestep-systems/b6p-cli   # puts a bare `b6p` on your PATH
+  ```
+
+  **No npm?** Paste this into your Claude session and it'll set `b6p` up for you:
+
+  ```
+  Install the b6p CLI from https://github.com/Bluestep-Systems/b6p-cli/releases —
+  download the right binary for my OS, put it on my PATH as `b6p`, and run
+  `b6p auth set` so I can authenticate.
+  ```
+
+  <details>
+  <summary>Prefer to do it by hand?</summary>
+
+  Every GitHub Release ships a self-contained `b6p` binary (`b6p-windows-x64.exe`,
+  `b6p-macos-x64`, `b6p-macos-arm64`) — no build step, no source checkout. Download it
+  and put it on your `PATH` as `b6p`.
+
+  </details>
+
+  Then authenticate **once per machine**:
+
+  ```sh
+  b6p auth set   # credentials stored globally in ~/.b6p, not per project
+  ```
+
+- **`B6PT_TOKEN`** *(optional)* — only needed for the platform MCP connection
+  (`/bluestep-mcp-connect`), and a **separate** credential from the `b6p` CLI's
+  WebDAV login. Don't have one yet? Just run `/bluestep-mcp-connect` — it
+  checks for the token and walks you through creating it if it's missing.
+
+## Getting set up
+
+Setup is **two steps**: **① install the plugin** (once per machine or account),
+then **② activate the rules in your project**. Installing alone gives you the
+skills, hooks, and reference — but the always-on BlueStep rules only take effect
+after step ②.
+
+### Step 1 — Install the plugin
+
+Add the marketplace **once** (paste this repo:
+`https://github.com/Bluestep-Systems/bspecs`), then install **`bluestep-tools`**
+from it. The `@bluestep` suffix everywhere is the marketplace name, so future
+plugins install the same way (`<plugin>@bluestep`).
+
+#### Claude desktop app (Mac/Windows)
+
+No terminal required:
+
+1. Click **Customize** in the left sidebar, then open the **Plugins** tab.
+2. Under **Personal plugins**, click **+** → **Add marketplace**.
+3. Choose **From repository** and paste the repo URL `https://github.com/Bluestep-Systems/bspecs`, then click **Done**.
+4. Click **Browse plugins**, find **bluestep-tools**, and click **Install**.
+
+**Recommended:** turn on **Sync automatically** in the marketplace's settings so
+new releases install on their own (needs a one-time GitHub access approval).
+Otherwise, use **Check for updates** to pull new releases manually.
+
+#### Claude Code CLI (terminal)
+
+```
+/plugin marketplace add Bluestep-Systems/bspecs
+/plugin install bluestep-tools@bluestep
+```
+
+For scripting, the same thing works non-interactively from your shell:
+`claude plugin marketplace add Bluestep-Systems/bspecs` then
+`claude plugin install bluestep-tools@bluestep`.
+
+#### Claude Code VS Code extension
+
+1. Type `/plugins` in the prompt box to open **Manage plugins**.
+2. On the **Marketplaces** tab, add `Bluestep-Systems/bspecs`.
+3. On the **Plugins** tab, find **bluestep-tools** and click **Install** (pick user, project, or local scope).
+4. Restart Claude Code when prompted, or run `/reload-plugins`.
+
+(JetBrains IDEs have no plugin GUI — run `claude` in the integrated terminal and use the CLI commands above.)
+
+### Step 2 — Activate the rules in your project
+
+Installing the plugin gives Claude the skills, guardrail hooks, and the on-demand
+reference. But the **always-on** BlueStep rules live in a project `CLAUDE.md`,
+and a plugin can't write that file on its own. So, from your project directory,
+run:
+
+```
+/bluestep-init
+```
+
+This works in a **new *or* existing** project — it's non-destructive and skips any
+file that already exists, so in an existing repo it just drops the missing
+`CLAUDE.md` (plus the other tooling files) and leaves your code untouched. Think
+of it as "activate BlueStep rules here," not only "scaffold a new project."
+
+Skip step ② and Claude still has the tools and hard guardrails, but may miss
+BlueStep-specific patterns since the rules aren't in context every turn.
+
+### Keeping it updated
+
+Run `/plugin marketplace update` (or enable `autoUpdate`) to pull the latest
+released versions. An install only changes when the plugin's version changes —
+see [For maintainers](#for-maintainers).
+
+### Sharing it with your team
+
+The same `/bluestep-init` from step ② also writes a project
+`.claude/settings.json` that registers the `bluestep` marketplace and lists
+`enabledPlugins: ["bluestep-tools@bluestep"]`. Commit that file **and** the
+generated `CLAUDE.md`, and the whole setup **travels with the repo**: a teammate
+who clones it gets step ② for free (the `CLAUDE.md` is already there) and is
+offered the plugin for step ① via the committed settings — they just confirm the
+one-time install prompt on folder-trust. So after the first person runs
+`/bluestep-init`, everyone after them is essentially set up on clone.
+
 ## What it solves
 
 BlueStep developers work in local copies of components whose source of truth
@@ -39,150 +163,14 @@ Everything below is contributed by the `bluestep-tools` plugin once it's enabled
 - **On-demand reference** — `bluestep-reference`, a BsJs/RelateScript/platform reference Claude reads only when a task needs it.
 - **Feedback** — `/task-comment` (ClickUp implementation comment), `/bspecs-feedback` (propose a plugin change upstream).
 
-## Prerequisites
-
-Install these before (or shortly after) enabling the plugin — the sync skills
-and hooks depend on them.
-
-- **`b6p` CLI** — powers the `/b6p-*` platform-sync skills. It's distributed on
-  npm as
-  [`@bluestep-systems/b6p-cli`](https://www.npmjs.com/package/@bluestep-systems/b6p-cli):
-
-  ```sh
-  npm install -g @bluestep-systems/b6p-cli   # puts a bare `b6p` on your PATH
-  ```
-
-  **No npm?** Every [GitHub Release](https://github.com/Bluestep-Systems/b6p-cli/releases)
-  ships a self-contained `b6p` binary with Node bundled in — no build step, no source
-  checkout. Download the asset for your platform (`b6p-windows-x64.exe`, `b6p-macos-x64`,
-  or `b6p-macos-arm64`), save it into your shared BlueStep tools directory as `b6p`
-  (`%LOCALAPPDATA%\BlueStep\bin\b6p.exe` on Windows, `~/.bluestep/bin/b6p` on macOS), and put
-  that directory on your `PATH` — or just paste the releases link into Claude and have it set
-  this up for you. Then authenticate **once per machine**:
-
-  ```sh
-  b6p auth set   # credentials stored globally in ~/.b6p, not per project
-  ```
-
-- **`prettier`** — required for the auto-format-on-save hook (which runs in WSL
-  on Windows). Make it available in the project (`npm install --save-dev prettier`)
-  or globally.
-
-- **`B6PT_TOKEN`** *(optional)* — only if you want the platform MCP connection
-  (`/bluestep-mcp-connect`). Create a global `b6pt_` access token once in the
-  BlueStep UI and put it in the `B6PT_TOKEN` environment variable. This is a
-  **separate** credential from the `b6p` CLI's WebDAV login.
-
-## Getting set up
-
-Setup is **two steps**: **① install the plugin** (once per machine or account),
-then **② activate the rules in your project**. Installing alone gives you the
-skills, hooks, and reference — but the always-on BlueStep rules only take effect
-after step ②.
-
-### Step 1 — Install the plugin
-
-Add the marketplace **once** (paste this repo:
-`https://github.com/Bluestep-Systems/bspecs`), then install **`bluestep-tools`**
-from it. The `@bluestep` suffix everywhere is the marketplace name, so future
-plugins install the same way (`<plugin>@bluestep`).
-
-#### Claude desktop app (Mac/Windows)
-
-No terminal required:
-
-1. Click **Customize** in the left sidebar, then open the **Plugins** tab.
-2. Under **Personal plugins**, click **+** → **Add marketplace**.
-3. Choose **From repository** and paste the repo URL `https://github.com/Bluestep-Systems/bspecs`, then click **Done**.
-4. Click **Browse plugins**, find **bluestep-tools**, and click **Install**.
-
-**Recommended:** turn on **Sync automatically** for the marketplace so new plugin
-releases propagate on their own. In the desktop app, marketplaces are tied to
-your Claude account (claude.ai); you enable this from the marketplace's settings,
-and it requires **granting the Claude GitHub App access** to the `bspecs` repo.
-With it off, the marketplace stays pinned to the commit it was added at and won't
-pick up releases (use **Check for updates** for a one-time manual sync).
-
-#### Claude Code CLI (terminal)
-
-```
-/plugin marketplace add Bluestep-Systems/bspecs
-/plugin install bluestep-tools@bluestep
-```
-
-For scripting, the same thing works non-interactively from your shell:
-`claude plugin marketplace add Bluestep-Systems/bspecs` then
-`claude plugin install bluestep-tools@bluestep`.
-
-#### Claude Code VS Code extension
-
-1. Type `/plugins` in the prompt box to open **Manage plugins**.
-2. On the **Marketplaces** tab, add `Bluestep-Systems/bspecs`.
-3. On the **Plugins** tab, find **bluestep-tools** and click **Install** (pick user, project, or local scope).
-4. Restart Claude Code when prompted, or run `/reload-plugins`.
-
-(JetBrains IDEs have no plugin GUI — run `claude` in the integrated terminal and use the CLI commands above.)
-
-### Step 2 — Activate the rules in your project
-
-Installing the plugin gives Claude the skills, guardrail hooks, and the on-demand
-reference. But the **always-on** BlueStep rules — use `B.time` not `Date`,
-queries are unit-scoped, commit semantics, the endpoint output rule,
-RelateScript-isn't-JS, and the rest — live in a project `CLAUDE.md`, and a plugin
-**can't** inject that on its own ([why](#how-the-rules--reference-reach-claude)).
-So, from your project directory, run:
-
-```
-/bluestep-init
-```
-
-This works in a **new *or* existing** project — it's non-destructive and skips any
-file that already exists, so in an existing repo it just drops the missing
-`CLAUDE.md` (plus the other tooling files) and leaves your code untouched. Think
-of it as "activate BlueStep rules here," not only "scaffold a new project."
-
-Skip step ② and Claude still has the tools and the hard guardrails, but won't
-carry the platform rules in context every turn — so on a quick edit it doesn't
-think to consult the reference for, it can miss BlueStep patterns. Run
-`/bluestep-init` once per project to close that gap.
-
-### Keeping it updated
-
-Run `/plugin marketplace update` (or enable `autoUpdate`) to pull the latest
-released versions. An install only changes when the plugin's version changes —
-see [For maintainers](#for-maintainers).
-
-### Sharing it with your team
-
-The same `/bluestep-init` from step ② also writes a project
-`.claude/settings.json` that registers the `bluestep` marketplace and lists
-`enabledPlugins: ["bluestep-tools@bluestep"]`. Commit that file **and** the
-generated `CLAUDE.md`, and the whole setup **travels with the repo**: a teammate
-who clones it gets step ② for free (the `CLAUDE.md` is already there) and is
-offered the plugin for step ① via the committed settings — they just confirm the
-one-time install prompt on folder-trust. So after the first person runs
-`/bluestep-init`, everyone after them is essentially set up on clone.
-
 ## How the rules & reference reach Claude
 
-Once the plugin is enabled, it contributes context through three channels:
-
-- **Skills** — every skill's *description* is always in context (so Claude knows what's available), but a skill's full *body* loads only when it's invoked.
-- **Hooks** — the plugin's hooks merge with your project hooks and fire automatically on the matching Edit / Write / Bash events. No per-project hooks block is needed.
-- **Subagents** — inherit the memory hierarchy (project `CLAUDE.md` + rules) and reach the plugin's bundled reference files on demand.
-
-Two things worth knowing:
-
-- **Always-on rules live in the project `CLAUDE.md`.** A plugin can't ship
-  always-on context (a `CLAUDE.md` at the plugin root is not loaded), so the
-  critical Tier-1 rules are written into the per-project `CLAUDE.md` by
-  `/bluestep-init` — that's their only correct home.
-- **The reference is read on demand — no `@`-imports.** Nothing is bulk-loaded
-  into every session. The project `CLAUDE.md` points at the `bluestep-reference`
-  skill; Claude reads its manifest, matches the "Load when …" trigger for the
-  task at hand, and opens the **one** self-contained file it needs (reference/,
-  conventions/, or gotchas/). Large platform detail stays out of context until a
-  specific task calls for it.
+A plugin can't ship *always-on* context, which is why `/bluestep-init` writes
+the critical BlueStep rules into your project's own `CLAUDE.md` — that's their
+only correct home. The deeper platform reference (`bluestep-reference`) works
+differently: Claude reads it on demand, one self-contained file at a time,
+only when a task actually calls for it — nothing is bulk-loaded into every
+session.
 
 ## The `bluestep-tools` tools, and when to use each
 
@@ -217,16 +205,12 @@ and authed (see [Prerequisites](#prerequisites)). For reference:
 
 ### Platform authoring (`/bluestep-mcp-connect`)
 
-The platform exposes a **per-org** MCP server at
-`https://<org>.bluestep.net/mcp`. `/bluestep-mcp-connect` registers a connection
-for an org so the agent can perform `[PLATFORM]` authoring/wiring operations
-directly in-session (create forms/fields/queries, wire dependencies) instead of a
-manual UI round-trip. It authenticates with the `B6PT_TOKEN`
-([Prerequisites](#prerequisites)) — a **separate** credential from the `b6p` CLI.
-
-- **Terminal CLI:** registers globally at user scope (persists across all workspaces) when the `claude` binary is on PATH.
-- **No CLI / containment / team-shared:** falls back to a per-workspace `.mcp.json` with a runtime-expanded `${B6PT_TOKEN}`.
-- **Desktop app:** add it as a claude.ai custom connector.
+Run `/bluestep-mcp-connect` to connect an org's platform MCP server, so the
+agent can create/wire platform objects (forms, fields, queries) directly
+in-session instead of a manual UI round-trip. It authenticates with the
+`B6PT_TOKEN` ([Prerequisites](#prerequisites)) — a **separate** credential from
+the `b6p` CLI. The skill figures out the right setup for your environment
+automatically.
 
 Component sync (`/b6p-*`) stays on the `b6p` CLI; MCP owns only the platform
 authoring the CLI can't do.

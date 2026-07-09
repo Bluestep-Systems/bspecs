@@ -16,7 +16,7 @@ plugin/
                             /spec-status, /quick-task, /task-comment, /bspecs-feedback, /bluestep-init,
                             /bluestep-mcp-connect, /bluestep-vite-report, and bluestep-reference (the on-demand platform reference)
   agents/                 ← three subagents (b6p-task-implementer, b6p-commenter, b6p-code-review)
-  hooks/                  ← hooks.json + three scripts (block-generated-files, block-tsc, prettier-on-save)
+  hooks/                  ← hooks.json + two scripts (block-generated-files, block-tsc)
 cli.js, src/              ← DORMANT npm CLI (frozen fallback; loads but scaffolds nothing)
 templates/                ← empty (all tooling migrated into plugin/)
 ```
@@ -37,7 +37,7 @@ Plugins serve content **verbatim** — there is no `{{VAR}}` templating in the p
 
 **Delegated `/spec-execute` (default)**: `/spec-execute` implements a `[CODE]` task by delegating to the `b6p-task-implementer` subagent, which reads declarations/source and the relevant `bluestep-reference` content in its own context and returns a summary — keeping that bulk out of the main session. The approval gate stays in the main session (review the diff, mark `[x]`, STOP). `--inline` implements in-session for trivial tasks. The `b6p-commenter` and `b6p-code-review` subagents are on-demand only (suggested at the STOP, never auto-fired). See `docs/decisions/subagents-and-delegated-execution.md`.
 
-**Hooks**: `plugin/hooks/hooks.json` wires the three scripts (block-generated-files, block-tsc, prettier-on-save), referenced via `${CLAUDE_PLUGIN_ROOT}`. They run in WSL and must use the WSL-native toolchain. Hooks ship with the plugin, so an enabled plugin gets them automatically — no per-project hooks block.
+**Hooks**: `plugin/hooks/hooks.json` wires the two scripts (block-generated-files, block-tsc), referenced via `${CLAUDE_PLUGIN_ROOT}`. They run in WSL and must use the WSL-native toolchain. Hooks ship with the plugin, so an enabled plugin gets them automatically — no per-project hooks block. Formatting is intentionally **not** a hook (see the plugin 0.9.0 CHANGELOG entry and `docs/decisions/npm-free-scaffolding-via-vscode-extension.md`); the scaffolded `.prettierrc` is left for each developer's editor to apply.
 
 ## Editing the plugin
 
@@ -49,7 +49,7 @@ Plugins serve content **verbatim** — there is no `{{VAR}}` templating in the p
 
 ## Running / testing
 
-No test suite. Manual testing of the plugin: add the in-repo marketplace and install the plugin into a scratch project, then confirm `/bluestep-tools:*` skills appear, the three hooks fire on Edit/Write/Bash, and the `bluestep-reference` skill serves reference files on demand. Bootstrap: in a scratch dir with the plugin enabled, run `/bluestep-init` and verify it writes the root files + a plugin-enabling `.claude/settings.json` (no hooks block, no sync) and guides `git init`; the generated `package.json` has no `b6p-cli` devDependency.
+No test suite. Manual testing of the plugin: add the in-repo marketplace and install the plugin into a scratch project, then confirm `/bluestep-tools:*` skills appear, the two hooks fire on Edit/Write/Bash, and the `bluestep-reference` skill serves reference files on demand. Bootstrap: in a scratch dir with the plugin enabled, run `/bluestep-init` and verify it writes the root files + a plugin-enabling `.claude/settings.json` (no hooks block, no sync) and guides `git init`; the generated `package.json` has no `b6p-cli` devDependency.
 
 ```bash
 node cli.js -v       # dormant CLI still loads (prints version)

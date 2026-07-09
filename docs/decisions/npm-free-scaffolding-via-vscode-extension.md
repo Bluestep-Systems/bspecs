@@ -119,6 +119,13 @@ The only remaining npm surface lives in the scaffolded *content*: the `/b6p-*` s
 `npx b6p`, the `SessionStart` → `bspecs sync` hook, and the prettier-on-save hook. All of that
 is decision #2.
 
+> **Update (plugin 0.9.0):** all three of those are now gone. The `/b6p-*` skills call a bare
+> `b6p` (standalone binary, not `npx`), the `SessionStart` sync hook was dropped, and the
+> `prettier-on-save` hook was removed — `prettier` is a Node CLI and these projects are no longer
+> Node-dependent, so the hook could only ever no-op for anyone without a Node/prettier install.
+> The scaffolded `.prettierrc` still ships as pure config; each developer's editor applies it via
+> its own prettier integration.
+
 ## Recommendation (proposed, not decided)
 
 Worth doing; the b6p-core precedent makes it architecturally clean. Sequence:
