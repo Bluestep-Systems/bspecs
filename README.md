@@ -266,6 +266,13 @@ CI fails any PR that changes `plugin/**` without a version bump (the
 changes (docs, CI, this README, the dormant CLI) don't touch `plugin/**`, need no
 bump, and don't affect installs.
 
+**Feedback → ClickUp automation.** `.github/workflows/feedback-to-clickup.yml`
+creates a linked ClickUp task whenever a `feedback` issue is filed and comments
+the task URL back on the issue. It requires a **`CLICKUP_API_TOKEN`** repo secret
+(Settings → Secrets and variables → Actions) — a ClickUp API token with access to
+the `ai-plugin` space; a maintainer must own and rotate it. If the secret is
+unset the workflow warns and no-ops rather than failing.
+
 **Adding a plugin to the marketplace.** Append an entry to the `plugins[]` array
 in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) — a
 `name`, a `source` directory (its own folder alongside `plugin/`), and a

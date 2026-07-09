@@ -1,0 +1,95 @@
+# ============================================================================
+# Feedback issue → ClickUp task
+# ============================================================================
+# Purpose: When a `feedback` issue is filed (normally by the /bspecs-feedback
+#          skill, which applies the `feedback` label via the issue form), create
+#          a linked ClickUp task on the `ai-plugin` list and comment its URL back
+#          on the GitHub issue, so the two stay linked.
+#
+# Why server-side: not every bspecs user is a member of the ai-plugin ClickUp
+#          space, and baking a ClickUp token into the public plugin/scaffold was
+#          rejected (docs/decisions/bspecs-feedback-mechanism.md, Option B). Here
+#          the token lives ONLY in this repo's encrypted Actions secrets and the
+#          workflow runs in CI, so no user-side ClickUp auth is needed and
+#          /bspecs-feedback itself is unchanged.
+#
+# Required secret: CLICKUP_API_TOKEN — a ClickUp personal API token with access
+#          to the ai-plugin space. Owner must set and rotate it in
+#          Settings → Secrets and variables → Actions. If it is unset the job
+#          warns and no-ops (it will not fail every feedback issue).
+# ============================================================================
+
+name: Feedback → ClickUp
+
+on:
+  issues:
+    types: [opened]
+
+# Least privilege at the top; the job elevates to issues: write to comment back.
+permissions:
+  contents: read
+
+concurrency:
+  # One run per issue; never cancel a partially-created task/link.
+  group: feedback-clickup-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  create-clickup-task:
+    name: Create linked ClickUp task
+    runs-on: ubuntu-latest
+    # Only feedback issues. The /bspecs-feedback form applies this label at
+    # creation, so `opened` catches every skill-filed issue and ignores others.
+    if: contains(github.event.issue.labels.*.name, 'feedback')
+    permissions:
+      issues: write  # to comment the ClickUp task URL back on the issue
+
+    steps:
+      - name: Create ClickUp task and link it back
+        env:
+          # Untrusted issue content — pass via env, never interpolate into the
+          # script body (avoids shell/script injection from titles or bodies).
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # ai-plugin space list (https://app.clickup.com/1282031/v/l/li/901414350506).
+          CLICKUP_LIST_ID: "901414350506"
+        run: |
+          set -euo pipefail
+
+          if [ -z "${CLICKUP_API_TOKEN:-}" ]; then
+            echo "::warning::CLICKUP_API_TOKEN is not set — skipping ClickUp task creation."
+            exit 0
+          fi
+
+          # Build the request body with jq so issue content is safely JSON-encoded.
+          payload="$(jq -n \
+            --arg name "$ISSUE_TITLE" \
+            --arg body "$ISSUE_BODY" \
+            --arg url "$ISSUE_URL" \
+            '{
+              name: $name,
+              description: ("Filed from GitHub: " + $url + "\n\n" + $body),
+              tags: ["ai-plugin"]
+            }')"
+
+          resp="$(curl -sS -X POST \
+            "https://api.clickup.com/api/v2/list/${CLICKUP_LIST_ID}/task" \
+            -H "Authorization: ${CLICKUP_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "$payload")"
+
+          task_url="$(echo "$resp" | jq -r '.url // empty')"
+          if [ -z "$task_url" ]; then
+            echo "::error::ClickUp task creation failed — response:"
+            echo "$resp"
+            exit 1
+          fi
+
+          echo "::notice::Created ClickUp task $task_url"
+          gh issue comment "$ISSUE_NUMBER" \
+            --body "🔗 Linked ClickUp task: ${task_url}"
+        shell: bash
