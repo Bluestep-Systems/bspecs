@@ -52,10 +52,13 @@ and hooks depend on them.
   npm install -g @bluestep-systems/b6p-cli   # puts a bare `b6p` on your PATH
   ```
 
-  **No npm?** Grab the binary from the source repo
-  [`Bluestep-Systems/vscode-extension`](https://github.com/Bluestep-Systems/vscode-extension)
-  (`packages/b6p-cli/`) — or just paste that link into Claude and have it install
-  `b6p` for you. Then authenticate **once per machine**:
+  **No npm?** Every [GitHub Release](https://github.com/Bluestep-Systems/b6p-cli/releases)
+  ships a self-contained `b6p` binary with Node bundled in — no build step, no source
+  checkout. Download the asset for your platform (`b6p-windows-x64.exe`, `b6p-macos-x64`,
+  or `b6p-macos-arm64`), save it into your shared BlueStep tools directory as `b6p`
+  (`%LOCALAPPDATA%\BlueStep\bin\b6p.exe` on Windows, `~/.bluestep/bin/b6p` on macOS), and put
+  that directory on your `PATH` — or just paste the releases link into Claude and have it set
+  this up for you. Then authenticate **once per machine**:
 
   ```sh
   b6p auth set   # credentials stored globally in ~/.b6p, not per project
