@@ -45,29 +45,6 @@ jobs:
       issues: write  # to comment the ClickUp task URL back on the issue
 
     steps:
-      # Front of the triage pipeline: every new feedback issue enters the queue
-      # in a known state so the untriaged backlog is always filterable via
-      # `is:open label:feedback label:status:triage`. A human (or triage agent)
-      # swaps status:triage -> status:accepted / wontfix during triage. Runs
-      # before the ClickUp step so it stamps regardless of the ClickUp token.
-      - name: Stamp status:triage on the feedback issue
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          set -euo pipefail
-          # Normal path is a single add. Self-heal if the label was ever deleted
-          # so a missing label never fails every feedback issue's workflow.
-          if ! gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
-               --add-label "status:triage"; then
-            echo "::notice::status:triage label missing — creating it, then retrying."
-            gh label create "status:triage" --repo "$GITHUB_REPOSITORY" \
-              --color EDEDED --description "Awaiting triage"
-            gh issue edit "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
-              --add-label "status:triage"
-          fi
-        shell: bash
-
       - name: Create ClickUp task and link it back
         env:
           # Untrusted issue content — pass via env, never interpolate into the
