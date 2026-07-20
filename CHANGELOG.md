@@ -6,6 +6,49 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.10.0] — 2026-07-20
+
+Replaces the per-org platform-MCP connection with a **single bundled gateway MCP**. The platform now fronts
+every org at one global endpoint (`https://gateway.bluestep.net/mcp`), a **relay facade** exposing three
+meta-tools — `available_tenants`, `list_org_tools(org)`, `invoke_org_tool(org, tool, arguments)` — where
+`org` is a **U-number** orgKey. Because the URL is constant it ships **bundled in the plugin's `.mcp.json`**
+and auto-registers when the plugin is enabled and `$B6PT_TOKEN` is set — so the per-org `/bluestep-mcp-connect`
+skill and its per-org `bluestep-<subdomain>` entries are gone. Verified live 2026-07-20 (handshake `200`,
+`serverInfo bluestep-mcp-gateway v1.2.2`; real relay reads against four orgs, incl. two absent from
+`available_tenants` yet fully reachable). **Coexistence unchanged:** component sync (`/b6p-*`) stays on the
+b6p CLI permanently, and the two-credential design holds. Existing installs receive this on
+`/plugin marketplace update` / `autoUpdate` only because the version changed.
+
+### Added
+
+- **Bundled gateway MCP** (`plugin/.mcp.json`, new) — declares the `bluestep-gateway` HTTP server (constant
+  global URL, `Authorization: Bearer ${B6PT_TOKEN}` runtime-expanded, never a literal). Auto-registers when
+  the `bluestep-tools` plugin is enabled; in-session tools are
+  `mcp__plugin_bluestep-tools_bluestep-gateway__{available_tenants,list_org_tools,invoke_org_tool}`.
+- **Token-setup guidance in `/bluestep-init`** — step 7 now carries the `b6pt_` token creation, `$B6PT_TOKEN`
+  env setup, and the full security/token-handling section (salvaged from the retired connect skill), plus a
+  desktop-app single-connector note.
+
+### Changed
+
+- **Shared `[PLATFORM]`-authoring procedure** (`bluestep-reference/conventions/mcp-platform-authoring.md`)
+  rewritten around the facade: connection-check keys off the gateway tools; org resolves to a **U-number**
+  (user-supplied → `available_tenants` map → unlisted ≠ unreachable, ask/derive); discovery/mutation/read-back
+  route through `invoke_org_tool`, with `list_org_tools(org)` for inner schemas; the approval echo prints the
+  concrete inner call. `bluestep-reference/SKILL.md` manifest line updated to match.
+- **Entry points re-pointed** to the bundled gateway — `/spec-execute` (`[PLATFORM]` branch), `/quick-task`,
+  the `spec-create` `tasks.template.md` `[PLATFORM]` definition, and the scaffolded `CLAUDE.md.template`
+  rules 8 & 10.
+- **Docs** — repo `README.md`, `CLAUDE.md`, `plugin/README.md`, and `docs/mcp-platform-authoring-test-plan.md`
+  describe the bundled gateway instead of `/bluestep-mcp-connect`; `docs/decisions/platform-mcp-integration.md`
+  gains a dated **2026-07-20 gateway addendum** (historical body preserved).
+
+### Removed
+
+- **`/bluestep-mcp-connect` skill** — deleted `plugin/skills/bluestep-mcp-connect/`; its token-setup and
+  security content is preserved in `/bluestep-init` (see Added). One bundled gateway replaces the per-org
+  connect flow.
+
 ## [plugin 0.9.0] — 2026-07-09
 
 Removes the `prettier-on-save` hook. `prettier` is a Node CLI and these projects are no longer

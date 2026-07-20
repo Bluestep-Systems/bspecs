@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "bluestep-gateway": {
+      "type": "http",
+      "url": "https://gateway.bluestep.net/mcp",
+      "headers": {
+        "Authorization": "Bearer ${B6PT_TOKEN}"
+      }
+    }
+  }
+}

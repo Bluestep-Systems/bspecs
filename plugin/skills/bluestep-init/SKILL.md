@@ -104,22 +104,80 @@ List which files were written and which were skipped because they already existe
 
 If the target directory is not already a git repo, run `git init` in it (or tell the user to). A git repo matters because the spec-execute implementer agent reviews its work via `git diff` — without a repo there is no baseline diff to review.
 
-### 7. (Optional) Connect a BlueStep org MCP
+### 7. (Optional) Set up the platform MCP token
 
-Offer — do not force — to connect the project to a BlueStep org's platform MCP now. A project is often
-created before the org or token exists, so this must be skippable.
+The BlueStep platform MCP is reached through a **single bundled gateway** at
+`https://gateway.bluestep.net/mcp` that surfaces every org you are allowed to reach. It ships **inside the
+`bluestep-tools` plugin** (as the plugin's `bluestep-gateway` MCP server) and **auto-registers** as soon as
+the plugin is enabled and the `$B6PT_TOKEN` environment variable is set — there is **no per-org connect
+flow, no `claude mcp add`, and no hand-edited `.mcp.json`**. The only thing a user does is set the token
+once.
 
-Ask with `AskUserQuestion`:
+> **Fresh-session caveat.** Plugin-bundled MCP tools register at **session start**. After enabling the
+> plugin or setting the token, they appear only in a **new** session (or after `/reload-plugins`), not the
+> current one.
 
-- **Question:** "Connect this project to a BlueStep org's platform MCP now?"
-- **Options:**
-  - `Skip for now` — *(recommended)* set it up later with `/bluestep-mcp-connect`.
-  - `Connect an org` — register the org's platform MCP (global by default, so it works in every workspace).
+This step is **optional and non-destructive** — a project is often created before the token exists, so it
+must be skippable. **First check whether the token is already set:**
 
-On **Connect an org**, run the `/bluestep-mcp-connect` flow (token preflight → ask the org URL → register at
-user scope via `claude mcp add`, or per-workspace `.mcp.json` if the user wants containment → handshake →
-tell the user a fresh session is needed). Do not re-implement it here; defer to that skill so the two stay
-in sync. On **Skip for now**, note that `/bluestep-mcp-connect` adds it whenever they are ready.
+```
+test -n "$B6PT_TOKEN" && echo OK
+```
+
+- Prints `OK` → the token is already set; say so and move on. Note that the bundled gateway will register
+  in the next fresh session; nothing more to do here.
+- Prints nothing → offer the two one-time setup steps below (do not force them).
+
+**1. Create the token (once, in any org — it works globally):**
+BlueStep UI → **Tools → Organization Admin → Super tab → Global Users →** find yourself → edit (pencil) →
+**Access Tokens → Create New Token**. Copy the `b6pt_…` value.
+
+**2. Put it in the environment Claude Code runs in.** The token must live in the environment the Claude
+Code process actually inherits — this is where the OSes differ:
+
+- Linux / WSL / macOS, **launched from a terminal**: add `export B6PT_TOKEN="b6pt_…"` to your shell
+  profile (`~/.bashrc` / `~/.zshrc`), then open a new terminal.
+- Windows: `setx B6PT_TOKEN "b6pt_…"` (User scope), then restart the terminal / Claude Code. (`setx`
+  reaches both terminal- and GUI-launched processes.)
+- macOS / Linux, **launched from the GUI** (Spotlight / Dock / app icon): GUI apps do **not** read your
+  shell profile, so an `export` in `.zshrc` will **not** reach a GUI-launched Claude Code. Either launch
+  from a terminal, run `launchctl setenv B6PT_TOKEN "b6pt_…"` (macOS; clears on logout), or set it in the
+  `env` block of `~/.claude/settings.json` — a config file, so it is launch-method- and OS-independent
+  (see the caveat below).
+
+> **`settings.json` `env` alternative.** Claude Code's `settings.json` has an `env` block that applies to
+> the session; putting `"B6PT_TOKEN": "b6pt_…"` there avoids the per-OS shell/GUI differences above. **Only
+> use `~/.claude/settings.json` (user home, never committed) or a gitignored `.claude/settings.local.json`
+> — NEVER the committed project `.claude/settings.json`.** It is the same plaintext-at-rest floor as an env
+> var (no encryption gain), so it is a convenience, not a security upgrade.
+
+Then start a fresh session — the bundled gateway picks up the token automatically.
+
+**Never** ask the user to paste the token into the chat, and never write the literal token into a file. The
+bundled `.mcp.json` references `${B6PT_TOKEN}` — never the literal value.
+
+#### Security & token handling
+
+The `b6pt_` token is a **bearer credential for a global super-user** — whoever holds it can act as the user
+across every org. Handle it accordingly, and be honest with the user about its limits.
+
+- **Not encrypted at rest.** The token lives in plaintext in the `B6PT_TOKEN` env var (shell profile /
+  Windows user env). It is user-private and uncommitted, but readable by any process running as the user.
+  Claude Code has no encrypted-header MCP mechanism, so plaintext-user-private is the floor. This is a
+  *separate* credential from the b6p CLI's encrypted `~/.b6p/` WebDAV creds.
+- **Recommend an expiry + least-privilege scopes at creation.** The Access Tokens screen has Scopes and
+  Expires columns; a never-expiring, unscoped global-super token is the riskiest shape. Setting an expiry
+  and scopes — and questioning whether it needs to be a global-super token at all — reduces risk more than
+  anything about where the token is stored.
+- **Never print, echo, or leak the token.** Never paste it into chat, never write the literal value into a
+  committed file, never send it anywhere other than the gateway's `Authorization` header over HTTPS (which
+  the bundled `.mcp.json` does via `${B6PT_TOKEN}`). It grants global admin — a leaked value is a full
+  platform compromise. If exposed, tell the user to **Revoke** it on that same screen and **rotate**.
+
+> **Desktop-app note.** Plugin-bundled MCP is account-managed via claude.ai, not local `.mcp.json`, so
+> desktop-app users may need to add the gateway **once** as a claude.ai custom connector (URL
+> `https://gateway.bluestep.net/mcp`, Authorization `Bearer <b6pt_ token>`) rather than relying on the
+> bundle. That is one gateway connector now — **not** one per org.
 
 ### 8. If a new subfolder — point the user at it
 
@@ -131,8 +189,8 @@ When the project was set up in a **new subfolder**, the current session is still
 
 - If the plugin is enabled globally (via Claude's plugin settings / Customize), the skills and hooks are already available in every session — the `.claude/settings.json` block above mainly declares the dependency for teammates and CI. If it is **not** globally enabled, Claude Code offers a one-time install on the next folder-trust prompt, or the user can run `claude plugin install bluestep-tools@bluestep`.
 - If you can tell `b6p` is not on PATH, note that it is a standalone binary installed separately (not an npm dependency) — install the b6p-cli binary from its release, and run `b6p auth set` once per machine, before using the `/b6p-*` skills.
-- The **platform MCP** (used by `/bluestep-mcp-connect`) authenticates with a **separate** credential from the b6p CLI: a global `b6pt_` access token, created once in the BlueStep UI and stored in the `B6PT_TOKEN` environment variable. It is *not* the same as the `b6p auth set` WebDAV credentials.
+- The **platform MCP** (the bundled `bluestep-gateway` server) authenticates with a **separate** credential from the b6p CLI: a global `b6pt_` access token, created once in the BlueStep UI and stored in the `B6PT_TOKEN` environment variable (step 7). It is *not* the same as the `b6p auth set` WebDAV credentials.
 
 ## Done
 
-Summarize: the files written vs. skipped, the target directory, that `.claude/settings.json` enables the plugin, that `git init` ran, and whether an org MCP was connected (or that `/bluestep-mcp-connect` can add one later). If a new subfolder was created, repeat the "open a session in `./<name>`" instruction. Point the user at `/b6p-pull <DAV URL>` to bring down their first component.
+Summarize: the files written vs. skipped, the target directory, that `.claude/settings.json` enables the plugin, that `git init` ran, and whether the `$B6PT_TOKEN` was already set or still needs setup (the platform MCP gateway is bundled with the plugin and auto-registers once the token is set — no per-org connect step). If a new subfolder was created, repeat the "open a session in `./<name>`" instruction. Point the user at `/b6p-pull <DAV URL>` to bring down their first component.

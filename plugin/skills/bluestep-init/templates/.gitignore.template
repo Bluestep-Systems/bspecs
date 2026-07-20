@@ -5,6 +5,9 @@ node_modules/
 .env
 .env.local
 
+# Claude Code — local, user-private settings (may hold secrets like B6PT_TOKEN); never commit
+.claude/settings.local.json
+
 # OS
 .DS_Store
 Thumbs.db

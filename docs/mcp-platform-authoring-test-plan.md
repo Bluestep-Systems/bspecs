@@ -46,7 +46,7 @@ siblings, `view`, `record_type`, `batch_fields`).
 - [x] **A FRESH connected session where the MCP tools actually register in-app.** **CONFIRMED** — all 88
       `mcp__bluestep-bkplayground__*` tools were live/callable in this session (in-app registration held, not
       merely a prior `claude mcp add`). The curl handshake was **not** relied on.
-- [x] **Global `B6PT_TOKEN`** is set (the single global `b6pt_` token from `/bluestep-mcp-connect`). Note:
+- [x] **Global `B6PT_TOKEN`** is set (the single global `b6pt_` token from your shell env / `$B6PT_TOKEN`, set per `/bluestep-init`). Note:
       this token is **global-super** — every mutation below runs as global admin, so run only against
       **bkplayground**, never a real org. **CONFIRMED** — all mutations targeted `mcp__bluestep-bkplayground__*`.
 - [x] **A throwaway target script** on bkplayground for the wiring trio — `<scriptId>` =
