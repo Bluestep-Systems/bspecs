@@ -132,11 +132,24 @@ test -n "$B6PT_TOKEN" && echo OK
 BlueStep UI → **Tools → Organization Admin → Super tab → Global Users →** find yourself → edit (pencil) →
 **Access Tokens → Create New Token**. Copy the `b6pt_…` value.
 
-**2. Put it in the environment Claude Code runs in:**
+**2. Put it in the environment Claude Code runs in.** The token must live in the environment the Claude
+Code process actually inherits — this is where the OSes differ:
 
-- Linux / WSL / macOS: add `export B6PT_TOKEN="b6pt_…"` to your shell profile (`~/.bashrc` / `~/.zshrc`),
-  then open a new terminal.
-- Windows: `setx B6PT_TOKEN "b6pt_…"` (User scope), then restart the terminal / Claude Code.
+- Linux / WSL / macOS, **launched from a terminal**: add `export B6PT_TOKEN="b6pt_…"` to your shell
+  profile (`~/.bashrc` / `~/.zshrc`), then open a new terminal.
+- Windows: `setx B6PT_TOKEN "b6pt_…"` (User scope), then restart the terminal / Claude Code. (`setx`
+  reaches both terminal- and GUI-launched processes.)
+- macOS / Linux, **launched from the GUI** (Spotlight / Dock / app icon): GUI apps do **not** read your
+  shell profile, so an `export` in `.zshrc` will **not** reach a GUI-launched Claude Code. Either launch
+  from a terminal, run `launchctl setenv B6PT_TOKEN "b6pt_…"` (macOS; clears on logout), or set it in the
+  `env` block of `~/.claude/settings.json` — a config file, so it is launch-method- and OS-independent
+  (see the caveat below).
+
+> **`settings.json` `env` alternative.** Claude Code's `settings.json` has an `env` block that applies to
+> the session; putting `"B6PT_TOKEN": "b6pt_…"` there avoids the per-OS shell/GUI differences above. **Only
+> use `~/.claude/settings.json` (user home, never committed) or a gitignored `.claude/settings.local.json`
+> — NEVER the committed project `.claude/settings.json`.** It is the same plaintext-at-rest floor as an env
+> var (no encryption gain), so it is a convenience, not a security upgrade.
 
 Then start a fresh session — the bundled gateway picks up the token automatically.
 
