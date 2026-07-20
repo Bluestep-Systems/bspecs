@@ -12,7 +12,7 @@ Each task must reference specific file paths or platform artifacts and be small 
 
 Every task starts with one of two prefixes that says **where** the work happens:
 
-- `[PLATFORM]` — done in the BlueStep UI **or** via the platform MCP (in-session, approval-gated) when an org MCP connection is live: creating a field, query, formula, component-level config, permissions, etc. **Agent-executable by `/spec-execute` when connected** (else the user does it manually / it's handed back). See the `bluestep-reference` skill's `conventions/mcp-platform-authoring.md` for the flow. Must be listed before any `[CODE]` task that depends on them, so the ordering encodes the dependency.
+- `[PLATFORM]` — done in the BlueStep UI **or** via the bundled **gateway** MCP (in-session, approval-gated; live once the `bluestep-tools` plugin is enabled and `$B6PT_TOKEN` is set): creating a field, query, formula, component-level config, permissions, etc. **Agent-executable by `/spec-execute` when the gateway MCP is live** (else the user does it manually / it's handed back). See the `bluestep-reference` skill's `conventions/mcp-platform-authoring.md` for the flow. Must be listed before any `[CODE]` task that depends on them, so the ordering encodes the dependency.
   - **Optional `op:` hint.** A `[PLATFORM]` task MAY carry an inline `op:` hint naming the MCP tool + key args to make the agent's tool-mapping unambiguous, e.g. `op: add_queries(script=…, query=allStaff)`. It's optional — when absent the agent proposes a mapping and the approval echo catches a wrong guess.
 - `[CODE]` — done in this workspace (TypeScript, static assets, README updates). **Executable by `/spec-execute`**.
 

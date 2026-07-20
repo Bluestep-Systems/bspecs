@@ -40,10 +40,12 @@ and hooks depend on them.
   b6p auth set   # credentials stored globally in ~/.b6p, not per project
   ```
 
-- **`B6PT_TOKEN`** *(optional)* — only needed for the platform MCP connection
-  (`/bluestep-mcp-connect`), and a **separate** credential from the `b6p` CLI's
-  WebDAV login. Don't have one yet? Just run `/bluestep-mcp-connect` — it
-  checks for the token and walks you through creating it if it's missing.
+- **`B6PT_TOKEN`** *(optional)* — only needed for platform MCP authoring, and a
+  **separate** credential from the `b6p` CLI's WebDAV login. The platform MCP is
+  the **bundled `bluestep-gateway` server** — no per-org connect step; you just
+  set `$B6PT_TOKEN` and it auto-registers once the plugin is enabled.
+  `/bluestep-init` checks for the token and walks you through creating it if it's
+  missing.
 
 ## Getting set up
 
@@ -157,7 +159,7 @@ Everything below is contributed by the `bluestep-tools` plugin once it's enabled
 - **Spec-driven workflow** — `/spec-create` → `/spec-execute` → `/spec-status`, plus `/quick-task` for small changes.
 - **Platform sync** — `/b6p-pull`, `/b6p-push`, `/b6p-audit` (the agent usually runs these for you).
 - **Project scaffolding** — `/bluestep-init` (bootstrap a project) and `/bluestep-vite-report` (scaffold a Vite/Preact merge report).
-- **Platform authoring** — `/bluestep-mcp-connect` connects an org's platform MCP so the agent can create/wire platform objects in-session.
+- **Platform authoring** — the bundled `bluestep-gateway` MCP server (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set) lets the agent create/wire platform objects in-session.
 - **Subagents** — `b6p-task-implementer` (isolated task execution), `b6p-commenter` (component README), `b6p-code-review` (report-only review).
 - **Guardrail hooks** — auto-format on save, block hand-editing platform-generated files, block local `tsc`.
 - **On-demand reference** — `bluestep-reference`, a BsJs/RelateScript/platform reference Claude reads only when a task needs it.
@@ -203,14 +205,15 @@ and authed (see [Prerequisites](#prerequisites)). For reference:
 | `/b6p-push` | Push local edits back to the platform. |
 | `/b6p-audit` | List files that differ between local and platform (read-only). |
 
-### Platform authoring (`/bluestep-mcp-connect`)
+### Platform authoring (bundled gateway MCP)
 
-Run `/bluestep-mcp-connect` to connect an org's platform MCP server, so the
-agent can create/wire platform objects (forms, fields, queries) directly
-in-session instead of a manual UI round-trip. It authenticates with the
-`B6PT_TOKEN` ([Prerequisites](#prerequisites)) — a **separate** credential from
-the `b6p` CLI. The skill figures out the right setup for your environment
-automatically.
+The plugin bundles the `bluestep-gateway` MCP server, so the agent can
+create/wire platform objects (forms, fields, queries) directly in-session
+instead of a manual UI round-trip. There's no per-org connect step: the gateway
+auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set — a
+**separate** credential from the `b6p` CLI (see [Prerequisites](#prerequisites),
+and `/bluestep-init` for token setup). The authoring flow itself lives in the
+`bluestep-reference` skill's `conventions/mcp-platform-authoring.md`.
 
 Component sync (`/b6p-*`) stays on the `b6p` CLI; MCP owns only the platform
 authoring the CLI can't do.

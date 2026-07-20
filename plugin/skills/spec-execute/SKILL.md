@@ -18,7 +18,7 @@ description: Execute one task from a feature spec. By default delegates implemen
 
    - Read the `draft/README.md` of the component(s) this task touches, if not already in context. (Don't pre-load READMEs for unrelated components.)
 3. **Check the task's prefix:**
-   - **`[PLATFORM]`** — a platform authoring/wiring task, now **agent-executable when an org MCP is connected**. Follow the shared procedure at `${CLAUDE_PLUGIN_ROOT}/skills/bluestep-reference/conventions/mcp-platform-authoring.md` (connection-check → approval echo → execute → declaration read-back). When not connected, that same procedure's path applies — offer `/bluestep-mcp-connect` (with the fresh-session caveat) or fall back to the human hand-back in the BlueStep UI. Do **not** restate its steps here. The **approval gate** and the mark-`[x]` bookkeeping (step 6) stay in this main session.
+   - **`[PLATFORM]`** — a platform authoring/wiring task, now **agent-executable when the gateway MCP tools are live**. Follow the shared procedure at `${CLAUDE_PLUGIN_ROOT}/skills/bluestep-reference/conventions/mcp-platform-authoring.md` (connection-check → approval echo → execute → declaration read-back). When the tools are not live, the fix is to enable the `bluestep-tools` plugin, set `$B6PT_TOKEN`, and restart the session (the gateway is bundled with the plugin — there is no `/bluestep-mcp-connect`); otherwise fall back to the human hand-back in the BlueStep UI. Do **not** restate its steps here. The **approval gate** and the mark-`[x]` bookkeeping (step 6) stay in this main session.
    - **`[CODE]`** — proceed to step 4.
    - **No prefix** — this is an older spec from before the convention. Warn the user once: "Task <N> has no `[PLATFORM]`/`[CODE]` prefix — treating as `[CODE]`. Consider updating the spec." Then proceed to step 4.
 4. **Verify prerequisites are done.** Scan tasks.md for any earlier `[PLATFORM]` task that is still `[ ]` (not checked). If any unchecked `[PLATFORM]` task exists *before* the requested task, STOP and tell the user:
@@ -53,4 +53,4 @@ description: Execute one task from a feature spec. By default delegates implemen
 
 ## When the user says a `[PLATFORM]` task is done
 
-If the user comes back and says "I did task <N> on the platform", just edit `tasks.md` to mark it `[x]`. No code changes, no push. The task is closed. (When an org MCP is connected, such a task may instead have been completed in-session via the procedure above — mark it `[x]` the same way.)
+If the user comes back and says "I did task <N> on the platform", just edit `tasks.md` to mark it `[x]`. No code changes, no push. The task is closed. (When the gateway MCP is live, such a task may instead have been completed in-session via the procedure above — mark it `[x]` the same way.)

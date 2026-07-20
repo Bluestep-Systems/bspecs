@@ -3,7 +3,9 @@
 **Status:** Accepted, scope narrowed. The connection tooling is accepted and shipped. **Component sync
 (`/b6p-pull` / `/b6p-push` / `/b6p-audit`) stays on the b6p CLI permanently — it is not migrating to MCP.**
 The MCP integration's job is the non-overlapping piece: automating `[PLATFORM]` authoring/wiring tasks the
-CLI cannot do. See the **2026-07-08 scope-narrowing addendum** at the end.
+CLI cannot do. See the **2026-07-08 scope-narrowing addendum** at the end; **further amended 2026-07-20** —
+the per-org connection model is superseded by a single bundled global gateway (see the **2026-07-20 gateway
+addendum**).
 
 **Date:** 2026-07-08
 
@@ -216,6 +218,60 @@ appear in a **fresh** session — which is where the parity test above was run.
 active work; the "revisit CLI retirement" phase is deleted; the deferred release tag is re-anchored (gate
 on Phase 4, or cut a `0.7.0` tag now since the connection is complete standalone). The two credential
 systems are now a **permanent** design property, not a transition state.
+
+## 2026-07-20 gateway addendum
+
+The platform now fronts every org's MCP with a **single global gateway** at
+`https://gateway.bluestep.net/mcp`. This **supersedes the per-org connection model** described above: the
+`/bluestep-mcp-connect` skill that registered one `bluestep-<subdomain>` `mcpServers` entry per org is
+retired, and one gateway connection now covers every org the token authorizes. The historical body of this
+ADR (and its per-org `/bluestep-mcp-connect` description) remains accurate for `0.7.0`–`0.9.x` and is left
+as-is.
+
+**The gateway is a relay facade, not a flat aggregation.** It exposes exactly **three meta-tools** —
+`available_tenants`, `list_org_tools(org)`, and `invoke_org_tool(org, tool, arguments)` — where `org` is a
+**U-number** orgKey (e.g. `U142030`), not a subdomain. The per-org native
+`mcp__bluestep-<subdomain>__<tool>` namespaces **no longer exist**; every inner tool (`add_queries`,
+`get_script_declarations`, `form`, `list_forms`, …) is now reached through `invoke_org_tool`. Two
+consequences follow: (1) native per-tool schemas are not surfaced to the harness — the agent must call
+`list_org_tools(org)` to learn an inner tool's schema before invoking it; and (2) the approval gate must
+echo the **inner** call (`org=U…(name), tool=…, arguments=…`), since the harness otherwise sees one generic
+wrapper tool rather than the ~80 typed ones. Coarser schema validation and a single wrapper in the approval
+surface are the **accepted tradeoff** for one-connection-covers-all-orgs.
+
+**Verified live 2026-07-20.** An `initialize` handshake with the existing global `b6pt_` token returned
+`200` (`serverInfo: bluestep-mcp-gateway v1.2.2`). Real `invoke_org_tool` read ops succeeded against
+**bkplayground (`U142030`)** and **AI Testing (`U142065`)**, with org-specific routing confirmed by
+`list_forms` returning distinct form sets per org. Importantly, **LDS (`U129161`) and a personal playground
+(`U141832`) — both absent from `available_tenants` — were still fully reachable** with real org-specific
+output. Per-org tool sets vary (`U141832` exposed 76 tools vs bkplayground's 80), so the procedure must
+`list_org_tools` per org rather than assume a fixed catalogue.
+
+**Key nuance / platform-team feedback: `available_tenants` is a curated directory of AI-enabled orgs, NOT
+the reachable set.** Reach works for *any* org the token authorizes, addressed by U-number, and the org
+itself authorizes the call; discovery via `available_tenants` is a strict, incomplete subset (LDS and the
+playground above prove reach without listing). Therefore org resolution **cannot rely on `available_tenants`
+alone** — the flow accepts a user-supplied U-number (or derives it) for unlisted-but-reachable orgs. This is
+flagged as **feedback to the gateway owners**: either list all reachable orgs, or add a subdomain→orgKey
+resolution tool, since there is no "search by subdomain" today.
+
+**Why it is bundleable now.** The gateway URL is **constant**, so it ships inside the plugin as
+`plugin/.mcp.json` (a `bluestep-gateway` HTTP server, `Authorization: Bearer ${B6PT_TOKEN}` runtime-expanded
+— never a literal) and auto-registers when the `bluestep-tools` plugin is enabled. This removes the
+"per-org config cannot be bundled" limitation noted in *Consequences* above: per-org URLs carried an
+org-specific subdomain and so could not appear in verbatim plugin content (per `plugin-distribution.md`),
+whereas the single global URL can. The **fresh-session caveat still applies** — a newly-registered gateway
+connection surfaces only in a session started after the plugin is enabled and `$B6PT_TOKEN` is set.
+
+**What shipped (`plugin 0.10.0`).** `/bluestep-mcp-connect` is retired (skill directory deleted); the
+`/bluestep-init` MCP step is replaced by token-setup-only guidance ("set `$B6PT_TOKEN`; the gateway is
+bundled"); and the shared `[PLATFORM]`-authoring procedure
+(`bluestep-reference/conventions/mcp-platform-authoring.md`) plus its three entry points (`/spec-execute`,
+`/quick-task`, the scaffolded `CLAUDE.md`) are rewritten around the discover→list→invoke facade.
+**Coexistence is unchanged:** component sync (`/b6p-*`) stays on the b6p CLI permanently, and the
+two-credential design (the CLI's encrypted `~/.b6p/secrets.enc` WebDAV creds vs the `B6PT_TOKEN` MCP token)
+holds. **Security posture is unchanged** — still a plaintext, user-private global-super `b6pt_` token, with
+the same broad blast radius; the *Security & token handling* section above still governs.
 
 ## References
 
