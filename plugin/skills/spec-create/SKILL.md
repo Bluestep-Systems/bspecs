@@ -49,8 +49,8 @@ Read the `draft/README.md` of each component this feature will touch (see `CLAUD
 5. Each task MUST:
    - Have the prefix `[PLATFORM]` or `[CODE]`
    - Have a checkbox `[ ]`
-   - For `[CODE]`: reference specific file paths (e.g. `U######/IntakeForm/draft/scripts/validate.ts`)
-   - For `[PLATFORM]`: describe the artifact (e.g. "Create field `end_time` on form `Appointment`")
+   - For `[CODE]`: reference specific file paths (e.g. `U######/IntakeForm/draft/scripts/validate.ts`). When a `[CODE]` task reads an imported field, **name which query/record it reads the field through** (e.g. "read `end_time` via `appointments` (`Record_appointments`)"), so the scope is verifiable against `declarations/`.
+   - For `[PLATFORM]`: describe the artifact (e.g. "Create field `end_time` on form `Appointment`"). For an **import** item (query/form/field), **state its scope explicitly** — either "current record" (valid **only** if the component has a primary form / record type attached) or the exact named query/queries it is imported on. Never write a bare "add the X import." See the `bluestep-reference` skill's `import-scope.md` (`${CLAUDE_PLUGIN_ROOT}/skills/bluestep-reference/reference/import-scope.md`) for current-record-vs-named-query scoping and the every-reachable-query rule.
    - NOT involve running `tsc`, editing `declarations/`, or creating B6P components locally
 6. **Fill in the `## Deployment` section** at the bottom: list every component whose `[CODE]` tasks touched it. One push per component.
 7. **STOP. Ask the user to approve tasks before implementation begins.**

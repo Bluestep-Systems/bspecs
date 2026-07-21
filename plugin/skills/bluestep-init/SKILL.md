@@ -128,6 +128,17 @@ test -n "$B6PT_TOKEN" && echo OK
   in the next fresh session; nothing more to do here.
 - Prints nothing → offer the two one-time setup steps below (do not force them).
 
+> **Access reality — the `b6pt_` token and platform MCP currently require BlueStep-internal (super-user)
+> access.** The token-creation screen (**Super tab → Global Users → Access Tokens**) is only reachable by a
+> **global super-user**, so for now the platform MCP is effectively a BlueStep-internal capability. If you
+> are an org-admin on a **customer / non-BlueStep-internal org** and Organization Admin shows **no "Super"
+> tab**, the Access Tokens screen is unreachable — you **cannot self-create a token**. Don't hunt for a
+> screen you don't have: the path is to **request a token / MCP enablement from BlueStep**. (Separately, if
+> a connection later 404s for a specific org, that's the org not exposing `/mcp` — see the detailed branch
+> in the `bluestep-reference` skill's `conventions/mcp-platform-authoring.md`; don't retry.)
+
+If you **do** have super-user access, the happy path is:
+
 **1. Create the token (once, in any org — it works globally):**
 BlueStep UI → **Tools → Organization Admin → Super tab → Global Users →** find yourself → edit (pencil) →
 **Access Tokens → Create New Token**. Copy the `b6pt_…` value.

@@ -26,10 +26,10 @@ description: Draft a standardized implementation comment for a ClickUp task afte
    - Component name (e.g. `Audits`, `Appointments`)
    - Affected file(s): path(s) relative to the component (e.g. `draft/scripts/utils/entryHelper.ts`)
    - Orgs deployed to (comma-separated list)
-   - What changed and why (free-form, 1–4 sentences)
+   - What changed and why (free-form: 1–4 sentences OR a short bullet list)
 
    **If no (direct — code/API/formula fix):**
-   - What changed mechanically (1–3 sentences)
+   - What changed mechanically (1–3 sentences OR a short bullet list)
    - Root cause, if known (1–2 sentences, or "N/A")
    - Net effect / user-visible outcome (1 sentence)
    - Any caveats or known limitations (optional)
@@ -50,7 +50,7 @@ The comment always has three sections separated by blank lines: **Summary**, **C
 
 **<Type> implemented**
 
-<What changed and why>
+<What changed and why — prose or a short bullet list>
 
 **Component:** <ComponentName>
 
@@ -71,7 +71,7 @@ The comment always has three sections separated by blank lines: **Summary**, **C
 
 **<Type> shipped (<YYYY-MM-DD>)**
 
-<What changed mechanically>
+<What changed mechanically — prose or a short bullet list>
 
 **Root cause:** <root cause, if provided>
 

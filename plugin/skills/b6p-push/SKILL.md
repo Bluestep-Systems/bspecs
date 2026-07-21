@@ -75,6 +75,20 @@ Use any existing file inside the component for `--file`; `app.ts` is the most co
 
 The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call will hang. Always include it.
 
+> **Warning — stale client JS.** If you edited `draft/static/script.ts`, verify `draft/static/script.js` was regenerated/updated **before** pushing. `b6p push` does **not** transpile `static/script.ts` → `static/script.js`, so a push after editing only the `.ts` silently ships stale client JS. Keep the compiled `.js` in sync with the `.ts`. (Detail: the `bluestep-reference` `conventions/single-script.md` caveat.)
+
+#### Fallback: a component that was never pulled via the CLI (`--root`)
+
+`b6p push --file <path>` fails with `Missing metadata` when the component has **no local sync metadata** (it was never pulled through the CLI, so there is nothing to derive the destination URL from). Push it explicitly instead:
+
+```
+b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --message "<summary>"]
+```
+
+- `--root` points at the component's **root** — the folder that *contains* `draft/`, **not** `draft/` itself. Pointing at `draft/` gives `Draft folder not found: .../draft/draft`.
+- There is no local metadata to derive `<target-url>` from, so source it from the org's platform MCP: `lookup_script_by_name` → use the returned `webDavUrl`. (Only when connected; otherwise ask the user for the WebDAV URL.)
+- The plain-vs-snapshot choice from step 3 **still applies** — carry `--snapshot --message "<summary>"` if the user chose Snapshot. Do **not** trial-and-error the argument shape: guessing can land on a plain push with **no** snapshot, defeating this skill's own plain-vs-snapshot confirmation.
+
 ### 5. Report
 
 - The platform compiles after receiving the push. Surface any compile errors the CLI reports.
@@ -96,3 +110,14 @@ Two distinct failure modes — handle them differently:
 - **`command not found` / `b6p` cannot be resolved** — the b6p-cli standalone binary is not installed (or not on `PATH`). Do NOT retry. Tell the user:
   > `b6p` could not be resolved. Install the b6p-cli standalone binary and make sure it is on your `PATH` (see its release/install instructions), then retry `/b6p-push <component>`.
 - **Any other error** (network, auth, conflict, etc.) — the VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Do not retry the CLI in a loop.
+
+### Gotcha: empty `outDir` in a `static/` sub-project aborts the push
+
+A fresh `b6p pull` of a component with a `static/` bundle can leave `draft/static/tsconfig.json` with `"outDir": ""` (an empty string). A later push then aborts in the local pre-push build of the `static/` sub-project with a bare, unhelpful error such as:
+
+```
+Build folder doesn't exist (this is fine)
+outDir not specified
+```
+
+**Workaround:** set `draft/static/tsconfig.json` `"outDir"` to `"."` (any non-empty value works), then push again. This is a local build-tool satisfier only — it does **not** affect what deploys. (The real fix is tracked upstream in the b6p CLI; treat this as a temporary gotcha.)

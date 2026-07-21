@@ -35,6 +35,18 @@ the async content actually arriving rather than on initial `DOMContentLoaded`.
 properly. With the current setup this should **no longer be necessary** — don't carry
 it forward into new code.
 
+**Client-side async embed (`contentOnlyUrl()` + `<b-include>`).** The server-side
+checkbox above is not the only way to get per-section lazy load. A parent merge report
+can drive it from the client: for each sibling section, resolve that section's
+`contentOnlyUrl()` (the report body without page chrome) and emit
+`<b-include src="…" run-scripts="true">`. Each section then fetches and renders
+independently in the browser, with its own spinner — heavy sections don't block the
+lighter ones. Resolve each `contentOnlyUrl()` through an **imported primary-form
+FormEntry** (`optApplicable*` returns empty unless called on the target report's
+primary form — see the primary-form hard rule in
+[merge-report-urls](merge-report-urls.md)). See
+[b-include element](b-include-element.md) for the `<b-include>` attributes.
+
 For dynamic async content driven from the client (rather than this server-side
 config), see [b-include element](b-include-element.md). Related merge-report detail:
 [merge-report-static-index](merge-report-static-index.md),

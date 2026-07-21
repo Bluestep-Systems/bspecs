@@ -58,6 +58,11 @@ specifically `mcp__plugin_bluestep-tools_bluestep-gateway__available_tenants` an
   back to the **human hand-back** (they add it in the BlueStep UI, then `/b6p-pull`). **Never** fail
   silently or half-apply.
 - **Connected** → continue to step 3.
+- **Connected, but a specific org's op fails with a `404` from its `/mcp` endpoint** → that org does
+  **not** expose the platform MCP (commonly the case for customer / non-BlueStep-internal orgs). This is a
+  per-org exposure gap, **not** a gateway-connection problem — do **not** retry. Request MCP enablement for
+  that org from BlueStep; until then fall back to the human hand-back (author in the BlueStep UI, then
+  `b6p pull`).
 
 ### 3 — Resolve the target org (to a U-number)
 
@@ -121,6 +126,10 @@ immediately — no manual re-pull.
 - Prove-out bar is **"declarations sufficient to code against," not byte-parity** with `/b6p-pull`.
 - If the reduced declarations are insufficient, fall back to a CLI `/b6p-pull` for the full
   `declarations/` tree.
+- **`get_script_declarations` may be absent from a given org's toolset** (confirm via `list_org_tools`).
+  When it is, the declaration read-back step is impossible — fall back to a `b6p pull` to refresh the
+  script's `declarations/`. Treat `b6p pull` as the **norm** for declaration refresh wherever this tool is
+  missing.
 
 ### 7 — Bookkeeping (per entry point)
 
@@ -161,6 +170,14 @@ tools, not a fixed inventory.
 **Wiring / imports**
 - `add_queries`, `add_forms`, `add_field_access`, `add_record_types`
 - destructive siblings: `remove_queries`, `remove_forms`, `remove_field_access`, `remove_record_types`
+
+> **Limitation — `add_forms` cannot wire a multi-entry form report (MEFR).** For a MEFR, `add_forms`
+> reports success and the form shows up in `list_applicable_forms`, but the script's `declarations/index.d.ts`
+> never gains the MEFR types after `b6p pull` — the MEFR's all-entries report access is **not** configured by
+> `add_forms`, so the reduced declarations never emit its type. (`add_field_access` on the MEFR's individual
+> fields **does** persist.) **Route MEFR imports to the platform UI** — configure the all-entries report
+> import there (writable as needed), then `b6p pull` — do **not** rely on `add_forms` for MEFRs. Future
+> `[PLATFORM]` tasks should route MEFR imports to the UI.
 
 **Schema authoring**
 - `form`, `field`, `option_list`, `view`, `record_type`

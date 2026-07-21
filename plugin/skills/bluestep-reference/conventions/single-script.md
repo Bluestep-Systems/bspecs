@@ -10,6 +10,13 @@ Symptom when you get this wrong: silent 404s on every subdirectory `.build/*.js`
 
 **Why:** Seen in practice while building a dashboard merge report. A modular architecture with `util/escape.ts`, `util/dates.ts`, `pages/overview.ts`, etc. produced an empty `.build/` and a blank page. Consolidating everything into a single `static/script.ts` fixed it immediately.
 
+**Caveat — push does NOT transpile `static/script.ts`; you must keep the compiled `.js` in sync:**
+
+- Field observation: **neither `b6p push` nor the platform's push step regenerates the compiled client JS from `static/script.ts`.** Editing *only* `static/script.ts` and pushing **succeeds with no error**, but the live deployed compiled `.js` stays byte-identical to the old version — the new client logic **silently never reaches the browser**. There is no failure to catch; the push just ships stale client JS.
+- So keeping the compiled `static/script.js` in sync is the developer's responsibility (unless the platform performs the transpile out-of-band, which was **not** observed). Treat "I edited `static/script.ts` and pushed" as **not** having deployed any client change.
+- Observed shape can differ from the `.build/script.js` claim above: on at least one component the compiled `static/script.js` sat **directly beside** `script.ts` with **no `.build` subfolder** for static assets. Take this as an observed variation in layout, not a contradiction of the compilation description — the compiled artifact exists, but its path and whether anything regenerates it are not guaranteed.
+- **Workaround seen in the field:** hand-port the edit into the compiled `static/script.js` and push that file explicitly — e.g. `b6p push --file <path-to>/static/script.js`. This is a gotcha/stopgap; the real fix (having push transpile the `.ts`) is tracked upstream in the b6p CLI.
+
 **How to apply:**
 
 - Put all merge-report client code in one file: `static/script.ts`.

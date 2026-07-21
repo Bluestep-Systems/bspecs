@@ -6,6 +6,57 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.11.0] — 2026-07-21
+
+Resolves the in-repo half of the feedback backlog — six new/edited `bluestep-reference` rules and four skill
+doc fixes filed via `/bspecs-feedback` (issues #9, #23, #24, #26, #27, #28, #29, #30, #31, #32). All content is
+category-level per the sanitization ADR. The cross-repo code fixes (b6p CLI static-bundle handling; platform
+MCP server MEFR wiring / `get_script_declarations` / customer-org `/mcp` exposure) are tracked upstream in
+[`b6p-cli#9`](https://github.com/Bluestep-Systems/b6p-cli/issues/9) and
+[`web#1005`](https://github.com/Bluestep-Systems/web/issues/1005), not in this release. Existing installs
+receive this on `/plugin marketplace update` / `autoUpdate` only because the version changed.
+
+### Added — `bluestep-reference`
+
+- **`reference/import-scope.md`** (new, #24) — form/field imports are scoped: current-record (only with a
+  primary form attached) vs. specific named queries; a field must be imported on *every* query whose record
+  type reaches the code — the runtime-read query **and** any query used as a declared parameter type — and the
+  scope is verifiable against `declarations/`.
+- **`gotchas/b-exports-proxy-map.md`** (new, #30) — `B.exports` is a Java-side proxy map (`ProxyJavaMap`), not
+  a plain JS object; the `.push()` accumulate pattern type-checks locally but throws at runtime; store
+  structures as JSON strings (primitives round-trip).
+- **`reference/version-stream-previous-value.md`** (new, #26) — read the previous committed version with
+  `entry.versionStream().findFirst().orElse(null)` and diff current-vs-previous field values, with the
+  first-create null guard and the pre-save vs post-save timing caveat.
+
+### Changed — `bluestep-reference`
+
+- **`reference/merge-report-urls.md`** (#9) — added `contentOnlyUrl()` (+ `profileNewEntryUrl()`,
+  `profileCopyUrl()`, `mergeTagResult()`) to the `MergeReport<T>` method list and property-mapping table
+  (property in RelateScript, method in BSJS; only on the full report, not metadata), plus the `optApplicable*`
+  **primary-form hard rule**. `reference/merge-report-async-loading.md` + `reference/b-include-element.md` gained
+  the `contentOnlyUrl()` → `<b-include run-scripts="true">` client-side async-embed recipe.
+- **`conventions/single-script.md`** (#27, doc half) — neither `b6p push` nor the platform push transpiles
+  `static/script.ts` → `static/script.js`; editing only the `.ts` silently ships stale client JS.
+- **`conventions/mcp-platform-authoring.md`** (#32, #29 doc halves) — `add_forms` cannot wire a MEFR
+  all-entries report (route MEFR imports to the UI); a `/mcp` 404 means the org doesn't expose the platform MCP
+  (request enablement, don't retry); `get_script_declarations` may be absent → `b6p pull` fallback.
+
+### Changed — skills
+
+- **`spec-create`, `quick-task`** (#24) — every `[PLATFORM]` import item must state its scope (current-record
+  only with a primary form, or the exact named queries); the paired `[CODE]` item names which query/record it
+  reads through. Both point at `import-scope.md`. (Plugin skills only — the `.claude/skills/*` copies are
+  bspecs-repo-development variants, not BlueStep mirrors.)
+- **`b6p-push`** (#31, #28, #27) — documented the `--root` fallback for components never pulled via the CLI
+  (root is the component folder, not `draft/`); the empty-`outDir` gotcha (set to `.`); and a warning that a
+  push after editing only `static/script.ts` ships stale client JS.
+- **`task-comment`** (#23) — the "what changed" body may be a short bullet list, not only sentences.
+- **`bluestep-init`** (#29, doc half) — the `b6pt_` token + platform MCP currently require BlueStep-internal
+  super-user access; an org-admin with no Super tab should request a token / MCP enablement from BlueStep
+  rather than being sent to an unreachable screen. (Note: #29 originally targeted the `bluestep-mcp-connect`
+  skill, retired in 0.10.0; the token setup now lives here.)
+
 ## [plugin 0.10.0] — 2026-07-20
 
 Replaces the per-org platform-MCP connection with a **single bundled gateway MCP**. The platform now fronts

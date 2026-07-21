@@ -27,9 +27,26 @@ formEntry.optApplicableBsJsMergeReport("id", "x").get()
 formEntry.optApplicableMergeReport("id", "x").get()
 ```
 
-Returns full `MergeReport<T>` with `viewUrl()`, `printUrl()`, `profileUrl()`, `newEntryUrl()`, `copyUrl()`, `editUrl()`, `displayName()`, `id()`, `altIds()`, etc.
+Returns full `MergeReport<T>` with `viewUrl()`, `printUrl()`, `profileUrl()`, `newEntryUrl()`, `copyUrl()`, `editUrl()`, `contentOnlyUrl()`, `profileNewEntryUrl()`, `profileCopyUrl()`, `mergeTagResult()`, `displayName()`, `id()`, `altIds()`, etc.
+
+`contentOnlyUrl()` exists **only** on the full `MergeReport<T>` (reached via `optApplicable*`) — it is **not** on the `MergeReportMetaData` returned by `B.find.mergeReport(id, 'js')`. Use it for the report body without the surrounding page chrome — e.g. the client-side
+async-embed recipe in [merge-report-async-loading](merge-report-async-loading.md) and
+[b-include element](b-include-element.md).
 
 Also: `applicableBsJsMergeReportResults(...)` returns `{results, message}` for error reporting.
+
+## Primary-form hard rule (`optApplicable*`)
+
+`optApplicableBsJsMergeReport("FID", <id>)` — and the relatescript variant
+`optApplicableMergeReport(...)` — returns an **empty Optional** unless the calling
+`FormEntry`'s form is the target report's **primary form**. Calling it on the wrong
+FormEntry silently yields nothing, not an error.
+
+To embed or look up a **sibling** report whose primary form differs from the current
+record's form, import **that** form as a formula dependent and call `optApplicable*`
+on **its** FormEntry — never on the current record's FormEntry. Read each report's
+primary form from the platform's Usage / Settings report list to know which form to
+import.
 
 ## Property mapping
 
@@ -37,6 +54,7 @@ Also: `applicableBsJsMergeReportResults(...)` returns `{results, message}` for e
 |---|---|
 | `result.viewURL` | `.viewUrl()` |
 | `result.printURL` | `.printUrl()` (only on full `MergeReport`, not metadata) |
+| `x.contentOnlyUrl` | `.contentOnlyUrl()` — a **property** in relatescript but a **method** in BSJS; only on full `MergeReport`, not metadata |
 | `result.name` | `.displayName()` (or `.id()` for the id) |
 | `result.label` | `.displayName()` |
 | `result.customProps` | no enumerator — pass as filter args, or walk `.altIds()` |

@@ -33,6 +33,9 @@ block in `app.ts` is pointless work. CSS stays in `static/styles.css` per
   `<script src=".build/script.js">` tag. (E.g. a `<div id="…-widget"></div>` mount
   lives in index.html, not in `B.out`.)
 - CSS → `static/styles.css`. Client JS → `static/script.ts` (→ `.build/script.js`).
+  Caveat: push does **not** transpile `static/script.ts` — keep the compiled
+  client `.js` in sync yourself or you silently ship stale client JS. See
+  [single script](../conventions/single-script.md).
 - `B.out` (from `app.ts`) → **final server-rendered markup only**: HTML with
   server-computed values baked straight in, e.g. record-scoped section URLs (see
   [merge report urls](merge-report-urls.md)), current-user values, or query results

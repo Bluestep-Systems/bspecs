@@ -23,7 +23,7 @@ The lightweight counterpart to `/spec-create`. Instead of three files (requireme
 3. **Draft the quick-task doc.** Copy `${CLAUDE_PLUGIN_ROOT}/skills/quick-task/quick-task.template.md` to `.claude/quick-tasks/<slug>.md` (create the folder if it doesn't exist; `<slug>` is a short kebab-case name for the task). Fill in:
    - **Summary** — one line.
    - **Root cause** (bugs only) — one or two sentences; delete the section for a non-bug change.
-   - **Approach** — a short checklist of the changes to make, each tagged `[PLATFORM]` (a platform authoring/wiring op — agent-executable via the shared procedure when the gateway MCP is live, else handled on the platform) or `[CODE]` (local source edit). This is the whole plan — keep it minimal.
+   - **Approach** — a short checklist of the changes to make, each tagged `[PLATFORM]` (a platform authoring/wiring op — agent-executable via the shared procedure when the gateway MCP is live, else handled on the platform) or `[CODE]` (local source edit). For a `[PLATFORM]` **import** item (query/form/field), **state its scope** — "current record" (valid **only** if the component has a primary form / record type attached) or the exact named query/queries it is imported on — never a bare "add the X import," and have the paired `[CODE]` item **name which query/record it reads the field through** so the scope is verifiable against `declarations/`. See the `bluestep-reference` skill's `import-scope.md` (`${CLAUDE_PLUGIN_ROOT}/skills/bluestep-reference/reference/import-scope.md`) for current-record-vs-named-query scoping and the every-reachable-query rule. This is the whole plan — keep it minimal.
 
 4. **STOP. Tell the user the doc path and ask them to approve the approach before you edit any code.**
 
