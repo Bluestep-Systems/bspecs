@@ -6,6 +6,50 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.12.0] — 2026-07-22
+
+Replaces the `/bspecs-feedback` transport. The skill no longer builds a **prefilled GitHub-issue deep link**
+the submitter opens and submits in a browser — it now **POSTs the feedback (drafted from context, confirmed
+in chat) to a public BlueHQ intake endpoint** (`https://bluehq.bluestep.net/b/bspecs-feedback`) that files a
+**ClickUp task** on AI.List (`901414350506`) and a **routed GitHub issue** (`bspecs` / `b6p-cli` / `web`) via
+a GitHub App, links the two, and returns both URLs. The submitter needs **no GitHub or ClickUp account** — the
+login wall that used to silently lose feedback is gone. Issue **#25**'s structured failure metadata
+(component / failure modes / severity / AI-confidence) folds in as **ClickUp custom fields** (the filterable
+surface); **no new per-axis GitHub labels are minted** — the generated issue keeps a single `feedback` label
+plus an axes body text-line, so label maintenance across the three repos stays near-zero. Verified working
+end-to-end 2026-07-22. Existing installs receive this on `/plugin marketplace update` / `autoUpdate` only
+because the version changed.
+
+**Two release mechanics.** The `/bspecs-feedback` rewrite and the `bluestep-init` / `bluestep-reference` trims
+ride **this plugin version bump**. The retired GitHub feedback plumbing —
+`.github/workflows/feedback-to-clickup.yml`, `.github/workflows/feedback-triage.yml`, and
+`.github/ISSUE_TEMPLATE/feedback.yml` — and the new ADR are repo changes that ship on **merge to `main`**,
+independent of the plugin version.
+
+### Changed — skills
+
+- **`bspecs-feedback`** — transport rewritten from a prefilled GitHub-issue link to a `curl` POST to the
+  BlueHQ intake endpoint: draft-from-context (incl. `routing`) → conditional AI-failure questionnaire (fires
+  only for AI-output-failure feedback) → reporter identity auto-filled from `git config` (editable/skippable
+  at the confirm gate) → POST → print the returned ClickUp task + GitHub issue links. No browser opens.
+  `## What this skill must NOT do` rewritten — the GitHub-issue-link / no-backend / no-`kind:*`-label rules
+  are gone; still: no credential shipped in the plugin, no editing installed plugin files, no filing without
+  confirmation.
+- **`bluestep-init`** — verbosity trim of the `b6pt_`-token / access-reality setup prose (same guidance,
+  fewer words).
+
+### Changed — `bluestep-reference`
+
+- **`reference/b-include-element.md`** — duplication trim: the lazy-loading merge-report recipe is condensed
+  and the full version (incl. the imported-primary-form-FormEntry requirement) now lives once in
+  `reference/merge-report-async-loading.md`.
+
+### Docs (ship on merge to `main`)
+
+- **New ADR `docs/decisions/feedback-intake-bluehq-endpoint.md`** — records the transport change and
+  **supersedes `bspecs-feedback-mechanism.md`** (Status flipped to *Superseded*). New setup checklist
+  `docs/bluehq-feedback-endpoint-setup.md` (GitHub App, ClickUp fields, token form, endpoint deploy).
+
 ## [plugin 0.11.0] — 2026-07-21
 
 Resolves the in-repo half of the feedback backlog — six new/edited `bluestep-reference` rules and four skill

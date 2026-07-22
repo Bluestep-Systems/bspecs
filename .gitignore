@@ -13,3 +13,11 @@ build/
 # Disposable experiment workspaces (vite-merge-report-test etc.) — nested projects with
 # their own git repos and pulled reference components; never ship with the plugin.
 experiments/
+# Pulled b6p component working copies (org-numbered trees). They hold real config values
+# and platform-generated declarations — never commit them to this public repo.
+platform/U*/
+# NEVER commit private keys / secrets (e.g. a GitHub App private key). Belt-and-suspenders
+# so a stray key file in the working tree can't be staged into this public repo.
+*.pem
+*.key
+*.pkcs8

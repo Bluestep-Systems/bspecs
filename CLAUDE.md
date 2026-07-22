@@ -40,6 +40,8 @@ Plugins serve content **verbatim** — there is no `{{VAR}}` templating in the p
 
 **Hooks**: `plugin/hooks/hooks.json` wires the two scripts (block-generated-files, block-tsc), referenced via `${CLAUDE_PLUGIN_ROOT}`. They run in WSL and must use the WSL-native toolchain. Hooks ship with the plugin, so an enabled plugin gets them automatically — no per-project hooks block. Formatting is intentionally **not** a hook (see the plugin 0.9.0 CHANGELOG entry and `docs/decisions/npm-free-scaffolding-via-vscode-extension.md`); the scaffolded `.prettierrc` is left for each developer's editor to apply.
 
+**`/bspecs-feedback` (tooling-change intake)**: drafts a tooling-change request from session context, confirms it in chat, then **POSTs it to a public BlueHQ intake endpoint** (`https://bluehq.bluestep.net/b/bspecs-feedback`) that files a ClickUp task on AI.List (the #25 structured failure axes as custom fields) **and** a routed GitHub issue (`bspecs` / `b6p-cli` / `web`) via a GitHub App, links the two, and returns both URLs — so the submitter needs **no GitHub or ClickUp account**. No secret ships in the plugin (tokens live only in a BlueHQ office form, read server-side). See `docs/decisions/feedback-intake-bluehq-endpoint.md` (supersedes `bspecs-feedback-mechanism.md`) and `docs/bluehq-feedback-endpoint-setup.md`.
+
 ## Editing the plugin
 
 - Skills live in `plugin/skills/<name>/SKILL.md` — verbatim markdown (no vars). A skill that bundles resources (e.g. `spec-create` bundles `spec-templates/`, `bluestep-init` bundles root templates, `b6p-commenter`'s README template) references them via `${CLAUDE_PLUGIN_ROOT}`.

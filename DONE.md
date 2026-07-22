@@ -4,6 +4,16 @@ Completed work for `@bluestep-systems/bspecs`, archived from `TODO.md` to keep t
 
 ## Unreleased
 
+### feedback-clickup-form (plugin 0.12.0 + repo CI)
+
+Replaces the `/bspecs-feedback` transport — from a prefilled GitHub-issue deep link (which dead-ended for submitters with no GitHub account) to a **POST to a public BlueHQ intake endpoint** that files a ClickUp task on AI.List (`901414350506`) with issue **#25**'s structured axes as custom fields, **and** a routed GitHub issue (`bspecs`/`b6p-cli`/`web`) via a GitHub App, linking both. No submitter account needed. Verified end-to-end 2026-07-22. **Supersedes** the `feedback-to-clickup` workflow below and the original `/bspecs-feedback` mechanism.
+
+- [x] **Skill rewrite + version 0.11.0 → 0.12.0.** `plugin/skills/bspecs-feedback/SKILL.md` POSTs to the endpoint (draft-from-context → conditional AI-failure questionnaire → reporter from `git config` → confirm → POST → show links). Plus `bluestep-init` / `bluestep-reference` verbosity + duplication trims.
+- [x] **BlueHQ endpoint** (`/b/bspecs-feedback`, a BlueStep component — **not committed**, Decision B: source of truth is the platform + a gitignored `b6p` working copy). Reads ClickUp + GitHub App creds from a single-entry office form; creates the ClickUp task (runtime field-ID resolution, severity→priority) and files the routed issue via **RS256 JWT** App auth; partial-failure tolerant.
+- [x] **Retired old GitHub plumbing** (ships on merge to `main`): deleted `.github/workflows/feedback-to-clickup.yml`, `feedback-triage.yml`, `.github/ISSUE_TEMPLATE/feedback.yml`.
+- [x] **New ADR** `docs/decisions/feedback-intake-bluehq-endpoint.md` (supersedes `bspecs-feedback-mechanism.md`) + setup checklist `docs/bluehq-feedback-endpoint-setup.md`.
+- [x] **Platform setup:** ClickUp AI.List custom fields (Component/Failure/AI Confidence/Kind/Target/Version/reporter); `feedback` label added to `b6p-cli` + `web`; GitHub App (Issues R/W on the three repos); BlueHQ token form.
+
 ### feedback-to-clickup (repo CI — no plugin release)
 
 Realizes the `TODO.md` "auto-create a linked ClickUp task when a `feedback` issue is filed" item. **Repo-infra only** (a GitHub Actions workflow) — no `plugin/**` change, so no version bump and nothing ships to plugin users; `/bspecs-feedback` is unchanged (it still just files the GitHub issue).

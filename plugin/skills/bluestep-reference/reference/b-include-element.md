@@ -43,14 +43,7 @@ Only use it in **trusted templates**, never in user-editable HTML. The Zesty edi
 whitelists it as `b-include[src|run-scripts|csrf]` (`zesty3.ts:130`).
 
 **Recipe — lazy-loading merge-report sections.** A common trusted-template use: a parent
-merge report resolves each sibling section's `contentOnlyUrl()` (the report body without
-page chrome) and emits `<b-include src="…" run-scripts="true">` per section. Each section
-then fetches and renders independently in the browser, each with its own spinner — so a
-heavy section doesn't block the lighter ones. `run-scripts="true"` is needed so the
-fetched section's own `<script>` tags execute. Resolve each `contentOnlyUrl()` through an
-**imported primary-form FormEntry** — `optApplicable*` returns empty unless called on the
-target report's primary form (see the primary-form hard rule in
-[merge-report-urls](merge-report-urls.md)).
-
-For the server-side config alternative (a merge report that lazy-loads after the page),
-see [merge-report-async-loading](merge-report-async-loading.md).
+merge report emits one `<b-include src="…" run-scripts="true">` per sibling section (each
+section's `contentOnlyUrl()`) so sections load independently. Full recipe — including the
+imported-primary-form-FormEntry requirement — in
+[merge-report-async-loading](merge-report-async-loading.md).
