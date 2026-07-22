@@ -1,6 +1,6 @@
 # ADR: How `/bspecs-feedback` routes tooling-change requests upstream
 
-**Status:** Accepted (2026-06-26).
+**Status:** Superseded (2026-07-22) by [feedback-intake-bluehq-endpoint.md](feedback-intake-bluehq-endpoint.md).
 
 **Date:** 2026-06-26
 
