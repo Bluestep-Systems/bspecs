@@ -150,6 +150,34 @@ text-line, not as labels), so that one label must exist on every routable repo.
 
 No other labels are minted for feedback across the three repos.
 
+### 2d. Routing allow-list — reference (no setup action)
+
+This subsection records what the endpoint actually accepts for `routing`, so the skill's hints and the
+payload examples have a single source of truth. **Nothing to create here** — it is the contract enforced
+in code, listed so it stays in sync.
+
+- **`routing.repo`** — validated against a fixed set: `bspecs`, `b6p-cli`, `web`. Anything else (or
+  absent) falls back to **`bspecs`**.
+- **`routing.labels`** — validated by **prefix only**, against these four allowed prefixes:
+
+  | prefix | meaning |
+  | --- | --- |
+  | `type:` | what kind of change (`type:rule`, `type:bug`, `type:capability`, …) |
+  | `area:` | which artifact area (`area:plugin-skill`, `area:hook`, `area:reference`, …) |
+  | `priority:` | triage priority hint (`priority:p1`, `priority:p2`, …) |
+  | `status:` | lifecycle hint (`status:triage`, …) |
+
+  A label is kept if it **begins with** one of these prefixes; the text after the prefix is **free-form
+  and not checked against a value list**. Labels that match no prefix are dropped. If nothing survives,
+  the endpoint defaults to **`status:triage`**.
+- **Where the labels go.** Surviving labels are **not** applied as GitHub labels and are **not** written
+  to ClickUp fields — they are rendered as a single `Labels: …` text-line in the generated GitHub issue
+  body (the GitHub issue itself always carries only the `feedback` label; see 2c). Priority as a *native
+  ClickUp* signal comes from the `severity` axis (section 2a), **not** from `priority:*`.
+
+> Because the suffix is free-form, `priority:p1`/`priority:p2` are conventions, not an enforced set —
+> keep the skill's examples to that range for consistency, but the endpoint would accept any `priority:` value.
+
 ---
 
 ## 3. Create the BlueHQ token form

@@ -26,7 +26,7 @@ The skill usually runs right after you and the user discussed the thing to chang
 - **file_path**, **current_text**, **description** (the submitter's authoritative account + the proposal/rationale) — see step 2.
 - **routing** — infer from context:
   - **repo** — which repo the fix lands in: `bspecs` (the plugin, skills, hooks, reference), `b6p-cli` (the `b6p` component-sync CLI), or `web`. Default `bspecs` when unsure.
-  - **labels** — triage hints as a short list, e.g. `type:rule` / `type:bug` / `type:capability`, `area:plugin-skill` / `area:hook` / `area:reference`, `priority:p1` / `priority:p2`. These are best-effort hints; the endpoint validates them against a fixed allow-list and defaults on a miss, so it is fine to leave them thin.
+  - **labels** — triage hints as a short list. The endpoint keeps any label that begins with one of four allowed **prefixes** — `type:`, `area:`, `priority:`, `status:` — dropping the rest and defaulting to `status:triage` when none survive; the text after the prefix is free-form (not checked against a value list). Surviving labels surface only as a text-line on the generated GitHub issue, never as GitHub labels or ClickUp fields. Typical hints: `type:rule` / `type:bug` / `type:capability`, `area:plugin-skill` / `area:hook` / `area:reference`, `priority:p1` / `priority:p2`. Best-effort — fine to leave thin. (Full contract: the "Routing allow-list" reference in `docs/bluehq-feedback-endpoint-setup.md`.)
 
 Only when there is nothing to infer from (e.g. the user just types `/bspecs-feedback "the STOP messages are annoying"`) do you ask directly for kind(s), target(s), and a one-line description.
 
