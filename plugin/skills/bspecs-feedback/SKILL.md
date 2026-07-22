@@ -7,10 +7,10 @@ description: Send a bspecs tooling-change request (a rule, skill, subagent, hook
 
 Use this to send a change to the `bluestep-tools` plugin upstream. The installed plugin files are read-only, so editing them doesn't reach the canonical repo — a lasting fix has to land there. The skill POSTs the feedback to the **BlueHQ intake endpoint**, which files a ClickUp task and a GitHub issue on the right repo (`bspecs` / `b6p-cli` / `web`) and returns their links. No GitHub/ClickUp account needed.
 
-The skill POSTs to this endpoint:
+The skill POSTs to this endpoint (a concrete, live URL — not a placeholder). Assign it to a shell variable so the `curl` step below can reference `$FEEDBACK_ENDPOINT_URL`:
 
-```
-FEEDBACK_ENDPOINT_URL = "https://bluehq.bluestep.net/b/bspecs-feedback"
+```bash
+FEEDBACK_ENDPOINT_URL="https://bluehq.bluestep.net/b/bspecs-feedback"
 ```
 
 **Scope check first.** This skill is for the **bluestep-tools plugin** (a skill is wrong, a hook misfires, a `bluestep-reference` file is misleading, a shipped `CLAUDE.md` rule is stale, a missing capability), or for a B6P rule general enough to belong in **every** project. For project-local B6P domain knowledge that only matters here, capture it locally instead (see the Self-improvement section of this project's `CLAUDE.md`).
@@ -26,7 +26,7 @@ The skill usually runs right after you and the user discussed the thing to chang
 - **file_path**, **current_text**, **description** (the submitter's authoritative account + the proposal/rationale) — see step 2.
 - **routing** — infer from context:
   - **repo** — which repo the fix lands in: `bspecs` (the plugin, skills, hooks, reference), `b6p-cli` (the `b6p` component-sync CLI), or `web`. Default `bspecs` when unsure.
-  - **labels** — triage hints as a short list, e.g. `type:rule` / `type:bug` / `type:capability`, `area:plugin-skill` / `area:hook` / `area:reference`, `priority:p1..p3`. These are best-effort hints; the endpoint validates them against a fixed allow-list and defaults on a miss, so it is fine to leave them thin.
+  - **labels** — triage hints as a short list, e.g. `type:rule` / `type:bug` / `type:capability`, `area:plugin-skill` / `area:hook` / `area:reference`, `priority:p1` / `priority:p2`. These are best-effort hints; the endpoint validates them against a fixed allow-list and defaults on a miss, so it is fine to leave them thin.
 
 Only when there is nothing to infer from (e.g. the user just types `/bspecs-feedback "the STOP messages are annoying"`) do you ask directly for kind(s), target(s), and a one-line description.
 
@@ -78,7 +78,7 @@ The reporter line is editable: the user may correct it or opt to file anonymousl
 
 ### 6. POST to the BlueHQ endpoint
 
-Send one JSON body to `FEEDBACK_ENDPOINT_URL` (the placeholder constant at the top of this file — substitute the real URL first) via `curl`. No browser, no runtime assumption beyond a shell.
+Send one JSON body to `$FEEDBACK_ENDPOINT_URL` (the live intake URL assigned at the top of this file) via `curl`. No browser, no runtime assumption beyond a shell.
 
 Payload shape (include `failure` **only** for AI-output-failure feedback; include `reporter` **only** if the user kept it):
 
@@ -89,7 +89,7 @@ Payload shape (include `failure` **only** for AI-output-failure feedback; includ
   "description": "…submitter's authoritative account + proposal…",
   "filePath": "skills/b6p-push/SKILL.md",
   "currentText": "…verbatim excerpt…",
-  "pluginVersion": "0.11.0",          // from plugin.json; "unknown" if unreadable
+  "pluginVersion": "X.Y.Z",           // from plugin.json; "unknown" if unreadable
   "reporter": { "name": "Jane Dev", "email": "jane@example.com" },  // optional
   "routing": { "repo": "bspecs", "labels": ["type:rule", "area:plugin-skill", "priority:p2"] },
   "failure": {                         // present ONLY for AI-output-failure feedback
@@ -103,15 +103,16 @@ Payload shape (include `failure` **only** for AI-output-failure feedback; includ
 
 Build the body as a here-doc (or a `--data-binary @-` pipe) and POST it:
 
-```
+```bash
 curl -sS -X POST "$FEEDBACK_ENDPOINT_URL" \
   -H "Content-Type: application/json" \
+  -w '\nHTTP_STATUS:%{http_code}\n' \
   --data-binary @- <<'JSON'
 { …assembled payload… }
 JSON
 ```
 
-Capture the response body and the HTTP status. The endpoint returns `{ "taskUrl": "...", "issueUrl": "..." }`.
+The `-w '\nHTTP_STATUS:%{http_code}\n'` flag appends the status code on its own trailing line after the response body, so a single call yields both — split the last `HTTP_STATUS:` line off to read the code and treat the rest as the body. A 2xx is success; anything else is a failure (see step 7). On success the endpoint returns `{ "taskUrl": "...", "issueUrl": "..." }`.
 
 ### 7. Show the returned links
 
@@ -119,7 +120,7 @@ Print the **ClickUp task URL** and the **GitHub issue URL** the endpoint returne
 
 - On **success**, print both links.
 - On **partial failure** — the endpoint returns a `taskUrl` but no `issueUrl` (the task was saved but the GitHub issue step failed), or returns an error — report **exactly** what happened: which artifact was created, which was not, and the error text. The task is the system of record, so feedback is not lost even if the issue step failed.
-- On **total failure** (no response, non-2xx, unreachable endpoint) — say the intake was unreachable and offer to retry; do **not** claim the feedback was filed. If the endpoint URL is still the placeholder, say so plainly (it has not been deployed/substituted yet).
+- On **total failure** (no response, non-2xx, unreachable endpoint) — say the intake was unreachable and offer to retry; do **not** claim the feedback was filed.
 
 Never claim a success the endpoint did not confirm.
 

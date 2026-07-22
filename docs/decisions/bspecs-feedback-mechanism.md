@@ -2,6 +2,8 @@
 
 **Status:** Superseded (2026-07-22) by [feedback-intake-bluehq-endpoint.md](feedback-intake-bluehq-endpoint.md).
 
+> **Historical document — do not follow as setup guidance.** The mechanism described below (the prefilled GitHub-issue deep link, the `feedback.yml` issue form, and the `feedback-to-clickup.yml` / `feedback-triage.yml` workflows) was **removed** in the superseding change, so the links to those paths further down are intentionally broken and are kept only to record what once existed. For the current feedback path, follow the superseding ADR.
+
 **Date:** 2026-06-26
 
 ## Context
