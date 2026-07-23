@@ -66,7 +66,7 @@ git config user.name
 git config user.email
 ```
 
-Carry these into the confirm step. Do **not** add a separate prompt unless git config is empty. Reporter identity is **optional and skippable** — the user may choose to file anonymously at the confirm gate, in which case omit the `reporter` object from the payload.
+Carry these into the confirm step. Do **not** add a separate prompt unless git config is empty. The reporter **email is required** — when the item is eventually closed, an automated notification (what happened: shipped / won't fix / duplicate / …) is emailed to this address, so there is no anonymous filing. If `git config user.email` is empty, ask the user for an email address; do not POST without one. The endpoint rejects payloads with a missing or implausible email.
 
 ### 5. Confirm with the user
 
@@ -74,13 +74,13 @@ Show the drafted submission — kind(s), target(s), file path, description/propo
 
 > File this to the bspecs tracker?
 
-The reporter line is editable: the user may correct it or opt to file anonymously. Adjust whatever the user corrects. Do **not** file without explicit confirmation.
+The reporter line is **editable but not skippable**: the user may correct the name/email, but the email must be present (it receives the automated close-out notification). Adjust whatever the user corrects. Do **not** file without explicit confirmation.
 
 ### 6. POST to the BlueHQ endpoint
 
 Send one JSON body to `$FEEDBACK_ENDPOINT_URL` (the live intake URL assigned at the top of this file) via `curl`. No browser, no runtime assumption beyond a shell.
 
-Payload shape (include `failure` **only** for AI-output-failure feedback; include `reporter` **only** if the user kept it):
+Payload shape (include `failure` **only** for AI-output-failure feedback; `reporter` with a valid `email` is **required** — the endpoint rejects the POST without it):
 
 ```jsonc
 {
@@ -90,7 +90,7 @@ Payload shape (include `failure` **only** for AI-output-failure feedback; includ
   "filePath": "skills/b6p-push/SKILL.md",
   "currentText": "…verbatim excerpt…",
   "pluginVersion": "X.Y.Z",           // from plugin.json; "unknown" if unreadable
-  "reporter": { "name": "Jane Dev", "email": "jane@example.com" },  // optional
+  "reporter": { "name": "Jane Dev", "email": "jane@example.com" },  // REQUIRED (email) — receives the close-out notification
   "routing": { "repo": "bspecs", "labels": ["type:rule", "area:plugin-skill", "priority:p2"] },
   "failure": {                         // present ONLY for AI-output-failure feedback
     "component": "form",

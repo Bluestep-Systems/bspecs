@@ -1,6 +1,6 @@
 # ADR: Feedback intake moves to a public BlueHQ endpoint the agent POSTs to
 
-**Status:** Accepted (2026-07-22). Supersedes [`bspecs-feedback-mechanism.md`](bspecs-feedback-mechanism.md).
+**Status:** Accepted (2026-07-22). Supersedes [`bspecs-feedback-mechanism.md`](bspecs-feedback-mechanism.md). **Amended** by [`feedback-reporter-email.md`](feedback-reporter-email.md) (2026-07-23): reporter identity is now **required**, not optional — the same endpoint gained a `?hook=close` door that emails the reporter when their item is closed, so anonymous filing ended.
 
 **Date:** 2026-07-22
 

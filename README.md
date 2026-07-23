@@ -231,7 +231,7 @@ authoring the CLI can't do.
 | Command | Use it to |
 | --- | --- |
 | `/task-comment` | Draft a standardized ClickUp implementation comment after shipping a fix or feature. |
-| `/bspecs-feedback` | Propose a change to the plugin itself as a prefilled GitHub issue — the plugin is a read-only shared install, so lasting fixes land upstream in this repo. |
+| `/bspecs-feedback` | Propose a change to the plugin itself — drafted from session context, confirmed in chat, POSTed to the BlueHQ intake endpoint (ClickUp task + linked GitHub issue, no account needed). You'll get an email when your item is closed, saying what happened. |
 
 ---
 
@@ -269,12 +269,15 @@ CI fails any PR that changes `plugin/**` without a version bump (the
 changes (docs, CI, this README, the dormant CLI) don't touch `plugin/**`, need no
 bump, and don't affect installs.
 
-**Feedback → ClickUp automation.** `.github/workflows/feedback-to-clickup.yml`
-creates a linked ClickUp task whenever a `feedback` issue is filed and comments
-the task URL back on the issue. It requires a **`CLICKUP_API_TOKEN`** repo secret
-(Settings → Secrets and variables → Actions) — a ClickUp API token with access to
-the `ai-plugin` space; a maintainer must own and rotate it. If the secret is
-unset the workflow warns and no-ops rather than failing.
+**Feedback pipeline.** `/bspecs-feedback` POSTs to a public BlueHQ intake
+endpoint that files a ClickUp task on AI.List **and** a routed GitHub issue via
+a GitHub App, links the two, and returns both URLs — no GitHub Actions, no repo
+secret, no submitter account. The reporter's email is required at filing: when
+the task is later closed with a `resolution` set, the endpoint emails the
+reporter what happened (a `resolution-note` verbatim, an AI-drafted summary, or
+generic wording) and comments the sent email back on the task. Setup and
+credentials live on BlueHQ — see
+[`docs/bluehq-feedback-endpoint-setup.md`](docs/bluehq-feedback-endpoint-setup.md).
 
 **Adding a plugin to the marketplace.** Append an entry to the `plugins[]` array
 in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) — a
