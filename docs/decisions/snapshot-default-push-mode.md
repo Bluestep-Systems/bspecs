@@ -13,8 +13,17 @@ framed that choice **neutrally** and forbade ever recommending one side:
 - The scaffolded project `CLAUDE.md` rule 9: *"ALWAYS present the plain-vs-snapshot choice … and NEVER
   snapshot (or plain-push) silently."*
 
-A **snapshot** (`b6p push --snapshot --message`) records a restorable, versioned server-side history entry;
-a **plain push** overwrites the draft on the platform with no history.
+The two modes differ in **what they actually do** — verified live on bkplayground (pushing the same
+TypeScript both ways):
+
+- **Publish** (`b6p push --snapshot --message`) runs the TypeScript build (reporting any diagnostics),
+  ships the compiled `app.js`, updates the **live** version, and records a restorable snapshot.
+- **Plain push** (`b6p push`) uploads the draft source as-is — **no** TypeScript build, **no** compiled
+  output, and it does **not** change the live version.
+
+(An earlier draft of this ADR described the difference only as "records a restorable history entry vs. no
+history." That was inaccurate: the decisive difference is compile-and-publish vs. raw-draft-upload. A plain
+push produces nothing runnable — which is precisely why it is rarely useful.)
 
 In practice users have stopped choosing plain push. A snapshot is what they want almost every time —
 the restorable history is cheap insurance, and losing it is the expensive outcome. The neutral framing made
@@ -32,17 +41,25 @@ keeping the push an explicit choice that never happens silently or automatically
 
 Concretely:
 
-1. **`/b6p-push` step 3 becomes two tight `AskUserQuestion` prompts:**
-   - *"Push mode?"* → `Snapshot (Recommended)`, `Push Only` (the tool auto-adds "Other").
-   - If Snapshot: *"Snapshot message?"* → `Use recommended title (Recommended)` (pre-filled with a
-     commit-style summary drafted from the diff), `Let me write my own` (free text via "Other").
+1. **`/b6p-push` step 3 becomes two tight `AskUserQuestion` prompts, in plain language.** Most users are
+   non-technical, so the words "snapshot" and "push" are kept out of what they see:
+   - *"How should this change go out?"* → `Publish — make it live (Recommended)` (runs `--snapshot
+     --message`), `Save draft only — not live yet` (plain push). The tool auto-adds "Other."
+   - If Publish: *"Describe this change"* → `Use suggested description (Recommended)` (pre-filled with a
+     plain summary drafted from the diff), `Let me write my own` (free text via "Other").
+   Each option carries a plain-language description of what it does, so the difference is in front of the
+   user at the decision point — not just in the agent's context.
 2. **The same posture reaches every push surface** — the scaffolded `CLAUDE.md` rule, the `/b6p-push`
-   skill, and the `/quick-task` push step all recommend snapshot by default. The full flow lives once in
-   `/b6p-push`; the other surfaces point at it and carry only a one-line push-vs-snapshot difference
-   statement (no-duplication invariant).
-3. **The never-silent guarantee is preserved.** Snapshot is *pre-marked*, never *pre-executed*. A push
+   skill, and the `/quick-task` push step all recommend publishing by default. The full flow lives once in
+   `/b6p-push`; the other surfaces point at it and carry only a one-line difference statement
+   (no-duplication invariant).
+3. **The never-silent guarantee is preserved.** Publish is *pre-marked*, never *pre-executed*. A push
    still happens only after an explicit selection. The wording that forbade **silent/automatic**
-   snapshotting stays; only the "neither marked recommended" neutrality is dropped.
+   publishing stays; only the "neither marked recommended" neutrality is dropped.
+4. **Plain push is retained but deprioritized, not removed.** It has a narrow real use (save an in-progress
+   draft server-side without going live), so it stays available as `Save draft only` and as a bare
+   `b6p push`. It is never the recommended choice, and the report step tells the user plainly that a
+   draft-only push is *not live*.
 
 ## Rejected alternative — true auto-snapshot
 
@@ -61,7 +78,7 @@ explicitly declined.
 - The common case (snapshot with a drafted message) is one confirming click instead of a neutral fork plus
   a conversational message round.
 - The rules read consistently across surfaces and state the push-vs-snapshot difference plainly.
-- Plain push remains fully available — it is `Push Only`, one selection away.
+- Plain push remains fully available — it is `Save draft only`, one selection away (and a bare `b6p push`).
 - No change to the `b6p` CLI or the `--snapshot --message` argument shape; this is a tooling-policy and
   prompt-shape change only. Sync stays on the b6p CLI (unchanged by the platform-MCP ADR).
 - Ships in plugin **0.13.0**; the `TODO.md` "Auto-snapshot in push (still undecided)" item is resolved by

@@ -46,30 +46,39 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 - Briefly summarise the diff scope: "X files changed in `U######/<Component>/draft/`".
 - Confirm the component was pulled with `b6p` (so its sync metadata is recorded) — `--file` resolves the destination URL from that metadata. If the component was never pulled here, pull it first.
 
-### 3. Choose the push mode (this also confirms the push)
+### 3. Choose how the change goes out (this also confirms the push)
 
-**Snapshot is the recommended default.** A **snapshot** (`--snapshot --message`) records a restorable, versioned server-side history entry; a **plain push** overwrites the draft with no history. Recommend the snapshot — but **never** push without an explicit selection: snapshot is *pre-marked*, never *pre-executed*.
+**What the two modes actually do** (verified live on bkplayground — a plain push skips the TypeScript build entirely; only a snapshot transpiles and ships the compiled `app.js`):
 
-Show the one-line diff scope from step 2, then use **two** `AskUserQuestion` prompts:
+- **Publish** (`--snapshot --message`) — compiles the code, updates the **live** version, and records a restorable snapshot the user can roll back to.
+- **Save draft only** (plain push) — uploads the draft source as-is; does **not** compile and does **not** change the live version. Rarely what the user wants.
 
-1. **"Push mode?"** — options `Snapshot (Recommended)` and `Push Only`. (AskUserQuestion auto-adds an "Other" choice, so don't author a third.) Selecting an option is the confirmation to push; if the user cancels, do not push.
-2. If the user chose **Snapshot**, a second prompt — **"Snapshot message?"** — with:
-   - `Use recommended title (Recommended)` — pre-fill this with a concise commit-style one-liner you draft from the diff (imperative, scoped, reusing the repo's commit-message habit). Put the drafted title in the option label so the user sees what they're accepting.
-   - `Let me write my own` — the user supplies the message as free text via the auto-added "Other" choice.
+Publishing is the recommended default — but **never** push without an explicit selection: it is *pre-marked*, never *pre-executed*.
 
-   If the user chose **Push Only**, skip straight to step 4.
+Most users are non-technical, so present the choice in **plain language — avoid the words "snapshot" and "push" in what they see.** Show the one-line diff scope from step 2, then use **two** `AskUserQuestion` prompts:
 
-If the user picks "Other" on push mode, treat it as a free-text instruction (e.g. "just plain push") rather than forcing it into the two canned options.
+1. **"How should this change go out?"** — two options (AskUserQuestion auto-adds an "Other" choice, so don't author a third):
+   - `Publish — make it live (Recommended)` — description: "Compiles your code and updates the live version everyone sees, and saves a restore point you can roll back to." → runs `--snapshot --message`.
+   - `Save draft only — not live yet` — description: "Uploads your work to the server without compiling or making it live. Use only if you're not ready for it to go live." → plain push.
+
+   Selecting an option is the confirmation to push; if the user cancels, do not push.
+2. If the user chose **Publish**, a second prompt — **"Describe this change"** (it becomes the restore-point label) — with:
+   - `Use suggested description (Recommended)` — pre-fill this with a concise plain-language summary you draft from the diff. Put the drafted text in the option label so the user sees what they're accepting.
+   - `Let me write my own` — the user supplies the description as free text via the auto-added "Other" choice.
+
+   If the user chose **Save draft only**, skip straight to step 4.
+
+If the user picks "Other" on the first prompt, treat it as a free-text instruction rather than forcing it into the two options.
 
 ### 4. Run the push
 
-**Snapshot push** (the recommended default — when the user chose Snapshot in step 3):
+**Publish** (the recommended default — when the user chose "Publish — make it live"):
 
 ```
-b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts" --snapshot --message "<summary>"
+b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts" --snapshot --message "<description>"
 ```
 
-**Plain push** (when the user chose Push Only):
+**Save draft only** (when the user chose "Save draft only"):
 
 ```
 b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"
@@ -86,25 +95,25 @@ The `--yes` is **required** — without it, b6p may show an interactive confirma
 `b6p push --file <path>` fails with `Missing metadata` when the component has **no local sync metadata** (it was never pulled through the CLI, so there is nothing to derive the destination URL from). Push it explicitly instead:
 
 ```
-b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --message "<summary>"]
+b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --message "<description>"]
 ```
 
 - `--root` points at the component's **root** — the folder that *contains* `draft/`, **not** `draft/` itself. Pointing at `draft/` gives `Draft folder not found: .../draft/draft`.
 - There is no local metadata to derive `<target-url>` from, so source it from the org's platform MCP: `lookup_script_by_name` → use the returned `webDavUrl`. (Only when connected; otherwise ask the user for the WebDAV URL.)
-- The push-mode choice from step 3 **still applies** — carry `--snapshot --message "<summary>"` if the user chose Snapshot (the recommended default). Do **not** trial-and-error the argument shape: guessing can land on a plain push with **no** snapshot, defeating the user's explicit choice.
+- The choice from step 3 **still applies** — carry `--snapshot --message "<description>"` if the user chose Publish (the recommended default). Do **not** trial-and-error the argument shape: guessing can land on a plain draft-only push that never compiles or goes live, defeating the user's explicit choice.
 
 ### 5. Report
 
-- The platform compiles after receiving the push. Surface any compile errors the CLI reports.
-- If the push was a **snapshot**, confirm that a versioned history entry was recorded (with the message used) — otherwise note that no server-side history was recorded.
-- Remind the user to verify behaviour on the platform itself — there is no local compile to fall back on.
+- **Publish** runs the TypeScript build and ships the compiled output — surface any compile diagnostics the CLI reports. **Save draft only** does not compile at all.
+- If the user **published**, confirm the live version was updated and a restore point recorded (with the description used). If they **saved a draft only**, tell them plainly it is **not live yet** — they must publish to make it live.
+- Remind the user to verify behaviour on the platform itself.
 - If `draft/README.md` was modified locally, note that the platform now has the updated docs (useful for other devs pulling the same component).
 
 ## What this skill must NOT do
 
 - Do NOT invoke `b6p` any way other than the bare `b6p` binary.
-- Do NOT push without showing the user the diff and getting an explicit push-mode selection (step 3). Snapshot is *recommended and pre-selected*, never pushed automatically.
-- Do NOT snapshot silently or automatically. Recommending a snapshot is not the same as performing one: the push happens only on the user's explicit selection for *this* push — this skill never turns pushes into snapshots on its own (e.g. it does not auto-snapshot on task completion, and `/spec-execute` offers no snapshot mid-task).
+- Do NOT push without showing the user the diff and getting an explicit selection (step 3). Publish is *recommended and pre-selected*, never performed automatically.
+- Do NOT publish silently or automatically. Recommending it is not the same as doing it: the push happens only on the user's explicit selection for *this* push — this skill never publishes on its own (e.g. it does not auto-publish on task completion, and `/spec-execute` offers no publish mid-task).
 - Do NOT loop on CLI failures — fall back to the VS Code b6p extension.
 
 ## If the CLI fails
