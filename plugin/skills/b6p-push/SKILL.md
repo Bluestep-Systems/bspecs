@@ -48,27 +48,31 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 
 ### 3. Choose the push mode (this also confirms the push)
 
-Show the diff summary, then **always** offer the user a choice with the AskUserQuestion tool — do not push without an explicit selection. Present two options, neutrally (neither marked "recommended"):
+**Snapshot is the recommended default.** A **snapshot** (`--snapshot --message`) records a restorable, versioned server-side history entry; a **plain push** overwrites the draft with no history. Recommend the snapshot — but **never** push without an explicit selection: snapshot is *pre-marked*, never *pre-executed*.
 
-- **Plain push** — overwrites the draft on the platform; records **no** server-side history.
-- **Snapshot** — pushes *and* records a versioned server-side snapshot (`--snapshot --message`), so the platform keeps a restorable history entry for this change.
+Show the one-line diff scope from step 2, then use **two** `AskUserQuestion` prompts:
 
-Selecting either option is the confirmation to push; if the user cancels, do not push.
+1. **"Push mode?"** — options `Snapshot (Recommended)` and `Push Only`. (AskUserQuestion auto-adds an "Other" choice, so don't author a third.) Selecting an option is the confirmation to push; if the user cancels, do not push.
+2. If the user chose **Snapshot**, a second prompt — **"Snapshot message?"** — with:
+   - `Use recommended title (Recommended)` — pre-fill this with a concise commit-style one-liner you draft from the diff (imperative, scoped, reusing the repo's commit-message habit). Put the drafted title in the option label so the user sees what they're accepting.
+   - `Let me write my own` — the user supplies the message as free text via the auto-added "Other" choice.
 
-If the user picks **Snapshot**, draft a concise commit-style message from the diff (a short one-line summary of what changed), show it, and let the user accept or edit it before you run the push. Reuse the repo's commit-message habit — imperative, scoped.
+   If the user chose **Push Only**, skip straight to step 4.
+
+If the user picks "Other" on push mode, treat it as a free-text instruction (e.g. "just plain push") rather than forcing it into the two canned options.
 
 ### 4. Run the push
 
-**Plain push:**
-
-```
-b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"
-```
-
-**Snapshot push** (when the user chose Snapshot in step 3):
+**Snapshot push** (the recommended default — when the user chose Snapshot in step 3):
 
 ```
 b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts" --snapshot --message "<summary>"
+```
+
+**Plain push** (when the user chose Push Only):
+
+```
+b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"
 ```
 
 Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
@@ -87,7 +91,7 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
 
 - `--root` points at the component's **root** — the folder that *contains* `draft/`, **not** `draft/` itself. Pointing at `draft/` gives `Draft folder not found: .../draft/draft`.
 - There is no local metadata to derive `<target-url>` from, so source it from the org's platform MCP: `lookup_script_by_name` → use the returned `webDavUrl`. (Only when connected; otherwise ask the user for the WebDAV URL.)
-- The plain-vs-snapshot choice from step 3 **still applies** — carry `--snapshot --message "<summary>"` if the user chose Snapshot. Do **not** trial-and-error the argument shape: guessing can land on a plain push with **no** snapshot, defeating this skill's own plain-vs-snapshot confirmation.
+- The push-mode choice from step 3 **still applies** — carry `--snapshot --message "<summary>"` if the user chose Snapshot (the recommended default). Do **not** trial-and-error the argument shape: guessing can land on a plain push with **no** snapshot, defeating the user's explicit choice.
 
 ### 5. Report
 
@@ -99,8 +103,8 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
 ## What this skill must NOT do
 
 - Do NOT invoke `b6p` any way other than the bare `b6p` binary.
-- Do NOT push without showing the user the diff and getting an explicit plain-vs-snapshot selection (step 3).
-- Do NOT snapshot silently or automatically. The snapshot is always the user's explicit choice for *this* push — this skill never turns pushes into snapshots on its own (e.g. it does not auto-snapshot on task completion).
+- Do NOT push without showing the user the diff and getting an explicit push-mode selection (step 3). Snapshot is *recommended and pre-selected*, never pushed automatically.
+- Do NOT snapshot silently or automatically. Recommending a snapshot is not the same as performing one: the push happens only on the user's explicit selection for *this* push — this skill never turns pushes into snapshots on its own (e.g. it does not auto-snapshot on task completion, and `/spec-execute` offers no snapshot mid-task).
 - Do NOT loop on CLI failures — fall back to the VS Code b6p extension.
 
 ## If the CLI fails

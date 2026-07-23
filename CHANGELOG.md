@@ -6,6 +6,43 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.13.0] — 2026-07-23
+
+Makes **snapshot the recommended default** everywhere a component push is offered, and tightens the
+`/b6p-push` confirmation flow. Previously the rules framed the plain-vs-snapshot choice **neutrally**
+("neither marked recommended") — but in practice users had stopped choosing plain push, so the neutral
+framing added friction to the safer common case. Snapshot is now **pre-selected and marked
+`(Recommended)`**, while the hard guarantee is preserved: a push still happens only on an **explicit**
+selection — snapshot is *pre-marked, never pre-executed*, never silent or automatic. Resolves ClickUp
+[86bb23pu5](https://app.clickup.com/t/86bb23pu5) and the `TODO.md` "Auto-snapshot in push (still
+undecided)" question (decision: recommend, don't automate). Existing installs receive this on
+`/plugin marketplace update` / `autoUpdate` only because the version changed.
+
+### Changed — skills
+
+- **`b6p-push`** — step 3 rewritten from "diff summary → neutral choice → separate conversational message
+  round" into **two tight `AskUserQuestion` prompts**: "Push mode?" (`Snapshot (Recommended)`, `Push Only`)
+  then, if Snapshot, "Snapshot message?" (`Use recommended title (Recommended)` pre-filled with a
+  commit-style one-liner drafted from the diff, or `Let me write my own`). Step 4 leads with the snapshot
+  command; the `--root` fallback and "What this skill must NOT do" sections align — snapshot recommended
+  yet never silent/automatic, plus an explicit note that `/spec-execute` offers no snapshot mid-task. Adds
+  a one-line push-vs-snapshot difference statement.
+- **`quick-task`** — its push reminder now notes snapshot is the recommended default (still delegating the
+  actual flow to `/b6p-push`; no restated mechanics).
+
+### Changed — scaffolded templates
+
+- **`CLAUDE.md.template` rule 9** — flipped from "ALWAYS present the choice neutrally / NEVER recommend" to
+  "**recommend a snapshot by default** (pre-select it); still NEVER snapshot (or plain-push) silently or
+  automatically; push mode is always the user's explicit choice." Keeps the one-line difference and adds
+  the `/spec-execute` carve-out so "default" is never read as "auto-snapshot on task completion."
+
+### Docs (ship on merge to `main`)
+
+- **New ADR `docs/decisions/snapshot-default-push-mode.md`** — records the neutral → snapshot-default
+  reversal, the preserved never-silent guarantee, and the explicitly-rejected true-auto-snapshot
+  alternative (including no per-task push in `/spec-execute`).
+
 ## [plugin 0.12.0] — 2026-07-22
 
 Replaces the `/bspecs-feedback` transport. The skill no longer builds a **prefilled GitHub-issue deep link**

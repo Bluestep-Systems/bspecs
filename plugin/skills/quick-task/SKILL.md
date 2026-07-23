@@ -30,7 +30,7 @@ The lightweight counterpart to `/spec-create`. Instead of three files (requireme
 5. **Implement the `[CODE]` items.** Touch only the files in the approved approach. **Keep the doc current as you go** — tick each checklist item (`[x]`) when it's done so the doc stays an accurate record during implementation, and if reality diverges from the plan, update the doc rather than silently drifting. For each **`[PLATFORM]`** item (a platform authoring/wiring op), follow the shared procedure at `${CLAUDE_PLUGIN_ROOT}/skills/bluestep-reference/conventions/mcp-platform-authoring.md`: when the gateway MCP tools are live it's agent-executable (connection-check → approval echo → execute → declaration read-back), so tick it `[x]` when done; when the tools are not live, the fix is to enable the `bluestep-tools` plugin, set `$B6PT_TOKEN`, and restart the session (the gateway is bundled with the plugin — there is no `/bluestep-mcp-connect`); otherwise hand back to the user on the BlueStep platform. Do **not** restate its steps here; its approval echo and detect-and-skip preserve the never-fabricate-imports rule.
 
 6. **Wrap up / remind the user:**
-   - Push via `/b6p-push <component>`.
+   - Push via `/b6p-push <component>` — it drives the push-mode choice, with **snapshot recommended by default** (still your explicit selection, never automatic).
    - Verify behavior on the platform (no local compile to fall back on).
    - If the change alters documented behavior, update the component's `draft/README.md` in the same change so the platform doc stays in sync.
    - The `.claude/quick-tasks/<slug>.md` doc stays in the repo as the record of the change. Propose a commit message (title + body) based on the diff — do not run `git commit` unless the user says so.
