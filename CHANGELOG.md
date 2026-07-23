@@ -6,6 +6,53 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.13.0] — 2026-07-23
+
+Makes **publishing the recommended default** everywhere a component push is offered, tightens the
+`/b6p-push` confirmation flow, and describes the two modes in **plain, non-technical language**. Previously
+the rules framed the choice **neutrally** ("neither marked recommended") and described the difference
+inaccurately (as "records history vs. no history"). A live test on bkplayground established the real
+difference: **Publish** (`--snapshot --message`) runs the TypeScript build, ships the compiled `app.js`,
+updates the **live** version, and records a restorable snapshot — while a **plain push** uploads the draft
+source as-is with **no** compile and **no** change to the live version (so it produces nothing runnable and
+is rarely useful). Publishing is now **pre-selected and marked `(Recommended)`**, and the choice is shown in
+plain words ("Publish — make it live" vs "Save draft only — not live yet") with a description on each
+option so non-technical users understand it at the decision point. The hard guarantee is preserved: a push
+still happens only on an **explicit** selection — pre-marked, never pre-executed, never silent or automatic.
+Resolves ClickUp [86bb23pu5](https://app.clickup.com/t/86bb23pu5) and the `TODO.md` "Auto-snapshot in push
+(still undecided)" question (decision: recommend, don't automate). Existing installs receive this on
+`/plugin marketplace update` / `autoUpdate` only because the version changed.
+
+### Changed — skills
+
+- **`b6p-push`** — step 3 rewritten from "diff summary → neutral choice → separate conversational message
+  round" into **two tight, plain-language `AskUserQuestion` prompts**: "How should this change go out?"
+  (`Publish — make it live (Recommended)` → `--snapshot --message`, `Save draft only — not live yet` →
+  plain push), then, if Publish, "Describe this change" (`Use suggested description (Recommended)` pre-filled
+  from the diff, or `Let me write my own`). Each option carries a plain description of what it does. Step 3
+  states the **verified** compile-and-publish vs. raw-draft-upload difference; step 4 leads with the publish
+  command; step 5, the `--root` fallback, and "What this skill must NOT do" align — publish recommended yet
+  never silent/automatic, a draft-only push reported plainly as *not live*, and `/spec-execute` offers no
+  publish mid-task.
+- **`quick-task`** — its push reminder now notes Publish (make it live) is the recommended default and that
+  a draft-only push neither compiles nor goes live (still delegating the actual flow to `/b6p-push`).
+
+### Changed — scaffolded templates
+
+- **`CLAUDE.md.template` rule 9** — flipped from "ALWAYS present the choice neutrally / NEVER recommend" to
+  "**recommend publishing by default** (pre-select it); still NEVER publish or save-a-draft silently or
+  automatically; the mode is always the user's explicit choice." Corrects the difference to compile +
+  update-live + restore-point (publish) vs. raw draft upload (plain push), tells the agent to use plain
+  language for non-technical users, and adds the `/spec-execute` carve-out so "default" is never read as
+  "auto-publish on task completion."
+
+### Docs (ship on merge to `main`)
+
+- **New ADR `docs/decisions/snapshot-default-push-mode.md`** — records the neutral → publish-default
+  reversal, the **bkplayground-verified** compile-and-publish vs. raw-draft-upload difference, the
+  plain-language relabel, the retention of plain push as a deprioritized `Save draft only`, and the
+  explicitly-rejected true-auto-snapshot alternative (including no per-task push in `/spec-execute`).
+
 ## [plugin 0.12.0] — 2026-07-22
 
 Replaces the `/bspecs-feedback` transport. The skill no longer builds a **prefilled GitHub-issue deep link**
