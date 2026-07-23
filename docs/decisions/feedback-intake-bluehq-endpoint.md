@@ -1,6 +1,6 @@
 # ADR: Feedback intake moves to a public BlueHQ endpoint the agent POSTs to
 
-**Status:** Accepted (2026-07-22). Supersedes [`bspecs-feedback-mechanism.md`](bspecs-feedback-mechanism.md).
+**Status:** Accepted (2026-07-22). Supersedes [`bspecs-feedback-mechanism.md`](bspecs-feedback-mechanism.md). **Amended** by [`feedback-reporter-email.md`](feedback-reporter-email.md) (2026-07-23): reporter identity is now **required**, not optional — the same endpoint gained a `?hook=close` door that emails the reporter when their item is closed, so anonymous filing ended.
 
 **Date:** 2026-07-22
 
@@ -26,7 +26,7 @@ Because the transport is being replaced anyway, this ADR also folds in the struc
 - **The endpoint creates a ClickUp task on AI.List (`901414350506`)** as the system of record. The structured #25 axes become **ClickUp custom fields** (the filterable surface / #25's dashboard): `severity` maps to native **priority**, `stage`/lifecycle to native **status**, and `component`/`failure`/`ai` to dropdown/label custom fields. Options are pre-created once during setup; the endpoint sets from existing options, it does not mint them at runtime.
 - **The GitHub issue is retained but derived, not the entry point.** The same endpoint generates a GitHub issue on the routed repo (`bspecs` / `b6p-cli` / `web`) via the **GitHub App**, then links the two (issue URL commented back on the task). This inverts the old pipeline: feedback is *born* in ClickUp (no account needed), and the issue is the downstream artifact.
 - **Routing labels are agent-supplied and validated server-side against a fixed allow-list.** Claude has the richest session context, so it proposes `routing.repo` + `routing.labels`; the endpoint drops anything off the allow-list (default `bspecs` + `status:triage` on a miss). There is **no external LLM key on the endpoint**.
-- **Reporter identity is captured optionally** — auto-filled from `git config user.name` / `user.email`, shown and editable at the confirm gate, skippable for anonymous filing — restoring the "who reported this" a GitHub account used to supply.
+- **Reporter identity is captured optionally** — auto-filled from `git config user.name` / `user.email`, shown and editable at the confirm gate, skippable for anonymous filing — restoring the "who reported this" a GitHub account used to supply. *(**Amended 2026-07-23:** the reporter email is now **required** — editable, never skippable — because closure notifications are emailed to it; anonymous filing ended. See [`feedback-reporter-email.md`](feedback-reporter-email.md).)*
 - **No per-axis GitHub labels are minted.** #25's filterable axes live as ClickUp custom fields; the generated GitHub issue carries a single `feedback` label plus a body text-line for the axes. Filtering lives in ClickUp, so label maintenance across the three repos stays near-zero and the GitHub App needs only `issues: write`.
 
 The transport change was a maintainer decision, driven by the account-wall failure and the long-prefill-URL / browser round-trip friction.

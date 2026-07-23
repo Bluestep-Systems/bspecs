@@ -6,6 +6,51 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.14.0] — 2026-07-23
+
+Closes the feedback loop: when an AI.List feedback task is **closed**, the reporter now receives an
+**automated email saying what actually happened** — worded by a new `resolution` dropdown
+(`shipped` / `fixed-unreleased` / `wont-fix` / `duplicate` / `stale`) that **gates the send**: no
+resolution set means no email, only a nudge comment (ClickUp's Required-field enforcement is
+plan-gated and unavailable, so the gate lives in the endpoint). The body is chosen
+by a three-tier ladder: a reporter-facing **`resolution-note`** field sent verbatim → a **`B.ai`
+draft** from the task (tenant default provider, spend-capped, constrained to plain reporter-facing
+language) → fixed per-resolution generic wording. The notification is sent by the existing BlueHQ
+intake endpoint, which gained a second door (`?hook=close`) receiving the HMAC-verified ClickUp
+status webhook; after sending it posts a **sent-marker comment quoting the exact email** (dedupe +
+closer visibility). A secret-gated **test mode** runs the real pipeline against any list item, mailing only
+the maintainer. Because the loop now depends on an address, the **reporter email is required at
+filing time** — this is the plugin-side change (the endpoint also rejects email-less payloads).
+Verified live end-to-end 2026-07-23 (webhook → email → marker; recipients approved the wording).
+Existing installs receive this on `/plugin marketplace update` / `autoUpdate` only because the
+version changed. See `docs/decisions/feedback-reporter-email.md`.
+
+### Changed — skills
+
+- **`bspecs-feedback`** — reporter identity is no longer optional/skippable: the email is required
+  (auto-filled from `git config user.email`, editable at the confirm gate, prompted for when git
+  config is empty), because it now receives the automated close-out notification. The payload docs
+  mark `reporter.email` REQUIRED; anonymous filing ended (recorded as an amendment to the intake
+  ADR).
+
+### Platform (ships via `b6p push`, independent of the plugin version)
+
+- The BlueHQ intake endpoint gained the `?hook=close` webhook branch, the body ladder, test mode,
+  and required-reporter validation (three publish snapshots, 2026-07-23). Setup additions (two
+  custom fields, webhook registration, `webhookSecret` form field) are documented in
+  `docs/bluehq-feedback-endpoint-setup.md` §5.
+
+### Docs (ship on merge to `main`)
+
+- **New ADR `docs/decisions/feedback-reporter-email.md`** — trigger choice (close + resolution
+  field vs. issue-close / release-time / manual), all-outcomes coverage, the note→AI→generic
+  ladder, rejected alternatives (received email, mid-work updates, personal API key, human approval
+  gate, required note), and the live platform-API findings (`B.util.email`, required `froms`,
+  `B.ai` on tenant default, `Version` = filed-from). The intake ADR's status line records the
+  amendment.
+- **`docs/bluehq-feedback-endpoint-setup.md`** — new §5: close-notification setup checklist
+  (fields, webhook + secret, two-stage verification, ops notes).
+
 ## [plugin 0.13.0] — 2026-07-23
 
 Makes **publishing the recommended default** everywhere a component push is offered, tightens the

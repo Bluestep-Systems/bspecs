@@ -298,10 +298,72 @@ Run these two checks against the deployed endpoint. (`$ENDPOINT_URL` = the deplo
 - [x] The endpoint is deployed (pushed + snapshotted) and both smoke tests pass; the skill's hardcoded
       endpoint URL matches the deployed URL.
 
+---
+
+## 5. Close-notification extension (`?hook=close`) — one-time setup
+
+**Status: Done — stood up and verified end-to-end 2026-07-23** (live close → HMAC-verified webhook →
+reporter email → quoting sent-marker comment). Governing ADR:
+[`decisions/feedback-reporter-email.md`](decisions/feedback-reporter-email.md). Retained as the
+fresh-run checklist.
+
+### 5a. Two more custom fields on AI.List
+
+- [x] **`resolution`** — type **Dropdown**, options `shipped`, `fixed-unreleased`, `wont-fix`,
+      `duplicate`, `stale`. Field description: states the reporter email is worded by this value.
+      Mark **Required** if the plan allows — **it did not** (Required Custom Fields is Business+;
+      upsell wall confirmed 2026-07-23), so the endpoint's nudge comment is the only
+      close-without-resolution guard.
+- [x] **`resolution-note`** — type **Text Area** (multi-line; a plain Text field is single-line —
+      field types cannot be changed after creation, delete/recreate if wrong). Field description:
+      "sent word-for-word to the person who reported this item; leave empty to let AI draft it."
+      Deliberately **not** required (see the ADR — forced junk beats no note into an inbox).
+
+### 5b. Register the ClickUp webhook + store its secret
+
+- [x] `POST https://api.clickup.com/api/v2/team/<team-id>/webhook` with the `pk_` token:
+      `{"endpoint":"<intake-url>?hook=close","events":["taskStatusUpdated"],"list_id":<AI.List id>}`.
+- [x] The creation response contains the webhook **`secret`** — add it to the section-3 token form
+      as a new **readable Text field named `webhookSecret`** (same rules: not a Secret field type).
+      It is the HMAC key for `X-Signature` verification **and** the `X-Test-Key` value for test mode.
+- [x] Re-pull the component (`b6p pull --file …`) so the generated declarations pick up the new
+      form field.
+- **Ops note:** ClickUp **auto-disables webhooks after repeated delivery failures.** The endpoint
+  returns 200 on every expected no-op (wrong event, no resolution, already sent, even
+  secret-not-yet-configured) precisely so health strikes only occur on genuine faults. Webhook
+  health is visible via the ClickUp API; re-enable = re-register.
+
+### 5c. Verify — two stages
+
+- [x] **Stage 1, test mode** (`<intake-url>?hook=close&mode=test`, header `X-Test-Key: <secret>`;
+      read-only, mails only the maintainer's hardcoded address, `[TEST]` subject):
+  - `{"ping":"ai"}` → `B.ai` end-to-end diagnostic (expect `text:"OK"`).
+  - `{}` → most recently closed task through the full ladder (expect a correct
+    `no-resolution` simulation if the field is fresh).
+  - `{"taskId":"…"}` on a task with `resolution` set but no note → `tier:"ai"`; with a
+    `resolution-note` → `tier:"note"` (verbatim).
+  - Wrong `X-Test-Key` → clean `bad test key` error, nothing sent.
+- [x] **Stage 2, live:** reopen + re-close a real (or scratch) task that has `resolution`, a note,
+      and a reporter email → the reporter receives the email and the task gains the sent-marker
+      comment quoting the exact body. Re-close again → **nothing** (dedupe).
+
+### 5d. Findings a fresh run should know (verified 2026-07-23)
+
+- Outbound mail is **`B.util.email`** (typed surface; `B.email` doc examples are sugar) and the
+  platform has **no default sender** — `froms` is required (a no-reply address; `replyTo` the
+  maintainer).
+- `B.ai` on the tenant default provider works from endpoint scripts with **no** `apiKey`/`provider`
+  args (system usage tracking; ~1k tokens per drafted note; spend cap set per flag via
+  `B.ai.configure`).
+- The `Version` custom field is the version feedback was **filed from**, not the ship version — do
+  not put it in the email.
+
 ## See also
 
 - [`decisions/feedback-intake-bluehq-endpoint.md`](decisions/feedback-intake-bluehq-endpoint.md) — the
   governing ADR (why a BlueHQ endpoint, options grid, superseding the browser-link mechanism).
+- [`decisions/feedback-reporter-email.md`](decisions/feedback-reporter-email.md) — the
+  close-notification ADR (section 5 of this checklist).
 - [`decisions/content-sanitization-for-public-tooling.md`](decisions/content-sanitization-for-public-tooling.md)
   — the category-level content rule this file follows.
 - Spec: `.claude/specs/feedback-clickup-form/` (requirements / design / tasks 1–5).
