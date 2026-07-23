@@ -14,7 +14,7 @@ A plain "your item was closed" email would mislead: on AI.List, *Closed* can mea
 
 ## Decision
 
-**When an AI.List task transitions to Closed, a BlueHQ endpoint emails the reporter — with wording driven by a required `resolution` dropdown, and a body chosen by a three-tier ladder.**
+**When an AI.List task transitions to Closed, a BlueHQ endpoint emails the reporter — with wording driven by a `resolution` dropdown that gates the send (no resolution → no email, only a nudge comment), and a body chosen by a three-tier ladder.** "Required" here is enforced by the endpoint, not by ClickUp — Required Custom Fields turned out to be plan-gated (see below).
 
 - **Trigger:** a ClickUp webhook (`taskStatusUpdated`, list-scoped) POSTs to the *existing* intake endpoint at `?hook=close` — one component, two doors (components cannot share code, so a second component would duplicate the credential plumbing). Deliveries are HMAC-verified (`X-Signature`, secret in the same top-level-office token form as the other credentials). Event-driven; no polling.
 - **Semantics via `resolution`:** a new dropdown custom field (`shipped` / `fixed-unreleased` / `wont-fix` / `duplicate` / `stale`) set by whoever closes. **All outcomes** get a (differently-worded) email — even a "no" tells the reporter they were heard. Empty `resolution` → **no email**; the endpoint posts a nudge comment instead ("set `resolution` and re-close to send"). Required Custom Fields turned out to be plan-gated (Business+) and unavailable, so the nudge backstop is the *only* enforcement — anticipated and acceptable.

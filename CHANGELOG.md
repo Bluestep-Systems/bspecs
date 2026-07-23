@@ -9,15 +9,16 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 ## [plugin 0.14.0] — 2026-07-23
 
 Closes the feedback loop: when an AI.List feedback task is **closed**, the reporter now receives an
-**automated email saying what actually happened** — worded by a new required-at-close `resolution`
-dropdown (`shipped` / `fixed-unreleased` / `wont-fix` / `duplicate` / `stale`), with the body chosen
+**automated email saying what actually happened** — worded by a new `resolution` dropdown
+(`shipped` / `fixed-unreleased` / `wont-fix` / `duplicate` / `stale`) that **gates the send**: no
+resolution set means no email, only a nudge comment (ClickUp's Required-field enforcement is
+plan-gated and unavailable, so the gate lives in the endpoint). The body is chosen
 by a three-tier ladder: a reporter-facing **`resolution-note`** field sent verbatim → a **`B.ai`
 draft** from the task (tenant default provider, spend-capped, constrained to plain reporter-facing
 language) → fixed per-resolution generic wording. The notification is sent by the existing BlueHQ
 intake endpoint, which gained a second door (`?hook=close`) receiving the HMAC-verified ClickUp
 status webhook; after sending it posts a **sent-marker comment quoting the exact email** (dedupe +
-closer visibility), and a close without a `resolution` posts a nudge comment instead of mailing
-anything. A secret-gated **test mode** runs the real pipeline against any list item, mailing only
+closer visibility). A secret-gated **test mode** runs the real pipeline against any list item, mailing only
 the maintainer. Because the loop now depends on an address, the **reporter email is required at
 filing time** — this is the plugin-side change (the endpoint also rejects email-less payloads).
 Verified live end-to-end 2026-07-23 (webhook → email → marker; recipients approved the wording).
