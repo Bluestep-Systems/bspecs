@@ -93,6 +93,18 @@ for (const record of results) {
 }
 ```
 
+That `B.queries.X` shape is what a **named-query import** produces. A **query-group import** — the query (or MEFR) wired into the script as a query group, e.g. via the MCP `add_queries` with a `groupId`, or the UI's query-group import — binds a **bare global const named after the group variable** instead, not `B.queries.X`:
+
+```typescript
+// declarations/index.d.ts shows: declare const projectTracker: RecordQuery_projectTracker
+const rows = projectTracker.execute();
+for (const record of rows) {
+  // ...
+}
+```
+
+The import style selects the binding, so check `declarations/index.d.ts` to see which one your script actually has — a `declare const <group>: RecordQuery_<group>` line means the bare-const shape. Identifiers come from declarations, never guessed. A query imported as a group has **no** `B.queries.<name>` entry: reaching for one returns `undefined` at runtime. (`reference/import-scope.md` covers import *scoping* — current-record vs named-query; this paragraph covers the resulting *binding shape*.)
+
 **Unit scoping:** queries are unit-scoped by default. When re-using a query across units, call `clearSearchAndSort()` to reset filters:
 
 ```typescript
