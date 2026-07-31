@@ -51,6 +51,14 @@ the same triage land in this block before release.
   `/b/<alias>` fetch rule, and the CORS-blocked cross-origin embedding variant with its verified
   same-origin proxy fix. Indexed in `SKILL.md` so the choice between the two hosting models is
   visible at index level.
+- **New `gotchas/relate-query-over-mefr.md`** — four live-verified traps when reading multi-entry
+  form data through a `view`-tool Relate query: `maxRows: 0` is a literal zero-row cap despite the
+  tool schema's "0 = unlimited" (and is the default — use `-1`); `recordTypes` must be the base
+  record type, not the form's category; `list_views(formId:)` gives false negatives (omits
+  EntityList/MEFR views — re-verified live 2026-07-31, with a matching caution added to the
+  `[PLATFORM]` procedure's Idempotency step and its MEFR-recipe reuse check); and `relateQuery`
+  cannot execute an EntityList — use a `List` view for data reads. Includes the working recipe and
+  the note that `formRows` ignores `limit`/`offset` and carries no field values.
 - **Compile-on-push correction finished** (started in 0.13.0 on `b6p-push/SKILL.md`): all five
   remaining "the platform compiles on push" claims in `b6p-platform.md` and `bsjs-development.md`
   now draw the plain-push vs publish/snapshot distinction — a plain push uploads source as-is and

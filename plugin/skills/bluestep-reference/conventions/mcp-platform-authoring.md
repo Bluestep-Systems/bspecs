@@ -146,7 +146,11 @@ next task. Conversationally there is no checkbox — just report what ran.
 ## Idempotency
 
 **Object already exists** (re-run, or added manually) → detect via the `list_*` / `get_*` readers and
-**skip with a report**. Do not error and do not duplicate.
+**skip with a report**. Do not error and do not duplicate. **Caution — `list_views(formId:)` gives
+false negatives**: the formId filter misses `primaryForm` relationships and omits EntityList/MEFR
+views entirely (verified live 2026-07-31), so it cannot prove a view is absent — list **without**
+the filter and match by name/type before concluding an object doesn't exist (details:
+`gotchas/relate-query-over-mefr.md`).
 
 ## Safety / destructive-tool discipline
 
@@ -184,7 +188,8 @@ tools, not a fixed inventory.
 > report (MEFR) **is** a CustomDBView, so it is imported as the query group itself. The working recipe:
 >
 > 1. **`create_mefr`** (`formId` = the base form's topId, plus `folderId` / `mefrName`) — first check
->    `list_views` for an existing MEFR of the form and reuse it. `create_mefr` is a **schema op with no
+>    `list_views` **without a formId filter** for an existing MEFR of the form and reuse it (the
+>    formId filter omits MEFRs — see Idempotency below). `create_mefr` is a **schema op with no
 >    MCP inverse** (cleanup is UI-only), so it gets the raised approval-echo bar from Safety above.
 > 2. **`add_queries`** with the **MEFR's topId** as `queryId` plus a `groupId` variable name — the MEFR
 >    is the query group.
