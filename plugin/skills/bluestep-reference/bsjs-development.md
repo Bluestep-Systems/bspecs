@@ -82,6 +82,25 @@ const formatted = B.time.format(now, "yyyy-MM-dd HH:mm:ss");
 const parsed = B.time.parse("2026-05-15", "yyyy-MM-dd");
 ```
 
+#### Dates: reading, writing, and shipping to a browser
+
+Three silent-failure facts — wrong output, not an error:
+
+- **Date/datetime FIELD writes accept `M/D/YYYY h:mmAM`; ISO 8601 is rejected by a validation
+  regex.** The `B.time.parse("2026-05-15", …)` example above primes exactly the wrong instinct —
+  parse formats and field-write formats are different things. The verified accepted form is
+  non-padded month/day/hour, no seconds, no space before the meridiem (e.g. `7/30/2026 2:05PM`);
+  padded or seconds-bearing variants are unconfirmed. Field writes are also a **different code
+  path** from `addSearch` query values — `conventions/date-format.md` governs search values;
+  `reference/datetime-field-write.md` covers the `.val(zonedDateTime)` setter.
+- **Stored dates use a 0-indexed month** — `6` = July. A one-month misread is plausible enough to
+  survive review; check twice when reading raw stored values.
+- **`ZonedDateTime.toString()` is NOT valid ISO 8601** — it appends the zone id in brackets
+  (`2026-07-30T12:00:00-06:00[US/Mountain]`), and a browser `new Date(...)` on that returns
+  `Invalid Date`. Rule: **emit `.toInstant().toString()` for any browser consumer.** The
+  server-side value looks correct in a log; the failure only surfaces in the browser. (Zone
+  handling: `reference/user-zone-id.md`.)
+
 ### `B.queries` — query objects
 
 Queries are defined on the platform and exposed in `declarations/index.d.ts` (platform-generated). Reference them only after pulling.

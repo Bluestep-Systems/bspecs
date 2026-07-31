@@ -35,6 +35,11 @@ the same triage land in this block before release.
   `B.queries.X`; query-group imports bind a bare global const named after the group (reaching for
   `B.queries.<name>` on a group import returns `undefined`). Check `declarations/index.d.ts`.
 - `list_available_forms` and `list_folders` added to the read-only tool catalogue.
+- **`bsjs-development.md` — new "Dates: reading, writing, and shipping to a browser" subsection**
+  under `B.time`, with three verified silent-failure facts: date-field writes accept
+  `M/D/YYYY h:mmAM` and reject ISO 8601 (also closes `date-format.md`'s "unverified" datetime note
+  with the observed form); stored dates use a 0-indexed month (6 = July); and
+  `ZonedDateTime.toString()` is not browser-parseable ISO 8601 — emit `.toInstant().toString()`.
 - **Compile-on-push correction finished** (started in 0.13.0 on `b6p-push/SKILL.md`): all five
   remaining "the platform compiles on push" claims in `b6p-platform.md` and `bsjs-development.md`
   now draw the plain-push vs publish/snapshot distinction — a plain push uploads source as-is and
