@@ -209,11 +209,19 @@ export function run(): void {
 
 ### Endpoint
 
-Receives an HTTP request, returns a response. **Set `contentType` before writing the body. Use exactly one output method per request** (`out`, `stream`, or `redirect`).
+Receives an HTTP request, returns a response. Everything hangs off **`B.net.request`** and
+**`B.net.response`** — there is no bare `request`/`response` global (`B` is the only global binding).
+Every member is a **method**: there are no settable properties, and the setters are **fluent**
+(`status(400).contentType("text/plain")`). **Set `contentType` before writing the body. Use exactly
+one output method per request** (`out`, `stream`, or `redirect`). The output-channel rules — `B.out`
+vs `response.out()`, and why `status()`/`contentType()` belong in try/catch (they throw
+`IllegalStateException` once the response is committed) — live in
+`reference/endpoint-output-channel.md`; `request.method()` is a call, not a property
+(`reference/endpoint-method-call.md`).
 
 ```typescript
 export function run(): void {
-  const action = request.param("action");
+  const action = B.net.request.optParameter("action").orElse("");
   switch (action) {
     case "list":  return listAll();
     case "get":   return getOne();
@@ -222,34 +230,34 @@ export function run(): void {
 }
 
 function listAll(): void {
-  response.contentType = "application/json";
-  response.out(JSON.stringify({ items: getItems() }));
+  B.net.response.contentType("application/json; charset=UTF-8");
+  B.net.response.out(JSON.stringify({ items: getItems() }));
 }
 
 function badRequest(): void {
-  response.status = 400;
-  response.contentType = "text/plain";
-  response.out("Unknown action");
+  B.net.response.status(400).contentType("text/plain"); // fluent — methods, not properties
+  B.net.response.out("Unknown action");
 }
 ```
 
 #### Streaming (large responses)
 
-NDJSON pattern for streaming large datasets:
+NDJSON pattern for streaming large datasets. `stream()` **takes a callback and returns void** — it
+never returns a writable (`binaryStream(...)` has the same callback shape):
 
 ```typescript
-response.contentType = "application/x-ndjson";
-const stream = response.stream();
-for (const record of B.queries.largeQuery.execute()) {
-  stream.write(JSON.stringify({ id: record.id, name: record.name.val() }) + "\n");
-}
-stream.close();
+B.net.response.contentType("application/x-ndjson");
+B.net.response.stream(out => {
+  for (const record of B.queries.largeQuery.execute()) {
+    out.write(JSON.stringify({ id: record.id, name: record.name.val() }) + "\n");
+  }
+});
 ```
 
 #### Redirect
 
 ```typescript
-response.redirect("/some/path");
+B.net.response.redirect("/some/path");
 ```
 
 ### MergeReport
@@ -434,9 +442,8 @@ For endpoints, prefer explicit status codes over throwing:
 
 ```typescript
 if (!validInput) {
-  response.status = 400;
-  response.contentType = "application/json";
-  response.out(JSON.stringify({ error: "invalid input" }));
+  B.net.response.status(400).contentType("application/json; charset=UTF-8");
+  B.net.response.out(JSON.stringify({ error: "invalid input" }));
   return;
 }
 ```

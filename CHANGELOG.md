@@ -35,6 +35,13 @@ the same triage land in this block before release.
   `B.queries.X`; query-group imports bind a bare global const named after the group (reaching for
   `B.queries.<name>` on a group import returns `undefined`). Check `declarations/index.d.ts`.
 - `list_available_forms` and `list_folders` added to the read-only tool catalogue.
+- **`bsjs-development.md` — the "### Endpoint" section now matches the real Response API**:
+  `B.net.request` / `B.net.response` (no bare `request`/`response` globals), fluent method setters
+  (`status(400).contentType(...)` — the Response object has no settable properties),
+  `optParameter(name).orElse(...)` for request params, and callback-form `stream(out => …)` (it
+  returns void, never a writable). The section previously contradicted
+  `reference/endpoint-output-channel.md`; the two now agree, with the reference file as the
+  output-channel source of truth.
 
 ## [plugin 0.14.0] — 2026-07-23
 
