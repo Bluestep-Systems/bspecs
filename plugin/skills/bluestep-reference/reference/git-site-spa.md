@@ -10,6 +10,10 @@ description: "Git sites serve a GitHub repo directly under /spa/ on the site's o
 > `static/` via deploy-lib), see [vite spa merge report](vite-spa-merge-report.md) and
 > [deploy-lib workflow](../conventions/deploy-lib-workflow.md).
 
+> Mechanics below (config fields, deploy triggers, size caps, cache lifetimes, webhook behavior)
+> were **observed live 2026-07** on the then-current platform and may drift server-side — verify
+> against the platform if a specific number or behavior looks stale.
+
 ## What it is
 
 A **Git Site** (Admin → Sites → New Git Site) points at a GitHub repo; the platform serves the

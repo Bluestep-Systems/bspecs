@@ -24,7 +24,8 @@ Use plain ES2015+ JavaScript only inside the template literal. The TypeScript co
 - `as` casts: `(x as any).foo` → invalid here.
 - Generics: `Foo<T>` → parsed as a `<` comparison, then garbage.
 - `interface`/`enum` declarations.
-- **A backtick or `${` anywhere inside the literal — INCLUDING inside `//` or `/* */` comments.**
+- **An UNESCAPED backtick or `${` anywhere inside the literal — INCLUDING inside `//` or `/* */`
+  comments.** (Escaped forms — `` \` `` and `\${` — are legal and ship the literal character.)
   A stray backtick closes the literal early and TypeScript misparses the rest of the **file**
   (a cascade of bogus diagnostics — `"," expected`, `Cannot find name 'B'` — far from the real
   cause); an unintended `${` interpolates server-side where you meant literal text. Shipped in
@@ -40,19 +41,21 @@ Use plain ES2015+ JavaScript only inside the template literal. The TypeScript co
 - No `as Type` casts.
 - No `interface`/`enum`/`type` declarations.
 - Use `var` (or `let`/`const`) without type info.
-- **Zero backticks inside the literal — comments included** (quote words in comments with single
-  quotes, never backticks), and every `${` must be an **intentional server-side interpolation**;
-  a `${` inside a comment is always a bug.
+- **Zero UNESCAPED backticks inside the literal — comments included** (quote words in comments
+  with single quotes; if the client script genuinely needs a backtick, escape it: `` \` ``).
+  Every unescaped `${` must be an **intentional server-side interpolation** — ship a literal `${`
+  to the browser as `\${`; a `${` inside a comment is always a bug.
 - Be especially careful when porting helper code that was originally TS.
 
-Quick lint after big edits (scan **comment contents** too, not just code):
+Quick lint after big edits (comment contents count too, not just code):
 
 ```js
 const inner = txt.slice(txt.indexOf('B.out = `') + 9, txt.lastIndexOf('`;'));
-[...inner.matchAll(/\b(var|let|const)\s+\w+\s*:\s*[A-Za-z\[\]<>{}|]+\s*=/g)]; // TS leaks
-[...inner.matchAll(/`/g)];                                                   // stray backticks — ALWAYS a bug
-[...inner.matchAll(/\/\/[^\n]*(?:`|\$\{)|\/\*[\s\S]*?(?:`|\$\{)[\s\S]*?\*\//g)]; // ` or ${ in comments
-// all empty = clean; any match = fix before pushing
+[...inner.matchAll(/\b(var|let|const)\s+\w+\s*:\s*[A-Za-z\[\]<>{}|]+\s*=/g)]; // TS leaks — any match = bug
+[...inner.matchAll(/(?<!\\)`/g)];   // UNESCAPED backticks — any match = bug
+[...inner.matchAll(/(?<!\\)\$\{/g)]; // review list: every hit must be an INTENDED server-side interpolation
+// The ${ scan is a review list, not pass/fail — a hit inside a comment is by definition
+// unintended (fix it); hits in code are fine only if the interpolation is deliberate.
 ```
 
 Seen in practice on a dashboard merge report: a `var parts: string[] = [];` in inlined Gantt code froze the entire dashboard.

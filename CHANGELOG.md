@@ -77,11 +77,16 @@ reporters get one close-out wave.
   Right Label — always pass `rightLabel` when creating them via MCP.
 - **`gotchas/common-gotchas.md` — option matching across fields**: match by `displayName()` or
   option id, not `exportValue()` — lists can carry no export values, and `'' === ''` fails open.
-- **Compile-on-push correction finished** (started in 0.13.0 on `b6p-push/SKILL.md`): all five
-  remaining "the platform compiles on push" claims in `b6p-platform.md` and `bsjs-development.md`
-  now draw the plain-push vs publish/snapshot distinction — a plain push uploads source as-is and
-  compiles nothing; only a snapshot runs the TypeScript build. Also corrected: `b6p pull` omits
-  `draft/info/` for most components (its absence is normal, not a broken pull).
+- **Compile-on-push correction finished** (started in 0.13.0 on `b6p-push/SKILL.md`): the
+  remaining "the platform compiles on push" claims across `b6p-platform.md`,
+  `bsjs-development.md` (including the multi-file ES-import note), and the `b6p-task-implementer`
+  agent now draw the plain-push vs publish/snapshot distinction — a plain push uploads source
+  as-is and compiles nothing; only a snapshot runs the TypeScript build. Also corrected:
+  `b6p pull` omits `draft/info/` for most components (its absence is normal, not a broken pull).
+- **`mcp-platform-authoring.md` — view-tool limitation documented**: column/filter/sort edits on
+  an **existing** view internally delete-and-re-add display components and die on the AI-tools
+  DELETE guard; create-time columns and scalar-prop updates work — route such edits to the
+  platform UI.
 - **`bsjs-development.md` — the "### Endpoint" section now matches the real Response API**:
   `B.net.request` / `B.net.response` (no bare `request`/`response` globals), fluent method setters
   (`status(400).contentType(...)` — the Response object has no settable properties),

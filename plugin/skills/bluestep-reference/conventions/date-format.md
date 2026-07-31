@@ -19,7 +19,7 @@ Passing a raw Java `LocalDate` object from `B.time.LocalDate` also fails — Gra
 - Convert ISO `YYYY-MM-DD` from HTML date inputs to `MM/DD/YYYY` before calling `addSearch`.
 - Working precedent: a `toMDY = (iso) => "${m}/${d}/${y}"` helper applied before `addSearch`.
 - Do NOT pass raw `LocalDate` / `LocalDateTime` Java objects to `addSearch` — always convert to BlueStep-format strings first.
-- For datetime **field writes** specifically (a different code path from the `addSearch` values this file governs): the verified accepted form is `M/D/YYYY h:mmAM` — non-padded month/day/hour, no seconds, no space before the meridiem — observed live 2026-07; ISO 8601 is rejected by a validation regex. Whether padded or seconds-bearing variants (e.g. `MM/DD/YYYY hh:mm:ss a`) are *also* accepted remains unverified. See the "Dates" subsection of `bsjs-development.md` and `reference/datetime-field-write.md`.
+- For datetime **field writes by string** specifically (a different code path from the `addSearch` values this file governs): the verified accepted form is `M/D/YYYY h:mmAM` — non-padded month/day/hour, no seconds, no space before the meridiem — observed live 2026-07; an ISO 8601 **string** is rejected by a validation regex. The typed `.val(zonedDateTime)` setter and the `.dateTimeVal(isoString)` overload are **different write paths not subject to that regex** — see `reference/datetime-field-write.md`. Whether padded or seconds-bearing string variants (e.g. `MM/DD/YYYY hh:mm:ss a`) are *also* accepted remains unverified. See also the "Dates" subsection of `bsjs-development.md`.
 
 **The trap that bit twice:**
 

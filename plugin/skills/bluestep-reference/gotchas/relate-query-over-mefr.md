@@ -39,7 +39,10 @@ topId>]`, plus display columns. Read with:
 ```graphql
 { relateQuery(id: "<view topId>", count: 50, start: 0,
               filter: { fieldId: "...", operation: EQUALS, value: "..." },
-              sort:   { fieldId: "...", direction: ASCENDING }) { ... } }
+              sort:   { fieldId: "...", direction: ASCENDING }) {
+    totalSize
+    # plus the row/field selections your read needs
+} }
 ```
 
 `relateQuery` over a `List` view is the **only paged, value-bearing read path** for multi-entry

@@ -189,7 +189,7 @@ tools, not a fixed inventory.
 >
 > 1. **`create_mefr`** (`formId` = the base form's topId, plus `folderId` / `mefrName`) — first check
 >    `list_views` **without a formId filter** for an existing MEFR of the form and reuse it (the
->    formId filter omits MEFRs — see Idempotency below). `create_mefr` is a **schema op with no
+>    formId filter omits MEFRs — see Idempotency above). `create_mefr` is a **schema op with no
 >    MCP inverse** (cleanup is UI-only), so it gets the raised approval-echo bar from Safety above.
 > 2. **`add_queries`** with the **MEFR's topId** as `queryId` plus a `groupId` variable name — the MEFR
 >    is the query group.

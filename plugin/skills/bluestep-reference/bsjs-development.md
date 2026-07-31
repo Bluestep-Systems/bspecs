@@ -45,7 +45,7 @@ Deep reference for BlueStep TypeScript development. Critical rules live in `CLAU
 
 A project may contain multiple Unit folders, each with multiple components of varying types. **Module split convention:** split complex logic into focused files under `scripts/`. `app.ts` is the entry point.
 
-**Multi-file components with ES imports are supported** (verified on the platform — `SMS Data Diagnostics`, `app.ts` importing `cleanupDuplicates.ts`). A sibling file `export`s a symbol and `app.ts` pulls it in with a standard relative ES import (no file extension); it compiles and links correctly after push. Use this to split a large `app.ts` into focused modules:
+**Multi-file components with ES imports are supported** (verified on the platform — `SMS Data Diagnostics`, `app.ts` importing `cleanupDuplicates.ts`). A sibling file `export`s a symbol and `app.ts` pulls it in with a standard relative ES import (no file extension); it links correctly on the platform (compiled at publish/snapshot). Use this to split a large `app.ts` into focused modules:
 
 ```typescript
 // scripts/cleanupDuplicates.ts
@@ -86,15 +86,20 @@ const parsed = B.time.parse("2026-05-15", "yyyy-MM-dd");
 
 Three silent-failure facts — wrong output, not an error:
 
-- **Date/datetime FIELD writes accept `M/D/YYYY h:mmAM`; ISO 8601 is rejected by a validation
-  regex.** The `B.time.parse("2026-05-15", …)` example above primes exactly the wrong instinct —
-  parse formats and field-write formats are different things. The verified accepted form is
-  non-padded month/day/hour, no seconds, no space before the meridiem (e.g. `7/30/2026 2:05PM`);
-  padded or seconds-bearing variants are unconfirmed. Field writes are also a **different code
-  path** from `addSearch` query values — `conventions/date-format.md` governs search values;
-  `reference/datetime-field-write.md` covers the `.val(zonedDateTime)` setter.
-- **Stored dates use a 0-indexed month** — `6` = July. A one-month misread is plausible enough to
-  survive review; check twice when reading raw stored values.
+- **Writing a date/datetime field BY STRING accepts `M/D/YYYY h:mmAM`; an ISO 8601 string is
+  rejected by a validation regex.** The `B.time.parse("2026-05-15", …)` example above primes
+  exactly the wrong instinct — parse formats and string-write formats are different things. The
+  verified accepted form is non-padded month/day/hour, no seconds, no space before the meridiem
+  (e.g. `7/30/2026 2:05PM`); padded or seconds-bearing variants are unconfirmed. Scope this
+  correctly: string writes are a **different path** from the typed `.val(zonedDateTime)` setter
+  and the `.dateTimeVal(isoString)` overload (`reference/datetime-field-write.md` — those are not
+  subject to this regex), and also a different path from `addSearch` query values
+  (`conventions/date-format.md`).
+- **Raw serialized date values use a 0-indexed month** — `6` = July in stored/serialized form
+  (e.g. the XMLEncoder `xml` blobs `formRows` returns; see
+  `reference/mcp-read-multi-entry-forms.md`). This does **not** apply to `B.time`/`java.time`
+  values — `getMonthValue()` is 1-indexed (`reference/chronounit-months.md`). A one-month misread
+  survives review; know which surface you're reading.
 - **`ZonedDateTime.toString()` is NOT valid ISO 8601** — it appends the zone id in brackets
   (`2026-07-30T12:00:00-06:00[US/Mountain]`), and a browser `new Date(...)` on that returns
   `Invalid Date`. Rule: **emit `.toInstant().toString()` for any browser consumer.** The
@@ -229,7 +234,9 @@ export function run(): void {
 ### Endpoint
 
 Receives an HTTP request, returns a response. Everything hangs off **`B.net.request`** and
-**`B.net.response`** — there is no bare `request`/`response` global (`B` is the only global binding).
+**`B.net.response`** — there is no bare `request`/`response` global; the HTTP objects hang off
+`B.net`. (Wired imports can bind other globals — e.g. a query group's bare const, see `B.queries`
+above — but the HTTP surface is only ever reached through `B.net`.)
 Every member is a **method**: there are no settable properties, and the setters are **fluent**
 (`status(400).contentType("text/plain")`). **Set `contentType` before writing the body. Use exactly
 one output method per request** (`out`, `stream`, or `redirect`). The output-channel rules — `B.out`
@@ -254,7 +261,9 @@ function listAll(): void {
 }
 
 function badRequest(): void {
-  B.net.response.status(400).contentType("text/plain"); // fluent — methods, not properties
+  // fluent — methods, not properties. Safe here (nothing written yet); once output may have
+  // started, wrap status()/contentType() in try/catch — see endpoint-output-channel.md.
+  B.net.response.status(400).contentType("text/plain");
   B.net.response.out("Unknown action");
 }
 ```
@@ -276,8 +285,11 @@ B.net.response.stream(out => {
 #### Redirect
 
 ```typescript
-B.net.response.redirect("/some/path");
+B.net.response.sendRedirect("/some/path");
 ```
+
+Use `sendRedirect()` in endpoints — `redirect()` also exists but the platform's own docs say it
+"may or may not work consistently" in an endpoint and point at `sendRedirect()` instead.
 
 ### MergeReport
 
