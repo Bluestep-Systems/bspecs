@@ -52,7 +52,7 @@ Open the `bluestep-reference` skill index at `${CLAUDE_PLUGIN_ROOT}/skills/blues
 
 ### Step 5 — Verify (no local compile)
 
-Do **not** run `tsc` — local compilation is forbidden and hook-blocked; the platform compiles on push. Instead:
+Do **not** run `tsc` — local compilation is forbidden and hook-blocked; compilation happens at publish/snapshot time (a plain push does not compile). Instead:
 
 - After each `Edit`/`Write`, review the `ide_diagnostics` the `PostToolUse` hook injects for the files you touched. Fix any `Error`-severity diagnostic before returning. `Warning`/`Information` can be left unless they point to a real problem.
 - Do **not** push. Deployment and on-platform verification are the user's step (via `/b6p-push`) after they review your diff.

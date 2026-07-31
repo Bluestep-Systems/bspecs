@@ -347,7 +347,7 @@ Each project root has a `tsconfig.json`. BlueStep projects run with **`strict: f
 }
 ```
 
-Do not run `tsc` locally — the platform compiles on push (a hook blocks local `tsc`).
+Do not run `tsc` locally (a hook blocks it). Compilation happens only at **publish/snapshot** (`b6p push --snapshot`) — a **plain push skips the TypeScript build entirely**, so pushing without a snapshot means the code has been compiled nowhere.
 
 ### Graal compatibility (server-side)
 
@@ -367,7 +367,7 @@ Query, form, and field references must exist in **the component you are editing*
 2. Run `b6p pull "<DAV URL>"` to update this component's declarations.
 3. Then reference it in TypeScript.
 
-Hallucinating an import name silently passes type-check locally if the file is missing, but will fail at platform compile.
+Hallucinating an import name silently passes type-check locally if the file is missing, but will fail at compile on publish/snapshot.
 
 ## TS narrowing pitfalls (Graal/Java types)
 

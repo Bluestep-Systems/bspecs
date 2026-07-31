@@ -44,7 +44,7 @@ The workspace is a **local copy** of components that live on the BlueStep platfo
 
 - New B6P components (MergeReport, Endpoint, Formula) are created **on the platform**, never locally.
 - Inside an existing component, creating new `.ts` files locally is fine — they ship to the platform on `push`.
-- The platform handles compilation. Local `tsc` is forbidden (enforced by hook).
+- Compilation happens at **publish/snapshot** time, never locally — local `tsc` is forbidden (enforced by hook), and a plain push does not compile at all.
 
 ## Data hierarchy
 
@@ -110,7 +110,7 @@ Options:
 A successful first pull:
 
 - Creates the `U######/` folder (if not present) and the `<ComponentName>/` subfolder under it
-- Populates `draft/scripts/`, `draft/info/`, and (in older modules) `draft/objects/`
+- Populates `draft/scripts/` and (in older modules) `draft/objects/`; `draft/info/` is **omitted for most components** — its absence is normal, not a broken pull
 - Populates `declarations/` with the platform-generated `.d.ts` files, including `declarations/index.d.ts` (field/query/form declarations)
 - Records the component's sync metadata (WebDAV id, file hashes, script key) so future pulls/pushes can resolve it
 
@@ -124,7 +124,7 @@ The cleanest way to push an already-pulled component is `--file`, which lets the
 b6p push --file "U######/<Component>/draft/scripts/app.ts"
 ```
 
-Any file inside the component works as the `--file` argument; the CLI walks up to find the component root and looks up its recorded sync metadata. Same per-file integrity check applies — only changed files are uploaded. The platform compiles after receiving the push.
+Any file inside the component works as the `--file` argument; the CLI walks up to find the component root and looks up its recorded sync metadata. Same per-file integrity check applies — only changed files are uploaded. A plain push uploads the draft source **as-is** — it does **not** compile and does **not** change the live version. Only a **publish/snapshot** (`b6p push --snapshot --message "…"`) runs the TypeScript build and ships the compiled `app.js`.
 
 ### Fallback: VS Code extension
 
@@ -159,7 +159,7 @@ Before referencing a query/form/field in code:
 
 If N components all need the same new field, each one needs its own import-config update on the platform and a separate pull.
 
-Hallucinated names pass local edits but fail on platform compile after push.
+Hallucinated names pass local edits but fail at compile when the component is published (snapshot).
 
 ## When the CLI fails
 
