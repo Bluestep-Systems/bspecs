@@ -45,7 +45,7 @@ Deep reference for BlueStep TypeScript development. Critical rules live in `CLAU
 
 A project may contain multiple Unit folders, each with multiple components of varying types. **Module split convention:** split complex logic into focused files under `scripts/`. `app.ts` is the entry point.
 
-**Multi-file components with ES imports are supported** (verified on the platform — `SMS Data Diagnostics`, `app.ts` importing `cleanupDuplicates.ts`). A sibling file `export`s a symbol and `app.ts` pulls it in with a standard relative ES import (no file extension); it compiles and links correctly after push. Use this to split a large `app.ts` into focused modules:
+**Multi-file components with ES imports are supported** (verified on the platform — `SMS Data Diagnostics`, `app.ts` importing `cleanupDuplicates.ts`). A sibling file `export`s a symbol and `app.ts` pulls it in with a standard relative ES import (no file extension); it links correctly on the platform (compiled at publish/snapshot). Use this to split a large `app.ts` into focused modules:
 
 ```typescript
 // scripts/cleanupDuplicates.ts
@@ -82,6 +82,30 @@ const formatted = B.time.format(now, "yyyy-MM-dd HH:mm:ss");
 const parsed = B.time.parse("2026-05-15", "yyyy-MM-dd");
 ```
 
+#### Dates: reading, writing, and shipping to a browser
+
+Three silent-failure facts — wrong output, not an error:
+
+- **Writing a date/datetime field BY STRING accepts `M/D/YYYY h:mmAM`; an ISO 8601 string is
+  rejected by a validation regex.** The `B.time.parse("2026-05-15", …)` example above primes
+  exactly the wrong instinct — parse formats and string-write formats are different things. The
+  verified accepted form is non-padded month/day/hour, no seconds, no space before the meridiem
+  (e.g. `7/30/2026 2:05PM`); padded or seconds-bearing variants are unconfirmed. Scope this
+  correctly: string writes are a **different path** from the typed `.val(zonedDateTime)` setter
+  and the `.dateTimeVal(isoString)` overload (`reference/datetime-field-write.md` — those are not
+  subject to this regex), and also a different path from `addSearch` query values
+  (`conventions/date-format.md`).
+- **Raw serialized date values use a 0-indexed month** — `6` = July in stored/serialized form
+  (e.g. the XMLEncoder `xml` blobs `formRows` returns; see
+  `reference/mcp-read-multi-entry-forms.md`). This does **not** apply to `B.time`/`java.time`
+  values — `getMonthValue()` is 1-indexed (`reference/chronounit-months.md`). A one-month misread
+  survives review; know which surface you're reading.
+- **`ZonedDateTime.toString()` is NOT valid ISO 8601** — it appends the zone id in brackets
+  (`2026-07-30T12:00:00-06:00[US/Mountain]`), and a browser `new Date(...)` on that returns
+  `Invalid Date`. Rule: **emit `.toInstant().toString()` for any browser consumer.** The
+  server-side value looks correct in a log; the failure only surfaces in the browser. (Zone
+  handling: `reference/user-zone-id.md`.)
+
 ### `B.queries` — query objects
 
 Queries are defined on the platform and exposed in `declarations/index.d.ts` (platform-generated). Reference them only after pulling.
@@ -92,6 +116,18 @@ for (const record of results) {
   // ...
 }
 ```
+
+That `B.queries.X` shape is what a **named-query import** produces. A **query-group import** — the query (or MEFR) wired into the script as a query group, e.g. via the MCP `add_queries` with a `groupId`, or the UI's query-group import — binds a **bare global const named after the group variable** instead, not `B.queries.X`:
+
+```typescript
+// declarations/index.d.ts shows: declare const projectTracker: RecordQuery_projectTracker
+const rows = projectTracker.execute();
+for (const record of rows) {
+  // ...
+}
+```
+
+The import style selects the binding, so check `declarations/index.d.ts` to see which one your script actually has — a `declare const <group>: RecordQuery_<group>` line means the bare-const shape. Identifiers come from declarations, never guessed. A query imported as a group has **no** `B.queries.<name>` entry: reaching for one returns `undefined` at runtime. (`reference/import-scope.md` covers import *scoping* — current-record vs named-query; this paragraph covers the resulting *binding shape*.)
 
 **Unit scoping:** queries are unit-scoped by default. When re-using a query across units, call `clearSearchAndSort()` to reset filters:
 
@@ -197,11 +233,21 @@ export function run(): void {
 
 ### Endpoint
 
-Receives an HTTP request, returns a response. **Set `contentType` before writing the body. Use exactly one output method per request** (`out`, `stream`, or `redirect`).
+Receives an HTTP request, returns a response. Everything hangs off **`B.net.request`** and
+**`B.net.response`** — there is no bare `request`/`response` global; the HTTP objects hang off
+`B.net`. (Wired imports can bind other globals — e.g. a query group's bare const, see `B.queries`
+above — but the HTTP surface is only ever reached through `B.net`.)
+Every member is a **method**: there are no settable properties, and the setters are **fluent**
+(`status(400).contentType("text/plain")`). **Set `contentType` before writing the body. Use exactly
+one output method per request** (`out`, `stream`, or `redirect`). The output-channel rules — `B.out`
+vs `response.out()`, and why `status()`/`contentType()` belong in try/catch (they throw
+`IllegalStateException` once the response is committed) — live in
+`reference/endpoint-output-channel.md`; `request.method()` is a call, not a property
+(`reference/endpoint-method-call.md`).
 
 ```typescript
 export function run(): void {
-  const action = request.param("action");
+  const action = B.net.request.optParameter("action").orElse("");
   switch (action) {
     case "list":  return listAll();
     case "get":   return getOne();
@@ -210,35 +256,40 @@ export function run(): void {
 }
 
 function listAll(): void {
-  response.contentType = "application/json";
-  response.out(JSON.stringify({ items: getItems() }));
+  B.net.response.contentType("application/json; charset=UTF-8");
+  B.net.response.out(JSON.stringify({ items: getItems() }));
 }
 
 function badRequest(): void {
-  response.status = 400;
-  response.contentType = "text/plain";
-  response.out("Unknown action");
+  // fluent — methods, not properties. Safe here (nothing written yet); once output may have
+  // started, wrap status()/contentType() in try/catch — see endpoint-output-channel.md.
+  B.net.response.status(400).contentType("text/plain");
+  B.net.response.out("Unknown action");
 }
 ```
 
 #### Streaming (large responses)
 
-NDJSON pattern for streaming large datasets:
+NDJSON pattern for streaming large datasets. `stream()` **takes a callback and returns void** — it
+never returns a writable (`binaryStream(...)` has the same callback shape):
 
 ```typescript
-response.contentType = "application/x-ndjson";
-const stream = response.stream();
-for (const record of B.queries.largeQuery.execute()) {
-  stream.write(JSON.stringify({ id: record.id, name: record.name.val() }) + "\n");
-}
-stream.close();
+B.net.response.contentType("application/x-ndjson");
+B.net.response.stream(out => {
+  for (const record of B.queries.largeQuery.execute()) {
+    out.write(JSON.stringify({ id: record.id, name: record.name.val() }) + "\n");
+  }
+});
 ```
 
 #### Redirect
 
 ```typescript
-response.redirect("/some/path");
+B.net.response.sendRedirect("/some/path");
 ```
+
+Use `sendRedirect()` in endpoints — `redirect()` also exists but the platform's own docs say it
+"may or may not work consistently" in an endpoint and point at `sendRedirect()` instead.
 
 ### MergeReport
 
@@ -327,7 +378,7 @@ Each project root has a `tsconfig.json`. BlueStep projects run with **`strict: f
 }
 ```
 
-Do not run `tsc` locally — the platform compiles on push (a hook blocks local `tsc`).
+Do not run `tsc` locally (a hook blocks it). Compilation happens only at **publish/snapshot** (`b6p push --snapshot`) — a **plain push skips the TypeScript build entirely**, so pushing without a snapshot means the code has been compiled nowhere.
 
 ### Graal compatibility (server-side)
 
@@ -347,7 +398,7 @@ Query, form, and field references must exist in **the component you are editing*
 2. Run `b6p pull "<DAV URL>"` to update this component's declarations.
 3. Then reference it in TypeScript.
 
-Hallucinating an import name silently passes type-check locally if the file is missing, but will fail at platform compile.
+Hallucinating an import name silently passes type-check locally if the file is missing, but will fail at compile on publish/snapshot.
 
 ## TS narrowing pitfalls (Graal/Java types)
 
@@ -422,9 +473,8 @@ For endpoints, prefer explicit status codes over throwing:
 
 ```typescript
 if (!validInput) {
-  response.status = 400;
-  response.contentType = "application/json";
-  response.out(JSON.stringify({ error: "invalid input" }));
+  B.net.response.status(400).contentType("application/json; charset=UTF-8");
+  B.net.response.out(JSON.stringify({ error: "invalid input" }));
   return;
 }
 ```

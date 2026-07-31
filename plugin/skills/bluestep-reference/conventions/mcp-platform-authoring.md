@@ -1,5 +1,5 @@
 ---
-description: "The single shared procedure for performing a [PLATFORM] authoring/wiring op via the bundled platform-gateway MCP — connection-check (are the gateway tools live? fix = enable the bluestep-tools plugin + set $B6PT_TOKEN + restart) → resolve the target org to a U-number (user-supplied U-number → available_tenants map → unlisted ≠ unreachable, ask/derive) → map op to an inner tool (optional op: hint), using list_org_tools for schemas → approval echo of the concrete invoke_org_tool call (org + inner tool + args) → execute via invoke_org_tool → declaration read-back via invoke_org_tool(tool:get_script_declarations) → idempotency detect-and-skip → destructive-tool discipline, plus the supported tool set. This flow is the source of truth: /spec-execute, /quick-task, and free conversation all follow steps 2–6; only the trigger (step 1) and bookkeeping (step 7) differ. Load when about to add an import (query/form/field) to a script or create a form/field/option-list/view/record-type via the gateway MCP."
+description: "The single shared procedure for performing a [PLATFORM] authoring/wiring op via the bundled platform-gateway MCP — connection-check (are the gateway tools live? fix = enable the bluestep-tools plugin + set $B6PT_TOKEN + restart) → resolve the target org to a U-number (user-supplied U-number → available_tenants map → unlisted ≠ unreachable, ask/derive) → map op to an inner tool (optional op: hint), using list_org_tools for schemas → approval echo of the concrete invoke_org_tool call (org + inner tool + args) → execute via invoke_org_tool → declaration read-back via invoke_org_tool(tool:get_script_declarations) → idempotency detect-and-skip → destructive-tool discipline, plus the supported tool set. This flow is the source of truth: /spec-execute, /quick-task, and free conversation all follow steps 2–6; only the trigger (step 1) and bookkeeping (step 7) differ. Load when about to add an import (query/form/field/MEFR) to a script or create a form/field/option-list/view/record-type/MEFR (create_mefr) via the gateway MCP."
 ---
 
 # MCP `[PLATFORM]` authoring / wiring procedure
@@ -123,6 +123,13 @@ the op wired an import**, call **`invoke_org_tool(org, tool:"get_script_declarat
 `B` type reflects the new dependency, and surface it so a subsequent `[CODE]` task can code against it
 immediately — no manual re-pull.
 
+- The read-back is **mandatory after any schema or wiring op a `[CODE]` task will build on** — not
+  optional polish. A successful `add_field_access` (or any wiring success response) is **not** proof
+  the declarations are usable.
+- **Confirm the expected accessor names appear** in the read-back — the specific property keys /
+  const names the dependent `[CODE]` task will reference, not just "declarations changed."
+- A **`null` or blank property key** in the generated declarations means **STOP and hand back to the
+  UI** (see the field-FID quirk in [Known authoring quirks](#known-authoring-quirks)).
 - Prove-out bar is **"declarations sufficient to code against," not byte-parity** with `/b6p-pull`.
 - If the reduced declarations are insufficient, fall back to a CLI `/b6p-pull` for the full
   `declarations/` tree.
@@ -139,13 +146,19 @@ next task. Conversationally there is no checkbox — just report what ran.
 ## Idempotency
 
 **Object already exists** (re-run, or added manually) → detect via the `list_*` / `get_*` readers and
-**skip with a report**. Do not error and do not duplicate.
+**skip with a report**. Do not error and do not duplicate. **Caution — `list_views(formId:)` gives
+false negatives**: the formId filter misses `primaryForm` relationships and omits EntityList/MEFR
+views entirely (verified live 2026-07-31), so it cannot prove a view is absent — list **without**
+the filter and match by name/type before concluding an object doesn't exist (details:
+`gotchas/relate-query-over-mefr.md`).
 
 ## Safety / destructive-tool discipline
 
 - **Approval before every mutation** — no exceptions, no batch-approving destructive ops.
 - The `b6pt_` token is **global-super**: every mutation runs as global admin. The approval echo is the
-  guardrail.
+  guardrail. One exception: endpoint ops are additionally gated by the **ENGINEER ENDPOINT** custom
+  privilege, so "global-super" does **not** guarantee END_POINT authoring — see
+  [Known authoring quirks](#known-authoring-quirks).
 - **Destructive tools** (`remove_*`, `record` delete, `user` deactivate) run **only** when the task
   explicitly requires them, with **extra** confirmation. Out of default scope.
 - **Schema creation is not (currently) MCP-reversible.** The wiring trio (`add_*`) has clean `remove_*`
@@ -171,25 +184,87 @@ tools, not a fixed inventory.
 - `add_queries`, `add_forms`, `add_field_access`, `add_record_types`
 - destructive siblings: `remove_queries`, `remove_forms`, `remove_field_access`, `remove_record_types`
 
-> **Limitation — `add_forms` cannot wire a multi-entry form report (MEFR).** For a MEFR, `add_forms`
-> reports success and the form shows up in `list_applicable_forms`, but the script's `declarations/index.d.ts`
-> never gains the MEFR types after `b6p pull` — the MEFR's all-entries report access is **not** configured by
-> `add_forms`, so the reduced declarations never emit its type. (`add_field_access` on the MEFR's individual
-> fields **does** persist.) **Route MEFR imports to the platform UI** — configure the all-entries report
-> import there (writable as needed), then `b6p pull` — do **not** rely on `add_forms` for MEFRs. Future
-> `[PLATFORM]` tasks should route MEFR imports to the UI.
+> **MEFR imports — wire the MEFR as a query group** (verified live 2026-07-31). A multi-entry form
+> report (MEFR) **is** a CustomDBView, so it is imported as the query group itself. The working recipe:
+>
+> 1. **`create_mefr`** (`formId` = the base form's topId, plus `folderId` / `mefrName`) — first check
+>    `list_views` **without a formId filter** for an existing MEFR of the form and reuse it (the
+>    formId filter omits MEFRs — see Idempotency above). `create_mefr` is a **schema op with no
+>    MCP inverse** (cleanup is UI-only), so it gets the raised approval-echo bar from Safety above.
+> 2. **`add_queries`** with the **MEFR's topId** as `queryId` plus a `groupId` variable name — the MEFR
+>    is the query group.
+> 3. **`add_forms`** with the **MEFR's topId** as `formOrReportId`, a `formulaId`, and the **same
+>    `groupId`**.
+> 4. **`add_field_access`** for each field the script reads — the MEFR import alone yields an **empty
+>    `Fields` interface**.
+> 5. Declaration read-back (step 6). The resulting binding is a **bare global const named after the
+>    `groupId`**, not `B.queries.X`.
+>
+> Failure modes to recognize:
+>
+> - `add_forms` with the MEFR topId but **no `groupId`** → **silent no-op**: `formsAdded: 0`, no error,
+>   declarations unchanged.
+> - a plain "List" query view's topId → **loud rejection**, verbatim:
+>   `Formula Id MUST be for a form or a multi-entry form report.`
+> - the base form's own topId passed directly → **excluded from the script's typedoc** unless it is the
+>   query's primary form (the original silent failure).
+>
+> Design pointer: import config is **per-org** — it does not travel with `b6p push` — so a code-only
+> design often beats import expansion.
 
 **Schema authoring**
 - `form`, `field`, `option_list`, `view`, `record_type`
-- siblings: `create_option_list`, `option_list_item`, `option_group`, `batch_fields`
+- siblings: `create_option_list`, `option_list_item`, `option_group`, `batch_fields`, `create_mefr`
+
+> **`view` tool — column/filter/sort edits on an existing view fail.** Updating an **existing** view's
+> `displayColumns` / `filterColumns` / sort configuration internally deletes and re-adds display
+> components, so the call dies on the AI-tools DELETE guard, verbatim:
+> `SecurityException: AI tools are not permitted to perform DELETE operations`.
+> What **does** work: setting columns/filters/sort at **CREATE** time, and **scalar property** updates
+> on an existing view. So: get the columns right when creating the view; **route column/filter/sort
+> edits on existing views to the platform UI** (hand back, then continue).
 
 **Read-only discovery / validation**
 - `list_applicable_forms`, `list_applicable_fields`, `list_field_access`, `describe_form`, `list_forms`,
-  `list_option_lists`, `list_views`, `list_record_types`, `get_form`, `get_view`, `get_option_list`,
-  `get_record_type`, `lookup_script_by_name`, `list_script_scope`
+  `list_available_forms`, `list_option_lists`, `list_views`, `list_record_types`, `list_folders`,
+  `get_form`, `get_view`, `get_option_list`, `get_record_type`, `lookup_script_by_name`,
+  `list_script_scope`
 
 **Declaration read-back**
 - `get_script_declarations`
+
+### Known authoring quirks
+
+Observed live-platform behaviors (as of 2026-07) with their workarounds. These may be fixed
+server-side later — verify against the org you're on if a bullet seems stale.
+
+- **`form` CREATE mishandles `singleEntry` / `userUpdateable`** — the values are ignored or inverted,
+  and the CREATE response echo **cannot be trusted**: it reports the flags it did *not* set.
+  Workaround: CREATE, then a `form` **UPDATE** with the intended flags, then verify via
+  **`list_available_forms`** — the authoritative entry-mode reader (`get_form` does not reliably
+  return the entry-mode flag).
+- **TEXT and MEMO fields require an explicit format type on CREATE** (e.g. `textFormatType: "NONE"`)
+  even though the tool schema marks it optional — omitting it fails with a missing-type-id error (it
+  is a serialization discriminator server-side).
+- **`record_type` CREATE produces an orphaned category, not a base record type** — base-record-type
+  creation is effectively unsupported via MCP, and cleanup is UI-only (schema ops have no MCP
+  inverse — do not experiment).
+- **`form` / `field` / `batch_fields` CREATE cannot set a field's script-facing FID** (the field's
+  script-addressable identifier) — the field is created without one, so the generated declarations
+  emit a literal `readonly null:` property key, the field does **not** appear in
+  `list_applicable_fields`, and a `field` **UPDATE** with a clean name does **not** repair the
+  identifier. Workaround: create script-addressable fields in the **platform UI** with the Formula ID
+  set at creation time — the MCP `field` tool alone is not sufficient for a field code will read.
+- **END_POINT authoring is privilege-gated** — **both** creating an END_POINT script (`create_script`
+  with scriptType END_POINT) **and** wiring an existing endpoint's dependencies (`add_queries` /
+  `add_forms` / `add_field_access` against an END_POINT script) fail with a `RemoteSecurityException`
+  naming the **ENGINEER ENDPOINT** custom privilege when the `b6pt_` token lacks it. FORMULA and
+  MERGE_REPORT authoring/wiring on the same token are unaffected. Route: when the token is
+  non-engineer, hand **all** endpoint work (create + wire) back to the platform UI; do not retry.
+- **A SIGNATURE field with `signatureFormatType: SIMPLE` renders BLANK unless its Right Label is
+  set** — and the `field`/`form` tools do not require it, so an MCP-created signature silently
+  doesn't render until a Right Label is added in the UI. Workaround: **always pass `rightLabel`**
+  when creating SIMPLE signature fields via MCP.
 
 ## See also
 

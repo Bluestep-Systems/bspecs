@@ -6,6 +6,95 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.15.0] — 2026-07-31
+
+Reference-docs release batching the fixes from the 2026-07 `ai-plugin` feedback triage — one spec
+(the `mcp-platform-authoring` overhaul, its central claim **re-verified live on a playground org
+2026-07-31** before rewriting) plus eight quick-tasks, shipped as a single release so feedback
+reporters get one close-out wave.
+
+### Changed — bluestep-reference skill
+
+- **`conventions/mcp-platform-authoring.md` — MEFR imports are now MCP-authorable.** The old
+  "add_forms cannot wire a MEFR / route to the UI" limitation prohibited a path that works. Replaced
+  with the live-verified query-group recipe (`create_mefr` → `add_queries` with the MEFR's topId as
+  the group → `add_forms` with the same `groupId` → `add_field_access` per field → declaration
+  read-back), documenting all three failure modes: no-`groupId` silent no-op (`formsAdded: 0`),
+  plain-List-view loud rejection, and base-form-topId typedoc exclusion. `create_mefr` added to the
+  schema-authoring tool list and the skill description.
+- **New "Known authoring quirks" subsection** — dated, workaround-first bullets for observed gateway
+  behaviors (platform fixes tracked separately): `form` CREATE mishandling `singleEntry`/
+  `userUpdateable` (untrustworthy echo; CREATE-then-UPDATE, verify via `list_available_forms`);
+  TEXT/MEMO requiring an explicit format type on CREATE; `record_type` producing an orphaned
+  category; MCP-created fields lacking a script-facing FID (`readonly null:` keys — UI-only fix);
+  END_POINT creation **and** wiring gated by the ENGINEER ENDPOINT privilege (hand back to the UI).
+- **Declaration read-back hardened (step 6)** — now mandatory after any op a `[CODE]` task builds
+  on and accessor-name-specific: wiring success is not proof, and a `null`/blank property key means
+  stop and hand back. The Safety section notes "global-super" does not cover END_POINT authoring.
+- **`bsjs-development.md` — both query-import binding shapes documented**: named-query imports bind
+  `B.queries.X`; query-group imports bind a bare global const named after the group (reaching for
+  `B.queries.<name>` on a group import returns `undefined`). Check `declarations/index.d.ts`.
+- `list_available_forms` and `list_folders` added to the read-only tool catalogue.
+- **`bsjs-development.md` — new "Dates: reading, writing, and shipping to a browser" subsection**
+  under `B.time`, with three verified silent-failure facts: date-field writes accept
+  `M/D/YYYY h:mmAM` and reject ISO 8601 (also closes `date-format.md`'s "unverified" datetime note
+  with the observed form); stored dates use a 0-indexed month (6 = July); and
+  `ZonedDateTime.toString()` is not browser-parseable ISO 8601 — emit `.toInstant().toString()`.
+- **`b6p-platform.md` — new "Anonymous access — two independent grants" section**: Everyone: Reader
+  on the endpoint (execute) + Everyone: Relate Author on the form (create), both required for an
+  anonymous write; anonymous writes need no elevated script authority; and the 403 (permission) vs
+  500 (unknown alias) diagnostic. Cross-linked with `reference/session-cookie-forwarding.md`.
+- **New `reference/git-site-spa.md`** — documents the second SPA hosting model (a Git site serving
+  a GitHub repo under `/spa/` on its own domain), previously covered nowhere: the five UI-only
+  config fields, save-is-the-redeploy (+ webhook auto-deploy scoped to the configured ref, Pull
+  button, no-rollback-UI), deep-link fallback, relative Vite base, the absolute-vs-relative
+  `/b/<alias>` fetch rule, and the CORS-blocked cross-origin embedding variant with its verified
+  same-origin proxy fix. Indexed in `SKILL.md` so the choice between the two hosting models is
+  visible at index level.
+- **New `gotchas/relate-query-over-mefr.md`** — four live-verified traps when reading multi-entry
+  form data through a `view`-tool Relate query: `maxRows: 0` is a literal zero-row cap despite the
+  tool schema's "0 = unlimited" (and is the default — use `-1`); `recordTypes` must be the base
+  record type, not the form's category; `list_views(formId:)` gives false negatives (omits
+  EntityList/MEFR views — re-verified live 2026-07-31, with a matching caution added to the
+  `[PLATFORM]` procedure's Idempotency step and its MEFR-recipe reuse check); and `relateQuery`
+  cannot execute an EntityList — use a `List` view for data reads. Includes the working recipe and
+  the note that `formRows` ignores `limit`/`offset` and carries no field values.
+- **New `reference/mcp-read-multi-entry-forms.md`** — the read-path decision tree for multi-entry
+  form data over the gateway MCP (knowledge that cost a fresh session ~15 discovery calls):
+  `form_entry` READ resolves to `NEW_MULTI` and can't enumerate; `formRows` ignores
+  `limit`/`offset`, returns XMLEncoder blobs and times out on huge forms; `fieldData` is
+  one-field-one-entry (batch via GraphQL aliases); prefer `relateQuery` over a stored `List` query
+  — the only paged, filterable path (cross-links the new MEFR-read gotcha for creating that view
+  safely). Plus sibling-tool argument-name gotchas.
+- **Template-literal safety hardened** (`conventions/ts-in-template-literal.md` + the
+  `b6p-task-implementer` agent): a backtick or unintended `${` anywhere inside the `B.out`
+  literal — **including inside comments** — closes/interpolates the literal, misparses the rest of
+  the file, and still ships (emit continues through errors, so a snapshot prints "complete" with
+  broken output). Added to the leak list, the how-to-apply rules, and the quick-lint (which now
+  scans comment contents); the implementer agent now treats a stray backtick/`${` as a
+  return-blocking error.
+- **Known authoring quirks grew a sixth bullet**: SIMPLE signature fields render blank without a
+  Right Label — always pass `rightLabel` when creating them via MCP.
+- **`gotchas/common-gotchas.md` — option matching across fields**: match by `displayName()` or
+  option id, not `exportValue()` — lists can carry no export values, and `'' === ''` fails open.
+- **Compile-on-push correction finished** (started in 0.13.0 on `b6p-push/SKILL.md`): the
+  remaining "the platform compiles on push" claims across `b6p-platform.md`,
+  `bsjs-development.md` (including the multi-file ES-import note), and the `b6p-task-implementer`
+  agent now draw the plain-push vs publish/snapshot distinction — a plain push uploads source
+  as-is and compiles nothing; only a snapshot runs the TypeScript build. Also corrected:
+  `b6p pull` omits `draft/info/` for most components (its absence is normal, not a broken pull).
+- **`mcp-platform-authoring.md` — view-tool limitation documented**: column/filter/sort edits on
+  an **existing** view internally delete-and-re-add display components and die on the AI-tools
+  DELETE guard; create-time columns and scalar-prop updates work — route such edits to the
+  platform UI.
+- **`bsjs-development.md` — the "### Endpoint" section now matches the real Response API**:
+  `B.net.request` / `B.net.response` (no bare `request`/`response` globals), fluent method setters
+  (`status(400).contentType(...)` — the Response object has no settable properties),
+  `optParameter(name).orElse(...)` for request params, and callback-form `stream(out => …)` (it
+  returns void, never a writable). The section previously contradicted
+  `reference/endpoint-output-channel.md`; the two now agree, with the reference file as the
+  output-channel source of truth.
+
 ## [plugin 0.14.0] — 2026-07-23
 
 Closes the feedback loop: when an AI.List feedback task is **closed**, the reporter now receives an

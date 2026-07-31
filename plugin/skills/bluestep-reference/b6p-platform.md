@@ -12,6 +12,7 @@ Platform orientation plus the workflow reference for sync, lifecycle, and the b6
 - [Workspace model](#workspace-model)
 - [Data hierarchy](#data-hierarchy)
 - [Script types](#script-types)
+- [Anonymous access — two independent grants](#anonymous-access--two-independent-grants)
 - [b6p CLI workflow](#b6p-cli-workflow)
 - [Sync metadata](#sync-metadata)
 - [Files Claude must never edit](#files-claude-must-never-edit)
@@ -44,7 +45,7 @@ The workspace is a **local copy** of components that live on the BlueStep platfo
 
 - New B6P components (MergeReport, Endpoint, Formula) are created **on the platform**, never locally.
 - Inside an existing component, creating new `.ts` files locally is fine — they ship to the platform on `push`.
-- The platform handles compilation. Local `tsc` is forbidden (enforced by hook).
+- Compilation happens at **publish/snapshot** time, never locally — local `tsc` is forbidden (enforced by hook), and a plain push does not compile at all.
 
 ## Data hierarchy
 
@@ -79,6 +80,29 @@ OnDemand formulas execute on the **task pod**, making them appropriate for heavy
 
 **Do not use OnDemand on a user's synchronous wait path.** The platform's scheduler queues the formula and starts it "as soon as possible," but that incurs a ~5 second delay before execution begins. For user-facing create or update flows where latency matters, use a synchronous task-pod **Endpoint** instead. See `bsjs-development.md` → "OnDemand / Field Formula" for code patterns.
 
+## Anonymous access — two independent grants
+
+Serving anything to an **unauthenticated visitor** needs **two independent grants**, and they are
+easy to miss because failing either produces a different symptom:
+
+- **"Everyone: Reader" on the ENDPOINT** — grants execute.
+- **"Everyone: Relate Author" on the FORM** — grants create.
+
+Both are required for an anonymous write. **Anonymous writes need NO elevated script authority**
+(verified live) — the natural assumption is the opposite, and an elevated-authority fallback is
+expensive to build for nothing.
+
+The diagnostic cleanly separates the two failure modes:
+
+| Response | Meaning |
+| --- | --- |
+| `403` | existing alias, no permission — fix the grants above |
+| `500` Error | unknown alias — wrong path, the endpoint was never reached |
+
+For the unauthenticated-fallback *behavior* on an endpoint (clean `401` vs a JSON-breaking `302`
+login redirect via "Request HTTP authentication"), see `reference/session-cookie-forwarding.md` —
+that setting is adjacent to, but distinct from, the grants themselves.
+
 ## b6p CLI workflow
 
 `b6p` is a standalone binary on the system `PATH` (the b6p-cli standalone artifact, installed separately from this tooling). Invoke it directly — no `npx`, no devDependency, no `npm install`. The shape is:
@@ -110,7 +134,7 @@ Options:
 A successful first pull:
 
 - Creates the `U######/` folder (if not present) and the `<ComponentName>/` subfolder under it
-- Populates `draft/scripts/`, `draft/info/`, and (in older modules) `draft/objects/`
+- Populates `draft/scripts/` and (in older modules) `draft/objects/`; `draft/info/` is **omitted for most components** — its absence is normal, not a broken pull
 - Populates `declarations/` with the platform-generated `.d.ts` files, including `declarations/index.d.ts` (field/query/form declarations)
 - Records the component's sync metadata (WebDAV id, file hashes, script key) so future pulls/pushes can resolve it
 
@@ -124,7 +148,7 @@ The cleanest way to push an already-pulled component is `--file`, which lets the
 b6p push --file "U######/<Component>/draft/scripts/app.ts"
 ```
 
-Any file inside the component works as the `--file` argument; the CLI walks up to find the component root and looks up its recorded sync metadata. Same per-file integrity check applies — only changed files are uploaded. The platform compiles after receiving the push.
+Any file inside the component works as the `--file` argument; the CLI walks up to find the component root and looks up its recorded sync metadata. Same per-file integrity check applies — only changed files are uploaded. A plain push uploads the draft source **as-is** — it does **not** compile and does **not** change the live version. Only a **publish/snapshot** (`b6p push --snapshot --message "…"`) runs the TypeScript build and ships the compiled `app.js`.
 
 ### Fallback: VS Code extension
 
@@ -159,7 +183,7 @@ Before referencing a query/form/field in code:
 
 If N components all need the same new field, each one needs its own import-config update on the platform and a separate pull.
 
-Hallucinated names pass local edits but fail on platform compile after push.
+Hallucinated names pass local edits but fail at compile when the component is published (snapshot).
 
 ## When the CLI fails
 

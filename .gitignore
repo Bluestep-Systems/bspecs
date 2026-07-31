@@ -10,6 +10,7 @@ build/
 # reference files, skills, and the ADRs under docs/decisions/. NOTE: specs committed before this
 # rule was added stay tracked until removed with `git rm --cached`.
 .claude/specs/
+.claude/quick-tasks/
 # Disposable experiment workspaces (vite-merge-report-test etc.) — nested projects with
 # their own git repos and pulled reference components; never ship with the plugin.
 experiments/

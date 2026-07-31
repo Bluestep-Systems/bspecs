@@ -36,7 +36,7 @@ The commenter and reviewer are **on-demand only** — suggested at the `/spec-ex
 
 ### (c) The implementer never runs `tsc`
 
-The scaffolded `CLAUDE.md` critical rule "NEVER run `tsc` locally" (hook-enforced by `block-tsc.sh`) is authoritative for the bspecs `/b6p-push` flow; the platform compiles on push and `ide_diagnostics` (PostToolUse hook) catch errors as you edit. The `instructions/conventions/snapshot-integrity` rule that says "ALWAYS run `tsc`" describes Brandon's personal `push.js --snapshot` workflow, which is **not** the scaffolded flow — so it does not apply to the implementer. The implementer verifies via diagnostics, not compilation.
+The scaffolded `CLAUDE.md` critical rule "NEVER run `tsc` locally" (hook-enforced by `block-tsc.sh`) is authoritative for the bspecs `/b6p-push` flow; compilation happens at publish/snapshot (a plain push does not compile — corrected 0.13.0/0.15.0) and `ide_diagnostics` (PostToolUse hook) catch errors as you edit. The `instructions/conventions/snapshot-integrity` rule that says "ALWAYS run `tsc`" describes Brandon's personal `push.js --snapshot` workflow, which is **not** the scaffolded flow — so it does not apply to the implementer. The implementer verifies via diagnostics, not compilation.
 
 ## Options considered
 

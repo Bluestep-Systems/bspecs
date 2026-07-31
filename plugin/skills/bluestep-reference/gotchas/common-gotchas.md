@@ -84,6 +84,15 @@ import lodash from 'lodash';
 
 → tsconfig and Graal compatibility: [bsjs-development](../bsjs-development.md#typescript-configuration--graal-compatibility).
 
+## Option matching across fields
+
+Option-list items can have **no export values** — a list can carry only ids and display names.
+Matching two fields on the same option list by `exportValue()` then silently fails open:
+`'' === ''` matches everything, so a per-option lookup pairs nothing (or the wrong thing) while the
+default path still works. **Match by `displayName()` (or the option's id), not `exportValue()`**,
+unless export values are known to be populated for that list. (MCP-created/edited option lists
+lacking export values is a platform-side gap, tracked separately.)
+
 ## Error handling
 
 Always catch errors and surface a user-friendly message rather than letting the failure propagate silently.

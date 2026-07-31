@@ -19,6 +19,9 @@ for the "why two models" rationale.
   nothing to install, no off-platform toolchain. See
   [merge report static index](merge-report-static-index.md) and
   [single script](../conventions/single-script.md).
+- **Git site (`/spa/`) — a third hosting model, no MergeReport at all**: the SPA lives in a GitHub
+  repo served directly under `/spa/` on the site's own domain (the repo is the deploy artifact).
+  See [git site spa](git-site-spa.md).
 
 The two are distinct architectures with different toolchains and failure modes — pick one, don't mix.
 `single-script.md`'s rule (only root `static/script.ts` compiles) does **not** apply to a Vite bundle,

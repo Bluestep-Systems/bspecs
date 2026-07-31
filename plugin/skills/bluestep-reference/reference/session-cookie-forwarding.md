@@ -26,6 +26,6 @@ req.doRequest();
 
 **Diagnostic shortcut:** dump `B.net.request.optHeader("Cookie")` and iterate `B.net.request.headerNames()` to see what's actually in the inbound request. Sets the baseline before chasing a phantom auth design.
 
-**Endpoint perms:** the target endpoint should have "Request HTTP authentication (Use only for robots)" selected for the unauthenticated-fallback behavior, so unauthenticated callers get a clean 401 rather than a 302 login redirect (which breaks JSON responses).
+**Endpoint perms:** the target endpoint should have "Request HTTP authentication (Use only for robots)" selected for the unauthenticated-fallback behavior, so unauthenticated callers get a clean 401 rather than a 302 login redirect (which breaks JSON responses). For the *grants* that make anonymous access work at all (Everyone: Reader on the endpoint + Everyone: Relate Author on the form, and the 403-vs-500 diagnostic), see `b6p-platform.md` → "Anonymous access — two independent grants".
 
 **Caveat — session re-entrancy:** Tomcat by default serializes per-session HTTP access. The inbound request holds the user's session; the loopback enters with the same session. If it hangs ~30s and times out, this is the cause — won't show up as auth failure. Fix is to either redesign without loopback or set `<Manager pathname=""/>` / equivalent session-concurrency config (not Claude-accessible — BlueStep platform config).
