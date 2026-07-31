@@ -66,6 +66,17 @@ the same triage land in this block before release.
   one-field-one-entry (batch via GraphQL aliases); prefer `relateQuery` over a stored `List` query
   — the only paged, filterable path (cross-links the new MEFR-read gotcha for creating that view
   safely). Plus sibling-tool argument-name gotchas.
+- **Template-literal safety hardened** (`conventions/ts-in-template-literal.md` + the
+  `b6p-task-implementer` agent): a backtick or unintended `${` anywhere inside the `B.out`
+  literal — **including inside comments** — closes/interpolates the literal, misparses the rest of
+  the file, and still ships (emit continues through errors, so a snapshot prints "complete" with
+  broken output). Added to the leak list, the how-to-apply rules, and the quick-lint (which now
+  scans comment contents); the implementer agent now treats a stray backtick/`${` as a
+  return-blocking error.
+- **Known authoring quirks grew a sixth bullet**: SIMPLE signature fields render blank without a
+  Right Label — always pass `rightLabel` when creating them via MCP.
+- **`gotchas/common-gotchas.md` — option matching across fields**: match by `displayName()` or
+  option id, not `exportValue()` — lists can carry no export values, and `'' === ''` fails open.
 - **Compile-on-push correction finished** (started in 0.13.0 on `b6p-push/SKILL.md`): all five
   remaining "the platform compiles on push" claims in `b6p-platform.md` and `bsjs-development.md`
   now draw the plain-push vs publish/snapshot distinction — a plain push uploads source as-is and

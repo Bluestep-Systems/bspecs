@@ -261,6 +261,10 @@ server-side later — verify against the org you're on if a bullet seems stale.
   naming the **ENGINEER ENDPOINT** custom privilege when the `b6pt_` token lacks it. FORMULA and
   MERGE_REPORT authoring/wiring on the same token are unaffected. Route: when the token is
   non-engineer, hand **all** endpoint work (create + wire) back to the platform UI; do not retry.
+- **A SIGNATURE field with `signatureFormatType: SIMPLE` renders BLANK unless its Right Label is
+  set** — and the `field`/`form` tools do not require it, so an MCP-created signature silently
+  doesn't render until a Right Label is added in the UI. Workaround: **always pass `rightLabel`**
+  when creating SIMPLE signature fields via MCP.
 
 ## See also
 

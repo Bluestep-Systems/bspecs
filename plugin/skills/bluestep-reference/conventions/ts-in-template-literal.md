@@ -24,8 +24,15 @@ Use plain ES2015+ JavaScript only inside the template literal. The TypeScript co
 - `as` casts: `(x as any).foo` → invalid here.
 - Generics: `Foo<T>` → parsed as a `<` comparison, then garbage.
 - `interface`/`enum` declarations.
+- **A backtick or `${` anywhere inside the literal — INCLUDING inside `//` or `/* */` comments.**
+  A stray backtick closes the literal early and TypeScript misparses the rest of the **file**
+  (a cascade of bogus diagnostics — `"," expected`, `Cannot find name 'B'` — far from the real
+  cause); an unintended `${` interpolates server-side where you meant literal text. Shipped in
+  practice: comments quoting words in backticks inside the client literal broke the transpile,
+  and `b6p push --snapshot` still printed "Snapshot complete" (emit continues through errors),
+  deploying a broken `app.js`.
 
-**Symptom:** the dashboard sits forever on the initial "Loading…" because the bootstrap script never executes. `tsc` passes clean because the *source* file's TS is valid. No console error from the fetch — it never started.
+**Symptom:** the dashboard sits forever on the initial "Loading…" because the bootstrap script never executes. `tsc` passes clean because the *source* file's TS is valid. No console error from the fetch — it never started. For the stray-backtick variant, the tell is instead a **diagnostic cascade in the source file** whose first error sits at (or just after) the literal.
 
 **How to apply:** When writing or editing the `B.out` template-literal block, keep the inline `<script>` JS-only — type your helper functions and outer code in TS all you want:
 
@@ -33,14 +40,19 @@ Use plain ES2015+ JavaScript only inside the template literal. The TypeScript co
 - No `as Type` casts.
 - No `interface`/`enum`/`type` declarations.
 - Use `var` (or `let`/`const`) without type info.
+- **Zero backticks inside the literal — comments included** (quote words in comments with single
+  quotes, never backticks), and every `${` must be an **intentional server-side interpolation**;
+  a `${` inside a comment is always a bug.
 - Be especially careful when porting helper code that was originally TS.
 
-Quick lint after big edits:
+Quick lint after big edits (scan **comment contents** too, not just code):
 
 ```js
-const inner = txt.slice(txt.indexOf('B.out = `'), txt.lastIndexOf('`;'));
-[...inner.matchAll(/\b(var|let|const)\s+\w+\s*:\s*[A-Za-z\[\]<>{}|]+\s*=/g)];
-// empty = clean; any match = a TS leak in the inline script
+const inner = txt.slice(txt.indexOf('B.out = `') + 9, txt.lastIndexOf('`;'));
+[...inner.matchAll(/\b(var|let|const)\s+\w+\s*:\s*[A-Za-z\[\]<>{}|]+\s*=/g)]; // TS leaks
+[...inner.matchAll(/`/g)];                                                   // stray backticks — ALWAYS a bug
+[...inner.matchAll(/\/\/[^\n]*(?:`|\$\{)|\/\*[\s\S]*?(?:`|\$\{)[\s\S]*?\*\//g)]; // ` or ${ in comments
+// all empty = clean; any match = fix before pushing
 ```
 
 Seen in practice on a dashboard merge report: a `var parts: string[] = [];` in inlined Gantt code froze the entire dashboard.
