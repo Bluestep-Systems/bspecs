@@ -44,6 +44,13 @@ the same triage land in this block before release.
   on the endpoint (execute) + Everyone: Relate Author on the form (create), both required for an
   anonymous write; anonymous writes need no elevated script authority; and the 403 (permission) vs
   500 (unknown alias) diagnostic. Cross-linked with `reference/session-cookie-forwarding.md`.
+- **New `reference/git-site-spa.md`** — documents the second SPA hosting model (a Git site serving
+  a GitHub repo under `/spa/` on its own domain), previously covered nowhere: the five UI-only
+  config fields, save-is-the-redeploy (+ webhook auto-deploy scoped to the configured ref, Pull
+  button, no-rollback-UI), deep-link fallback, relative Vite base, the absolute-vs-relative
+  `/b/<alias>` fetch rule, and the CORS-blocked cross-origin embedding variant with its verified
+  same-origin proxy fix. Indexed in `SKILL.md` so the choice between the two hosting models is
+  visible at index level.
 - **Compile-on-push correction finished** (started in 0.13.0 on `b6p-push/SKILL.md`): all five
   remaining "the platform compiles on push" claims in `b6p-platform.md` and `bsjs-development.md`
   now draw the plain-push vs publish/snapshot distinction — a plain push uploads source as-is and
