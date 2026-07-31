@@ -1,5 +1,5 @@
 ---
-description: "The single shared procedure for performing a [PLATFORM] authoring/wiring op via the bundled platform-gateway MCP — connection-check (are the gateway tools live? fix = enable the bluestep-tools plugin + set $B6PT_TOKEN + restart) → resolve the target org to a U-number (user-supplied U-number → available_tenants map → unlisted ≠ unreachable, ask/derive) → map op to an inner tool (optional op: hint), using list_org_tools for schemas → approval echo of the concrete invoke_org_tool call (org + inner tool + args) → execute via invoke_org_tool → declaration read-back via invoke_org_tool(tool:get_script_declarations) → idempotency detect-and-skip → destructive-tool discipline, plus the supported tool set. This flow is the source of truth: /spec-execute, /quick-task, and free conversation all follow steps 2–6; only the trigger (step 1) and bookkeeping (step 7) differ. Load when about to add an import (query/form/field) to a script or create a form/field/option-list/view/record-type via the gateway MCP."
+description: "The single shared procedure for performing a [PLATFORM] authoring/wiring op via the bundled platform-gateway MCP — connection-check (are the gateway tools live? fix = enable the bluestep-tools plugin + set $B6PT_TOKEN + restart) → resolve the target org to a U-number (user-supplied U-number → available_tenants map → unlisted ≠ unreachable, ask/derive) → map op to an inner tool (optional op: hint), using list_org_tools for schemas → approval echo of the concrete invoke_org_tool call (org + inner tool + args) → execute via invoke_org_tool → declaration read-back via invoke_org_tool(tool:get_script_declarations) → idempotency detect-and-skip → destructive-tool discipline, plus the supported tool set. This flow is the source of truth: /spec-execute, /quick-task, and free conversation all follow steps 2–6; only the trigger (step 1) and bookkeeping (step 7) differ. Load when about to add an import (query/form/field/MEFR) to a script or create a form/field/option-list/view/record-type/MEFR (create_mefr) via the gateway MCP."
 ---
 
 # MCP `[PLATFORM]` authoring / wiring procedure
@@ -221,8 +221,9 @@ tools, not a fixed inventory.
 
 **Read-only discovery / validation**
 - `list_applicable_forms`, `list_applicable_fields`, `list_field_access`, `describe_form`, `list_forms`,
-  `list_option_lists`, `list_views`, `list_record_types`, `get_form`, `get_view`, `get_option_list`,
-  `get_record_type`, `lookup_script_by_name`, `list_script_scope`
+  `list_available_forms`, `list_option_lists`, `list_views`, `list_record_types`, `list_folders`,
+  `get_form`, `get_view`, `get_option_list`, `get_record_type`, `lookup_script_by_name`,
+  `list_script_scope`
 
 **Declaration read-back**
 - `get_script_declarations`

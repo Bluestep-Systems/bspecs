@@ -6,6 +6,36 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.15.0] — unreleased
+
+Reference-docs release batching the fixes from the 2026-07 `ai-plugin` feedback triage. The
+`mcp-platform-authoring` convention is overhauled from five feedback items, with its central claim
+**re-verified live on a playground org (2026-07-31)** before rewriting. Further quick-task fixes from
+the same triage land in this block before release.
+
+### Changed — bluestep-reference skill
+
+- **`conventions/mcp-platform-authoring.md` — MEFR imports are now MCP-authorable.** The old
+  "add_forms cannot wire a MEFR / route to the UI" limitation prohibited a path that works. Replaced
+  with the live-verified query-group recipe (`create_mefr` → `add_queries` with the MEFR's topId as
+  the group → `add_forms` with the same `groupId` → `add_field_access` per field → declaration
+  read-back), documenting all three failure modes: no-`groupId` silent no-op (`formsAdded: 0`),
+  plain-List-view loud rejection, and base-form-topId typedoc exclusion. `create_mefr` added to the
+  schema-authoring tool list and the skill description.
+- **New "Known authoring quirks" subsection** — dated, workaround-first bullets for observed gateway
+  behaviors (platform fixes tracked separately): `form` CREATE mishandling `singleEntry`/
+  `userUpdateable` (untrustworthy echo; CREATE-then-UPDATE, verify via `list_available_forms`);
+  TEXT/MEMO requiring an explicit format type on CREATE; `record_type` producing an orphaned
+  category; MCP-created fields lacking a script-facing FID (`readonly null:` keys — UI-only fix);
+  END_POINT creation **and** wiring gated by the ENGINEER ENDPOINT privilege (hand back to the UI).
+- **Declaration read-back hardened (step 6)** — now mandatory after any op a `[CODE]` task builds
+  on and accessor-name-specific: wiring success is not proof, and a `null`/blank property key means
+  stop and hand back. The Safety section notes "global-super" does not cover END_POINT authoring.
+- **`bsjs-development.md` — both query-import binding shapes documented**: named-query imports bind
+  `B.queries.X`; query-group imports bind a bare global const named after the group (reaching for
+  `B.queries.<name>` on a group import returns `undefined`). Check `declarations/index.d.ts`.
+- `list_available_forms` and `list_folders` added to the read-only tool catalogue.
+
 ## [plugin 0.14.0] — 2026-07-23
 
 Closes the feedback loop: when an AI.List feedback task is **closed**, the reporter now receives an
