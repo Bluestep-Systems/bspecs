@@ -40,6 +40,10 @@ the same triage land in this block before release.
   `M/D/YYYY h:mmAM` and reject ISO 8601 (also closes `date-format.md`'s "unverified" datetime note
   with the observed form); stored dates use a 0-indexed month (6 = July); and
   `ZonedDateTime.toString()` is not browser-parseable ISO 8601 — emit `.toInstant().toString()`.
+- **`b6p-platform.md` — new "Anonymous access — two independent grants" section**: Everyone: Reader
+  on the endpoint (execute) + Everyone: Relate Author on the form (create), both required for an
+  anonymous write; anonymous writes need no elevated script authority; and the 403 (permission) vs
+  500 (unknown alias) diagnostic. Cross-linked with `reference/session-cookie-forwarding.md`.
 - **Compile-on-push correction finished** (started in 0.13.0 on `b6p-push/SKILL.md`): all five
   remaining "the platform compiles on push" claims in `b6p-platform.md` and `bsjs-development.md`
   now draw the plain-push vs publish/snapshot distinction — a plain push uploads source as-is and

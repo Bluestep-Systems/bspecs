@@ -12,6 +12,7 @@ Platform orientation plus the workflow reference for sync, lifecycle, and the b6
 - [Workspace model](#workspace-model)
 - [Data hierarchy](#data-hierarchy)
 - [Script types](#script-types)
+- [Anonymous access — two independent grants](#anonymous-access--two-independent-grants)
 - [b6p CLI workflow](#b6p-cli-workflow)
 - [Sync metadata](#sync-metadata)
 - [Files Claude must never edit](#files-claude-must-never-edit)
@@ -78,6 +79,29 @@ Queries, scripts, and permissions are scoped per Unit by default. A local projec
 OnDemand formulas execute on the **task pod**, making them appropriate for heavy or long-running work that should not run on a production pod. They are a good fit for async, background, or batch tasks.
 
 **Do not use OnDemand on a user's synchronous wait path.** The platform's scheduler queues the formula and starts it "as soon as possible," but that incurs a ~5 second delay before execution begins. For user-facing create or update flows where latency matters, use a synchronous task-pod **Endpoint** instead. See `bsjs-development.md` → "OnDemand / Field Formula" for code patterns.
+
+## Anonymous access — two independent grants
+
+Serving anything to an **unauthenticated visitor** needs **two independent grants**, and they are
+easy to miss because failing either produces a different symptom:
+
+- **"Everyone: Reader" on the ENDPOINT** — grants execute.
+- **"Everyone: Relate Author" on the FORM** — grants create.
+
+Both are required for an anonymous write. **Anonymous writes need NO elevated script authority**
+(verified live) — the natural assumption is the opposite, and an elevated-authority fallback is
+expensive to build for nothing.
+
+The diagnostic cleanly separates the two failure modes:
+
+| Response | Meaning |
+| --- | --- |
+| `403` | existing alias, no permission — fix the grants above |
+| `500` Error | unknown alias — wrong path, the endpoint was never reached |
+
+For the unauthenticated-fallback *behavior* on an endpoint (clean `401` vs a JSON-breaking `302`
+login redirect via "Request HTTP authentication"), see `reference/session-cookie-forwarding.md` —
+that setting is adjacent to, but distinct from, the grants themselves.
 
 ## b6p CLI workflow
 
