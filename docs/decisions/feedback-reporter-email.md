@@ -1,6 +1,6 @@
 # ADR: Close-out notifications email the feedback reporter, worded by a resolution field
 
-**Status:** Accepted (2026-07-23). Amends [`feedback-intake-bluehq-endpoint.md`](feedback-intake-bluehq-endpoint.md) (reporter identity: optional → **required**).
+**Status:** Accepted (2026-07-23). Amends [`feedback-intake-bluehq-endpoint.md`](feedback-intake-bluehq-endpoint.md) (reporter identity: optional → **required**). Amended 2026-07-31: multi-reporter support + email-silent `duplicate` closes (see the amendment section at the end).
 
 **Date:** 2026-07-23
 
@@ -39,6 +39,32 @@ A plain "your item was closed" email would mislead: on AI.List, *Closed* can mea
 - **Every terminal webhook outcome returns 200** (including skips and the unconfigured-secret state) so ClickUp's failing-delivery auto-disable never trips on expected no-ops.
 - **The endpoint remains platform-resident** (no committed in-repo copy), per the intake ADR; source is edited via a gitignored `b6p`-pulled working copy and shipped with publish snapshots.
 - **Two release mechanics, as usual:** the skill change ships on the plugin **0.14.0** version bump; this ADR and the setup-doc extension ship on merge to `main`; the endpoint itself shipped via `b6p push --snapshot` (three snapshots, 2026-07-23) independent of both.
+
+## Amendment (2026-07-31): multiple reporters per task, and `duplicate` closes go email-silent
+
+Dedup surfaced the gap: consolidating a duplicate report into a surviving task either lost the
+duplicate's reporter from the loop (a ClickUp merge deletes the source task — no close event, no
+email, ever) or sent them a "this was consolidated" interim email that is not the resolution they
+need (the resolution is the "update your plugin now" signal). Two changes, both in the close hook:
+
+- **The `reporter` field is now a `;`-separated list** of `Name <email>` values. Intake still
+  writes exactly one; extra reporters are appended manually during dedup consolidation. On a real
+  close, the endpoint sends **one email per reporter**, each with its own greeting — same body from
+  the existing ladder. The sent-marker comment lists every address actually reached; a partial send
+  failure is surfaced (`ok:false` + `warning`) without blocking the other recipients, and re-close
+  does not retry failed recipients (the marker stays the dedupe key). A single-value field behaves
+  exactly as before.
+- **`resolution = duplicate` sends no email.** The endpoint posts a once-only carry-over marker
+  comment (`🔇 Duplicate close — no email sent`, third distinct prefix) instead. The dedup
+  procedure is: copy the duplicate's unique content onto the survivor (comment), link the tasks,
+  **append the duplicate's reporter to the survivor's `reporter` field**, then close the duplicate
+  as `duplicate`. Everyone on the survivor's field gets the real resolution email when it ships.
+  The `duplicate` wording tiers stay in the code (test mode can still exercise them) but are
+  unreachable on the live path.
+
+Rejected alternative: emailing dupe reporters "tracked elsewhere, follow the link" at
+consolidation time — an actionless interim notification; the reporter only needs the final
+outcome, which the multi-reporter field now guarantees they get.
 
 ## References
 
