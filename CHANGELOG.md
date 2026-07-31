@@ -59,6 +59,13 @@ the same triage land in this block before release.
   `[PLATFORM]` procedure's Idempotency step and its MEFR-recipe reuse check); and `relateQuery`
   cannot execute an EntityList — use a `List` view for data reads. Includes the working recipe and
   the note that `formRows` ignores `limit`/`offset` and carries no field values.
+- **New `reference/mcp-read-multi-entry-forms.md`** — the read-path decision tree for multi-entry
+  form data over the gateway MCP (knowledge that cost a fresh session ~15 discovery calls):
+  `form_entry` READ resolves to `NEW_MULTI` and can't enumerate; `formRows` ignores
+  `limit`/`offset`, returns XMLEncoder blobs and times out on huge forms; `fieldData` is
+  one-field-one-entry (batch via GraphQL aliases); prefer `relateQuery` over a stored `List` query
+  — the only paged, filterable path (cross-links the new MEFR-read gotcha for creating that view
+  safely). Plus sibling-tool argument-name gotchas.
 - **Compile-on-push correction finished** (started in 0.13.0 on `b6p-push/SKILL.md`): all five
   remaining "the platform compiles on push" claims in `b6p-platform.md` and `bsjs-development.md`
   now draw the plain-push vs publish/snapshot distinction — a plain push uploads source as-is and
