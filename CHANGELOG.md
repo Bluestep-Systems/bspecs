@@ -6,12 +6,12 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
-## [plugin 0.15.0] — unreleased
+## [plugin 0.15.0] — 2026-07-31
 
-Reference-docs release batching the fixes from the 2026-07 `ai-plugin` feedback triage. The
-`mcp-platform-authoring` convention is overhauled from five feedback items, with its central claim
-**re-verified live on a playground org (2026-07-31)** before rewriting. Further quick-task fixes from
-the same triage land in this block before release.
+Reference-docs release batching the fixes from the 2026-07 `ai-plugin` feedback triage — one spec
+(the `mcp-platform-authoring` overhaul, its central claim **re-verified live on a playground org
+2026-07-31** before rewriting) plus eight quick-tasks, shipped as a single release so feedback
+reporters get one close-out wave.
 
 ### Changed — bluestep-reference skill
 
