@@ -52,8 +52,14 @@ Read the `draft/README.md` of each component this feature will touch (see `CLAUD
    - For `[CODE]`: reference specific file paths (e.g. `U######/IntakeForm/draft/scripts/validate.ts`). When a `[CODE]` task reads an imported field, **name which query/record it reads the field through** (e.g. "read `end_time` via `appointments` (`Record_appointments`)"), so the scope is verifiable against `declarations/`.
    - For `[PLATFORM]`: describe the artifact (e.g. "Create field `end_time` on form `Appointment`"). For an **import** item (query/form/field), **state its scope explicitly** — either "current record" (valid **only** if the component has a primary form / record type attached) or the exact named query/queries it is imported on. Never write a bare "add the X import." See the `bluestep-reference` skill's `import-scope.md` (`${CLAUDE_PLUGIN_ROOT}/skills/bluestep-reference/reference/import-scope.md`) for current-record-vs-named-query scoping and the every-reachable-query rule.
    - NOT involve running `tsc`, editing `declarations/`, or creating B6P components locally
-6. **Fill in the `## Deployment` section** at the bottom: list every component whose `[CODE]` tasks touched it. One push per component.
-7. **STOP. Ask the user to approve tasks before implementation begins.**
+6. **Tag a `[CODE]` task `[mechanical]` only when it qualifies.** The tag goes right after the `[CODE]` prefix (e.g. `**7. [CODE] [mechanical]** Wire component #4 the same way as task 3 — files: …`). A task qualifies **only when all of these hold:**
+   - It repeats a pattern already proven by an **earlier task in the same spec** (or an explicitly named pilot) — the first instance of any pattern is never tagged.
+   - It makes **no new design decisions** and adds **no new imports or schema** — pure copy-adapt-verify.
+   - It is `[CODE]`-only. `[PLATFORM]` tasks run in the main session, so the tag never applies to them.
+
+   `/spec-execute` maps the tag to a cheaper model tier when delegating, so the user's tasks-phase review is the approval gate for that cheaper tier — adding or removing `[mechanical]` tags is part of reviewing tasks.md. When in doubt, leave the tag off; an untagged task just runs on the session model.
+7. **Fill in the `## Deployment` section** at the bottom: list every component whose `[CODE]` tasks touched it. One push per component.
+8. **STOP. Ask the user to approve tasks before implementation begins.**
 
 ## After approval
 

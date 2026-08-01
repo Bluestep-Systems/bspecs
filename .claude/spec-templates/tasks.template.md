@@ -9,6 +9,7 @@ Each task must reference specific file paths and be small enough to ship as one 
 - [ ] **1.** [Short description] — files: `src/scaffold.js`
 - [ ] **2.** [Short description] — files: `templates/claude/skills/<name>/SKILL.md`
 - [ ] **3.** [Short description] — files: `CLAUDE.md`, `CHANGELOG.md`
+- [ ] **4. [mechanical]** [Repeat of a pattern a task above already proved, e.g. "Wire skill #2 the same way as task 2" — never on a pattern's first instance] — files: `plugin/skills/<name2>/SKILL.md`
 
 (Repeat as needed. Order tasks so a dependent task comes after the one it depends on.)
 

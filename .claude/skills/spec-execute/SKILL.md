@@ -20,15 +20,20 @@ description: Execute one task from a feature spec. By default delegates implemen
 4. **Implement exactly one task.** No scope creep — touch only the files the task references, do not start the next task, apply the conventions in `CLAUDE.md` (template variables, `.template` stripping, English-only committed files, single source of truth / `index.md` sync).
 
    **Default — delegate to the `spec-task-implementer` subagent:**
+   - **Pick the model for this launch:**
+     - Task line tagged `[mechanical]` → spawn with the cheapest tier (the generic alias `haiku`) via the Task/Agent tool's per-launch `model` parameter. That parameter overrides the agent file's `model:` frontmatter and the inherit default.
+     - Untagged task → pass no `model`; the subagent inherits the session model.
+     - **Escalation:** if a cheap-tier run ends with `Error`-severity diagnostics it couldn't clear, a failed verify, or a "Flags for the human" that signals it was out of its depth → re-run the same task **once** with no override (session model). Never mark `[x]` from the failed run; never retry the cheap tier in a loop. Report the escalation at the STOP (step 8).
+     - **Momentum:** after an escalation, treat the remaining `[mechanical]` tasks of the *same repeated pattern* with suspicion — if the pattern itself proved harder than tagged, drop the tag in tasks.md (with a note) rather than escalating N more times. Report the un-tagging at the STOP (step 8) — it edits the user-approved tasks.md.
    - Spawn the `spec-task-implementer` subagent (via the Task/Agent tool) and give it the feature name and this task number. It reads the spec and only the files the task references in its **own** context, implements the one task, and returns a structured summary — keeping that bulk out of this session.
    - When it returns, show the user its summary and the **git diff** of what changed (`git diff` / `git status` for the touched files) so the change is reviewable here.
    - The subagent does **not** mark the checkbox or chain other agents — the steps below (verify, mark, docs sync, STOP) stay in this session.
 
-   **`--inline` — implement here:** do the edits directly in this session (the prior behavior), then continue to step 5.
+   **`--inline` — implement here:** do the edits directly in this session (the prior behavior), then continue to step 5. No subagent is spawned, so no model override applies.
 5. **Verify the change.** This repo has no test suite — verify manually per `CLAUDE.md`. On the default path, also weigh anything the subagent listed under **Flags for the human** (its edits trigger the same `ide_diagnostics` you check below):
    - For CLI/scaffold logic: run `node cli.js -v`, `node cli.js -h`, or a scaffold into a scratch dir and inspect the generated tree.
    - For template/skill/doc edits: re-read the produced file and confirm it's well-formed.
-   - Check the most recent `ide_diagnostics` blocks for any `Error` in a file this task touched. If present, **STOP**, fix, and re-verify before marking done. `Warning`/`Information` can be ignored unless they point to a real problem.
+   - Check the most recent `ide_diagnostics` blocks for any `Error` in a file this task touched. If present, **STOP** — if this was a `[mechanical]` cheap-tier run, escalate per step 4 (one re-run at the session model) instead of patching here; otherwise fix and re-verify before marking done. `Warning`/`Information` can be ignored unless they point to a real problem.
 6. **Mark the task done:** update `.claude/specs/<feature>/tasks.md` — change `[ ]` to `[x]` for the completed task.
 7. **Keep docs in sync.** If this task changed behavior described in `CLAUDE.md` or `README.md`, or completed a `TODO.md` item, update them in the same change. If an instruction file was added under `templates/claude/instructions/`, confirm it has a matching `index.md` entry.
 8. **STOP.** Tell the user the task is done and to review and approve before running the next one. Present the next command on its own line as a **fenced code block** — with `<feature>` and `<N+1>` filled in with the real values, e.g.

@@ -1,6 +1,6 @@
 # ADR: BlueStep subagents and delegated `/spec-execute`
 
-**Status:** Accepted
+**Status:** Accepted. **Amended 2026-07-31**: model-selection policy for delegated runs — a cheap-tier frontmatter default on `b6p-commenter`, a per-launch override in `/spec-execute` keyed on the `[mechanical]` tag, and two deliberate keep-inheriting calls (see the amendment section at the end).
 
 **Date:** 2026-06-19
 
@@ -56,6 +56,25 @@ The scaffolded `CLAUDE.md` critical rule "NEVER run `tsc` locally" (hook-enforce
 - **Less intermediate visibility on delegated tasks** — the user sees a summary + diff, not the step-by-step. The diff at the STOP is the source of truth, and `--inline` exists when the user wants to watch the work.
 - **Subagent invocation portability** across CLI/IDE surfaces is verified manually (no test suite); the skill instructs the main agent to spawn the implementer via the Task/Agent tool.
 - **This repo's own `/spec-execute` intentionally does not get the BlueStep implementer** (it is a Node CLI with no `b6p` components). A `TODO.md` item proposes the same delegate-to-subagent pattern with a generic implementer for this repo separately.
+
+## Amendment (2026-07-31): model selection for delegated runs
+
+The original decision left every subagent inheriting the session model — often the most expensive tier — with no way to route a mechanical repeat task to a cheaper one. The `model-selection-guidance` spec (ClickUp 86bb2utj6 / bspecs#43) added a policy of **three levers, smallest blast radius first**:
+
+1. **Frontmatter default, only where failure is cheap and visible.** `b6p-commenter` (`plugin/agents/b6p-commenter.md`) carries `model: haiku`. It writes a README from code it reads — no compile risk, no logic edits (its own prompt forbids them), and its output is reviewed at the STOP anyway; worst case is a mediocre README caught on review.
+2. **Per-launch override in `/spec-execute`, keyed on the `[mechanical]` tag.** A `[mechanical]`-tagged task spawns `b6p-task-implementer` with the cheapest tier as a per-launch `model` param (which takes precedence over frontmatter/inherit); untagged tasks inherit the session model. The routing, escalation, and momentum rules — cheap failure → one re-run at the session model, never `[x]` from a failed cheap run, un-tag a pattern that proved harder than tagged — live in `plugin/skills/spec-execute/SKILL.md`, which owns that procedure (no-duplication invariant; this ADR records only the decision).
+3. **The tag is assigned at planning time.** `/spec-create` (`plugin/skills/spec-create/SKILL.md`) defines what qualifies as `[mechanical]` — a repeat of a pattern already proven in the same spec, no new design decisions, `[CODE]`-only — so the routing call is made once, under human review of tasks.md, not re-derived per task.
+
+Two **deliberate keep-inheriting** calls, recorded so the silence is never re-litigated:
+
+- **`b6p-code-review` keeps inheriting (no `model:` key).** Review exists to catch what the implementer missed; defaulting it down undercuts its purpose exactly when it matters. The orchestrator may pass a per-launch downgrade for a low-stakes review — an option, not a default.
+- **`b6p-task-implementer` keeps inheriting.** It writes code with compile risk on a platform with no local compile; the session model stays the default. Cheaper runs happen only via the explicit `[mechanical]` per-launch override above — never as a frontmatter default.
+
+**Durability rule:** shipped files name tiers by stable generic alias (`haiku`), never dated model ids that rot when the lineup changes.
+
+Supervision is unchanged by all of this: the `ide_diagnostics` check, diff review, and STOP happen in the main session regardless of tier — the model choice changes cost, never the safety gates.
+
+Spec: `.claude/specs/model-selection-guidance/{requirements,design,tasks}.md`.
 
 ## References
 
