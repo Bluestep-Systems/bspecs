@@ -22,3 +22,7 @@ platform/U*/
 *.pem
 *.key
 *.pkcs8
+# Local work tracking only — not versioned. NOTE: TODO.md/DONE.md were tracked before this
+# rule was added; they were untracked with `git rm --cached` (local copies kept).
+/TODO.md
+/DONE.md
