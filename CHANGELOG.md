@@ -6,7 +6,7 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
-## [plugin 0.16.0] — unreleased
+## [plugin 0.16.0] — 2026-07-31
 
 Adds **model-selection guidance for delegated spec execution**: cheap, mechanical work now runs on
 the cheapest model tier instead of inheriting the (typically expensive) session model. Three levers,
