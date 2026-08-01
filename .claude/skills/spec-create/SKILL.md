@@ -54,8 +54,13 @@ Report any match — already planned, already shipped, or covered by an ADR — 
    - Reference specific file paths (e.g. `src/scaffold.js`, `templates/claude/skills/.../SKILL.md`).
    - Be small enough that one `/spec-execute` invocation covers exactly one.
 3. **Order matters** — a task that depends on another must come after it.
-4. Note in the tasks any docs that must stay in sync: `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `TODO.md`. When adding a file under `templates/claude/instructions/`, remember to add a matching `index.md` entry (Claude-only — there is no `.github/` mirror to keep in sync).
-5. **STOP. Ask the user to approve tasks before implementation begins.**
+4. **Tag a task `[mechanical]` only when it qualifies.** The tag goes right after the task number (e.g. `**4. [mechanical]** Wire skill #2 the same way as task 2 — files: …`). A task qualifies **only when all of these hold:**
+   - It repeats a pattern already proven by an **earlier task in the same spec** (or an explicitly named pilot) — the first instance of any pattern is never tagged.
+   - It makes **no new design decisions** and adds **no new structure or dependencies** — pure copy-adapt-verify.
+
+   `/spec-execute` maps the tag to a cheaper model tier when delegating, so the user's tasks-phase review is the approval gate for that cheaper tier — adding or removing `[mechanical]` tags is part of reviewing tasks.md. When in doubt, leave the tag off; an untagged task just runs on the session model.
+5. Note in the tasks any docs that must stay in sync: `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `TODO.md`. When adding a file under `templates/claude/instructions/`, remember to add a matching `index.md` entry (Claude-only — there is no `.github/` mirror to keep in sync).
+6. **STOP. Ask the user to approve tasks before implementation begins.**
 
 ## After approval
 

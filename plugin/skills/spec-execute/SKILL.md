@@ -26,14 +26,19 @@ description: Execute one task from a feature spec. By default delegates implemen
 5. **Implement exactly one task.** No scope creep — touch only the files the task references, do not start the next task, apply rules from `CLAUDE.md` (no `tsc`, no `.writable()`, no editing `declarations/`, no new components locally).
 
    **Default — delegate to the `b6p-task-implementer` subagent:**
+   - **Pick the model for this launch:**
+     - Task line tagged `[mechanical]` → spawn with the cheapest tier (the generic alias `haiku`) via the Task/Agent tool's per-launch `model` parameter. That parameter overrides the agent file's `model:` frontmatter and the inherit default.
+     - Untagged task → pass no `model`; the subagent inherits the session model.
+     - **Escalation:** if a cheap-tier run ends with `Error`-severity diagnostics it couldn't clear, a failed verify, or a "Flags for the human" that signals it was out of its depth → re-run the same task **once** with no override (session model). Never mark `[x]` from the failed run; never retry the cheap tier in a loop. Report the escalation at the STOP (step 8).
+     - **Momentum:** after an escalation, treat the remaining `[mechanical]` tasks of the *same repeated pattern* with suspicion — if the pattern itself proved harder than tagged, drop the tag in tasks.md (with a note) rather than escalating N more times. Report the un-tagging at the STOP (step 8) — it edits the user-approved tasks.md.
    - Spawn the `b6p-task-implementer` subagent (via the Task/Agent tool) and give it the feature name and this task number. It reads the spec, the component's `declarations/`, and the relevant `bluestep-reference` skill files in its **own** context, implements the one task, and returns a structured summary — keeping that bulk out of this session.
    - When it returns, show the user its summary and the **git diff** of what changed (`git diff` / `git status` for the touched files) so the change is reviewable here.
    - The subagent does **not** mark the checkbox or chain other agents — the steps below (verify, mark, README sync, STOP) stay in this session.
 
-   **`--inline` — implement here:** do the edits directly in this session (the prior behavior), then continue to 5.5.
+   **`--inline` — implement here:** do the edits directly in this session (the prior behavior), then continue to 5.5. No subagent is spawned, so no model override applies.
 
 5.5. **Verify IDE diagnostics.** Before marking the task done, check the most recent `ide_diagnostics` blocks injected by the `PostToolUse` hook after each `Edit`/`Write` (these fire on the subagent's edits too). Also weigh anything the subagent listed under **Flags for the human**.
-   - If any entry has `severity: "Error"` in a file this task touched: **STOP.** Fix the error and re-verify before continuing. Do not mark the task done with pending errors.
+   - If any entry has `severity: "Error"` in a file this task touched: **STOP.** If this was a `[mechanical]` cheap-tier run, escalate per step 5 (one re-run at the session model) instead of patching here; otherwise fix the error and re-verify before continuing. Do not mark the task done with pending errors.
    - `Warning` / `Information` entries (including spell-checker) can be ignored **unless** they point to a real problem — review before dismissing.
    - If an `Error` cannot be reproduced or looks like a false positive, report it explicitly: "The IDE reports `<error>` but I think it's a false positive because `<reason>` — should I continue?"
 6. **Mark the task done:** update `.claude/specs/<feature>/tasks.md` — change `[ ]` to `[x]` for the completed task.

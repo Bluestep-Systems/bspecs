@@ -6,6 +6,50 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.16.0] — unreleased
+
+Adds **model-selection guidance for delegated spec execution**: cheap, mechanical work now runs on
+the cheapest model tier instead of inheriting the (typically expensive) session model. Three levers,
+each owned by the layer that has the context to pull it: a `[mechanical]` task tag defined at
+spec-creation time, a per-launch model override applied by `/spec-execute` when it delegates, and
+`model:` frontmatter on the one always-cheap agent. Generic aliases only (`haiku`), never dated
+model ids, so the files stay correct as models rotate. Resolves ClickUp
+[86bb2utj6](https://app.clickup.com/t/86bb2utj6) and
+[#43](https://github.com/Bluestep-Systems/bspecs/issues/43). Existing installs receive this on
+`/plugin marketplace update` / `autoUpdate` only because the version changed.
+
+### Changed — skills
+
+- **`spec-execute`** — step 5 gained a "Pick the model for this launch" block: a `[mechanical]`-
+  tagged task launches `b6p-task-implementer` with a per-launch `model: haiku` override (the Agent
+  tool's `model` param, which wins over frontmatter); untagged tasks inherit the session model.
+  Two guard rails: the **escalation rule** (a failed/incomplete cheap run gets exactly one re-run
+  at the session model — never `[x]` from the failed run, never a cheap-tier retry loop, and the
+  escalation is reported at the STOP) and the **momentum rule** (after an escalation, un-tag the
+  remaining `[mechanical]` tasks of the same pattern with a note — the pattern proved not
+  mechanical). Explicit `--inline` means no override: in-session work runs on the session model.
+- **`spec-create`** — the tasks phase defines the `[mechanical]` tag: `[CODE]`-only, reserved for
+  repeats of a pattern proven earlier in the same spec (or a named pilot), no new design decisions,
+  no new imports/schema, and the first instance of a pattern is never tagged. The tasks-phase
+  review is the approval gate for the tags. `spec-templates/tasks.template.md` shows one tagged
+  example line.
+
+### Changed — agents
+
+- **`b6p-commenter`** — now carries `model: haiku` frontmatter (verified against current Claude
+  Code docs: generic alias accepted, absent means `inherit`, per-launch `model` param overrides
+  it). It's the docs-from-code agent — lowest-risk delegate, always cheap by default.
+
+### Docs (ship on merge to `main`)
+
+- **`docs/decisions/subagents-and-delegated-execution.md`** — amended 2026-07-31 with the model
+  policy: the three-lever design, the two deliberate keep-inheriting calls (`b6p-code-review` and
+  `b6p-task-implementer` stay on the session model — their frontmatter gets no `model:` line), and
+  the generic-alias durability rule (shipped files use `haiku`-style aliases, never dated ids).
+- **Repo-local dev mirrors** (`.claude/skills/spec-execute`, `.claude/skills/spec-create`,
+  `.claude/spec-templates/tasks.template.md`) updated to match — repo-side, not plugin content,
+  but part of this change.
+
 ## [plugin 0.15.0] — 2026-07-31
 
 Reference-docs release batching the fixes from the 2026-07 `ai-plugin` feedback triage — one spec

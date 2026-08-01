@@ -2,6 +2,7 @@
 name: b6p-commenter
 description: Documents a BlueStep component by filling in its draft/README.md from the code — Overview, Type, Fields used, Behavior, External dependencies, and known gotchas. Invoke after a coding task is done (typically suggested at a /spec-execute STOP), before code review. Edits the README ONLY — never adds inline comments, JSDoc, or changes logic.
 tools: Read, Edit, Write, Glob, Grep
+model: haiku
 ---
 
 # b6p Commenter

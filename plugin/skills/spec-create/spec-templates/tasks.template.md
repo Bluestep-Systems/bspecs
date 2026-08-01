@@ -23,6 +23,7 @@ If the design says "no platform-side changes needed," every task is `[CODE]` and
 - [ ] **1. [PLATFORM]** [Short description, e.g. "Create field `appointment_end_time` on form `Appointment`"] [optional `op:` hint, e.g. `op: add_queries(script=…, query=allStaff)`]
 - [ ] **2. [CODE]** [Short description] — files: `U######/Component/draft/scripts/foo.ts`
 - [ ] **3. [CODE]** [Short description] — files: `U######/Component/draft/scripts/bar.ts`, `U######/Component/draft/README.md`
+- [ ] **4. [CODE] [mechanical]** [Repeat of a pattern a task above already proved, e.g. "Wire component #2 the same way as task 3" — `[mechanical]` only on `[CODE]` tasks, never on a pattern's first instance] — files: `U######/Component2/draft/scripts/bar.ts`
 
 (Repeat as needed. Keep tasks small enough that one `/spec-execute` invocation covers exactly one.)
 
