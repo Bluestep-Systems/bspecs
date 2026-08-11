@@ -35,6 +35,15 @@ date this block when it ships.
 
 ### Changed — bluestep-reference skill
 
+- **New gotcha: `third-party-lib-type-noise.md`.** A MergeReport whose `static/script.ts` uses a
+  runtime-loaded client library (e.g. GridStack) with no local type declarations prints a wall of
+  advisory `Cannot find name` / cascading `never` diagnostics on every push. The gotcha documents
+  why (no ambient types for the browser global), that it's harmless (the platform compile is
+  authoritative), the masking risk (the wall can bury a genuine new diagnostic), and the one-time
+  ambient `.d.ts` stub silencer. The `b6p-push` skill's report step gained a one-sentence pointer
+  so the noise is no longer surfaced as compile failure. Resolves ClickUp
+  [86bb9xypw](https://app.clickup.com/t/86bb9xypw); the bonus ask (CLI output labeling the
+  pre-push build advisory) stays tracked for b6p-cli.
 - **`runFormula()` documented as the OnDemand trigger.** The reference documented OnDemand
   execution characteristics (task pod, ~5 s scheduler-queue delay) but never stated that
   RelateScript's `runFormula()` / `System.runFormula("name")` is what *triggers* an OnDemand
