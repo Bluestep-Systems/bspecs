@@ -6,6 +6,25 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.17.0] — Unreleased
+
+Reference-docs release batching the fixes from the 2026-08 `ai-plugin` feedback triage
+(see `TODO.md` for the queued items). Entries accumulate here until the release is cut;
+date this block when it ships.
+
+### Changed — bluestep-reference skill
+
+- **`runFormula()` documented as the OnDemand trigger.** The reference documented OnDemand
+  execution characteristics (task pod, ~5 s scheduler-queue delay) but never stated that
+  RelateScript's `runFormula()` / `System.runFormula("name")` is what *triggers* an OnDemand
+  formula — leading the AI to assume the call might run the target inline within the save and
+  wrongly caution "make sure the call is async". Now pinned down in two places: a "How an
+  OnDemand is triggered" paragraph in `bsjs-development.md` → "OnDemand / Field Formula"
+  (above the existing `runFormula()` example), and a bullet in `reference/api-patterns.md` →
+  "Committing Writes and Formula Triggers", cross-linked to the execution notes. Dispatch is
+  detached from the save transaction; the caller needs no async handling. Resolves ClickUp
+  [86bb99c64](https://app.clickup.com/t/86bb99c64).
+
 ## [plugin 0.16.0] — 2026-07-31
 
 Adds **model-selection guidance for delegated spec execution**: cheap, mechanical work now runs on

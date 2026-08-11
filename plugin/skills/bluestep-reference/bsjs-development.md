@@ -309,6 +309,8 @@ OnDemand formulas run on the **task pod** — well-suited for heavy or long-runn
 
 **Critical latency caveat:** OnDemand has a ~5 second scheduler-queue delay before it starts, by design. This is fine for background / async work. It is the wrong tool for anything on a user's synchronous wait path — if a user is waiting for a response, an OnDemand hop adds ~5 s of irreducible latency before the work even begins. Prefer a synchronous task-pod **Endpoint** for user-facing create or update paths.
 
+**How an OnDemand is triggered:** in RelateScript, `runFormula()` / `System.runFormula("name")` IS the trigger — calling it dispatches the named OnDemand formula to the task pod, detached from the current save transaction (and subject to the ~5 s queue delay above). Confirmed by the platform team. The call never executes the target inline/synchronously within the save, so there is nothing to "make async" on the caller's side — do not caution users about it.
+
 ```typescript
 export function run(): void {
   const result = runFormula();
