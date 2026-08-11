@@ -6,6 +6,38 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.18.0] — Unreleased
+
+Second batch of fixes from the 2026-08 `ai-plugin` feedback triage. Entries accumulate here
+until the release is cut; date this block when it ships.
+
+### Changed — bluestep-reference skill
+
+- **Query/view creation: display columns are a CREATE-time requirement, and creation needs a
+  completeness read-back.** The `conventions/mcp-platform-authoring.md` `view` bullet framed the
+  display-column rule as an aside about *editing* existing views, so a query created with no columns —
+  incomplete, renders blank for a human — read as acceptable. Rewritten affirmatively as a property of
+  **creation on any path** (the `view` inner tool, `create_mefr`, and raw
+  `createRelateQuery` / `graphql_mutation` alike), with the reason kept: column edits on an existing
+  view die on the AI-tools DELETE guard, so the only recovery is manual platform-UI work and create
+  time is the only cheap moment. Adds the copy-pasteable `displayColumns` shape and the full
+  `DisplayColumnInput` field list (`formId`, `fieldId`, `sortOrder`, `width`, `wordWrap`,
+  `sortDirection`, `detailReportId`). A new **create-time completeness read-back** section mirrors the
+  mandatory declaration read-back of step 6: after creating a query, assert non-empty `displayFields`
+  and `searchComponents` plus the expected `recordTypes` and `mustHave`/`mustNotHaveCategories` —
+  three of the four silently come back empty, `createRelateQuery` stores neither category set (and a
+  follow-up `updateRelateQuery` drops them too unless `recordTypes` rides along in the same mutation),
+  and an empty `searchComponents` on a permission query **fails open**. Step 6 and the manifest line
+  gained pointers. Resolves ClickUp [86bb8xe8d](https://app.clickup.com/t/86bb8xe8d).
+- **Permission queries: exactly one display column, the staff `Full Name` field.**
+  `reference/staff-query-permission-gating.md` covered only the runtime side; it gained an
+  **authoring-side** section carrying the verified invariant (8-for-8 across the Reader/Author/Editor
+  triads, the Standard Report gates, and the boolean variant), the warning to resolve the field **by
+  name** because topIds are per-org and never portable, the create-time column shape, and the
+  fails-open read-back assertion — cross-linked both ways with the authoring convention. Manifest line
+  and frontmatter description gained the authoring hook so the file loads when a permission query is
+  being *created*, not only consumed. Same ClickUp task.
+
 ## [plugin 0.17.0] — 2026-08-11
 
 First batch of fixes from the 2026-08 `ai-plugin` feedback triage: two reference additions
