@@ -6,6 +6,23 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.18.0] — Unreleased
+
+Second batch of fixes from the 2026-08 `ai-plugin` feedback triage. Entries accumulate here
+until the release is cut; date this block when it ships.
+
+### Changed — bluestep-reference skill
+
+- **`B.text` (Bluestep.Text) string helpers documented.** New "Text Utilities" section in
+  `reference/api-patterns.md`: `toPlainText` (formatted HTML → plain text, the BSJS twin of
+  Relate's), `escapeHtml`, `escapeJs`, `escapeJsInTagAttribute`, `xxsSafe`, and
+  `messageFormat(format, zone?)` — with the rule to reach for these before hand-rolling escaping
+  or regex, and cross-links to the existing `toBaseUrl64` and `B.text.csv` mentions. The
+  manifest line gained task-shaped hooks ("string escaping/HTML-stripping", "escaping output")
+  so the file loads when the AI is about to hand-roll. Resolves ClickUp
+  [86bbc8gya](https://app.clickup.com/t/86bbc8gya) /
+  [#78](https://github.com/Bluestep-Systems/bspecs/issues/78).
+
 ## [plugin 0.17.0] — 2026-08-11
 
 First batch of fixes from the 2026-08 `ai-plugin` feedback triage: two reference additions

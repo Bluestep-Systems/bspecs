@@ -17,6 +17,7 @@
 - [Endpoint (Maestro) Request/Response](#endpoint-maestro-requestresponse)
 - [Merge Report Client-Side Integration](#merge-report-client-side-integration)
 - [Base64 and Byte Arrays](#base64-and-byte-arrays)
+- [Text Utilities (B.text)](#text-utilities-btext)
 - [User and Session Access](#user-and-session-access)
 - [Type Safety](#type-safety)
 
@@ -448,6 +449,30 @@ const wrong = B.toBaseUrl64(bytes);
 ```
 
 `B.io.toInputStream(input, charset?)` and `B.io.toByteArray(inputStream)` are the canonical pair — don't reach for `Java.type('java.lang.String')...getBytes(...)`.
+
+## Text Utilities (B.text)
+
+`B.text` (Bluestep.Text) provides platform-native string utilities mirroring RelateScript,
+reachable from the merge-report/endpoint `B` object. **Reach for these before hand-rolling
+escaping or regex.**
+
+```typescript
+// Formatted HTML → plain text (BSJS twin of Relate's toPlainText).
+// Use to strip HTML from a formatted value before display.
+const plain = B.text.toPlainText(value);
+
+// Escaping for output contexts
+const safeHtml = B.text.escapeHtml(value);              // HTML body text
+const safeJs = B.text.escapeJs(value);                  // inside a JS string literal
+const safeAttr = B.text.escapeJsInTagAttribute(value);  // JS inside an HTML tag attribute
+const sanitized = B.text.xxsSafe(html);                 // sanitize HTML for safe output
+
+// MessageFormat-style formatting (optional time zone)
+const msg = B.text.messageFormat(format, zone);
+```
+
+`B.text` is also home to `toBaseUrl64` (see [Base64 and Byte Arrays](#base64-and-byte-arrays))
+and a `B.text.csv` alias (see [csv-parsing](csv-parsing.md)).
 
 ## User and Session Access
 
