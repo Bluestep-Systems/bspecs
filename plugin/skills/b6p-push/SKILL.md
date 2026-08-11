@@ -104,7 +104,7 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
 
 ### 5. Report
 
-- **Publish** runs the TypeScript build and ships the compiled output — surface any compile diagnostics the CLI reports. **Save draft only** does not compile at all.
+- **Publish** runs the TypeScript build and ships the compiled output — surface any compile diagnostics the CLI reports. **Save draft only** does not compile at all. Exception: `Cannot find name`/`never` walls about a third-party client-side global are advisory-only, not a failed push — detail: the `bluestep-reference` skill's `gotchas/third-party-lib-type-noise.md`.
 - If the user **published**, confirm the live version was updated and a restore point recorded (with the description used). If they **saved a draft only**, tell them plainly it is **not live yet** — they must publish to make it live.
 - Remind the user to verify behaviour on the platform itself.
 - If `draft/README.md` was modified locally, note that the platform now has the updated docs (useful for other devs pulling the same component).

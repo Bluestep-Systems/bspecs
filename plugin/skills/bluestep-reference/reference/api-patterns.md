@@ -367,6 +367,7 @@ entry.fields.completedAt.val(B.time.Instant.now().toEpochMilli());
 
 - **Form-attached formulas have NO `B.commit()`.** There `B` is `Bluestep.Relate.CurrentRecordB`, which does not extend `IsCommitable`; field writes auto-flush when the form save completes. (Cross-record writes need the target form configured writable in the platform form-import config — legacy modules declared `writable: true` in `objects/imports.ts`.)
 - **Endpoints, on-demand formulas, and scheduled formulas** — `B` IS `IsCommitable`; call `B.commit()` after writes.
+- **`runFormula()` is the OnDemand trigger.** In RelateScript, `runFormula()` / `System.runFormula("name")` dispatches the named OnDemand formula to the task pod, detached from the current save transaction — it does not run the target inline within the save, so the caller needs no async handling. Execution characteristics (task pod, ~5 s scheduler-queue delay) are in [bsjs-development.md](../bsjs-development.md) → "OnDemand / Field Formula".
 - **Gate on create vs edit** in a form-attached formula (`cur` is a `FormEntry`):
 
 ```typescript

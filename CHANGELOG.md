@@ -6,6 +6,55 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.17.0] — Unreleased
+
+Reference-docs release batching the fixes from the 2026-08 `ai-plugin` feedback triage
+(see `TODO.md` for the queued items). Entries accumulate here until the release is cut;
+date this block when it ships.
+
+### Added — hooks
+
+- **`block-inline-frontend.sh`** — a PreToolUse Edit/Write hook that blocks CSS/HTML dumps into a
+  component's `scripts/app.ts` when a sibling `static/` folder exists: incoming content containing
+  `<style>`, a `<link>` tag, or `<script src` is denied with a message routing CSS →
+  `static/styles.css`, markup → `static/index.html`, client JS → `static/script.ts`
+  (per `conventions/separate-files.md`, whose on-demand trigger repeatedly failed to fire when
+  *creating* a merge report from scratch). Components without a `static/` bundle are exempt, and a
+  user-approved exception is declared once with a `// b6p:allow-inline-frontend — <reason>` comment
+  in `app.ts` — visible in review and durable across pushes. Resolves the hook half of ClickUp
+  [86bb9tb41](https://app.clickup.com/t/86bb9tb41).
+
+### Changed — bluestep-init skill
+
+- **Scaffolded `CLAUDE.md` critical rule 6 strengthened.** The abstract "frontend lives in
+  `static/`, not `scripts/`" line now spells out the concrete prohibition (no `<style>` blocks,
+  markup dumps, or `<script src>` strings in `app.ts` template literals when `static/` exists),
+  applies it from the first line of a new merge report, and documents the hook enforcement plus
+  the `b6p:allow-inline-frontend` override marker. The always-on half of ClickUp
+  [86bb9tb41](https://app.clickup.com/t/86bb9tb41).
+
+### Changed — bluestep-reference skill
+
+- **New gotcha: `third-party-lib-type-noise.md`.** A MergeReport whose `static/script.ts` uses a
+  runtime-loaded client library (e.g. GridStack) with no local type declarations prints a wall of
+  advisory `Cannot find name` / cascading `never` diagnostics on every push. The gotcha documents
+  why (no ambient types for the browser global), that it's harmless (the platform compile is
+  authoritative), the masking risk (the wall can bury a genuine new diagnostic), and the one-time
+  ambient `.d.ts` stub silencer. The `b6p-push` skill's report step gained a one-sentence pointer
+  so the noise is no longer surfaced as compile failure. Resolves ClickUp
+  [86bb9xypw](https://app.clickup.com/t/86bb9xypw); the bonus ask (CLI output labeling the
+  pre-push build advisory) stays tracked for b6p-cli.
+- **`runFormula()` documented as the OnDemand trigger.** The reference documented OnDemand
+  execution characteristics (task pod, ~5 s scheduler-queue delay) but never stated that
+  RelateScript's `runFormula()` / `System.runFormula("name")` is what *triggers* an OnDemand
+  formula — leading the AI to assume the call might run the target inline within the save and
+  wrongly caution "make sure the call is async". Now pinned down in two places: a "How an
+  OnDemand is triggered" paragraph in `bsjs-development.md` → "OnDemand / Field Formula"
+  (above the existing `runFormula()` example), and a bullet in `reference/api-patterns.md` →
+  "Committing Writes and Formula Triggers", cross-linked to the execution notes. Dispatch is
+  detached from the save transaction; the caller needs no async handling. Resolves ClickUp
+  [86bb99c64](https://app.clickup.com/t/86bb99c64).
+
 ## [plugin 0.16.0] — 2026-07-31
 
 Adds **model-selection guidance for delegated spec execution**: cheap, mechanical work now runs on
