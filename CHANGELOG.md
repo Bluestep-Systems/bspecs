@@ -6,11 +6,11 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
-## [plugin 0.17.0] — Unreleased
+## [plugin 0.17.0] — 2026-08-11
 
-Reference-docs release batching the fixes from the 2026-08 `ai-plugin` feedback triage
-(see `TODO.md` for the queued items). Entries accumulate here until the release is cut;
-date this block when it ships.
+First batch of fixes from the 2026-08 `ai-plugin` feedback triage: two reference additions
+and a new guardrail hook. Resolves ClickUp 86bb99c64, 86bb9tb41, and 86bb9xypw. Existing
+installs receive this on `/plugin marketplace update` / `autoUpdate` because the version changed.
 
 ### Added — hooks
 
