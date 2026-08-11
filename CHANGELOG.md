@@ -12,6 +12,27 @@ Reference-docs release batching the fixes from the 2026-08 `ai-plugin` feedback 
 (see `TODO.md` for the queued items). Entries accumulate here until the release is cut;
 date this block when it ships.
 
+### Added — hooks
+
+- **`block-inline-frontend.sh`** — a PreToolUse Edit/Write hook that blocks CSS/HTML dumps into a
+  component's `scripts/app.ts` when a sibling `static/` folder exists: incoming content containing
+  `<style>`, a `<link>` tag, or `<script src` is denied with a message routing CSS →
+  `static/styles.css`, markup → `static/index.html`, client JS → `static/script.ts`
+  (per `conventions/separate-files.md`, whose on-demand trigger repeatedly failed to fire when
+  *creating* a merge report from scratch). Components without a `static/` bundle are exempt, and a
+  user-approved exception is declared once with a `// b6p:allow-inline-frontend — <reason>` comment
+  in `app.ts` — visible in review and durable across pushes. Resolves the hook half of ClickUp
+  [86bb9tb41](https://app.clickup.com/t/86bb9tb41).
+
+### Changed — bluestep-init skill
+
+- **Scaffolded `CLAUDE.md` critical rule 6 strengthened.** The abstract "frontend lives in
+  `static/`, not `scripts/`" line now spells out the concrete prohibition (no `<style>` blocks,
+  markup dumps, or `<script src>` strings in `app.ts` template literals when `static/` exists),
+  applies it from the first line of a new merge report, and documents the hook enforcement plus
+  the `b6p:allow-inline-frontend` override marker. The always-on half of ClickUp
+  [86bb9tb41](https://app.clickup.com/t/86bb9tb41).
+
 ### Changed — bluestep-reference skill
 
 - **`runFormula()` documented as the OnDemand trigger.** The reference documented OnDemand
