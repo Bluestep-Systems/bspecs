@@ -6,6 +6,44 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.18.0] — Unreleased
+
+Second batch of fixes from the 2026-08 `ai-plugin` feedback triage. Entries accumulate here
+until the release is cut; date this block when it ships.
+
+### Changed — bluestep-reference skill
+
+- **Endpoint authoring documented as a grantable prerequisite, not a dead end.** The END_POINT quirk in
+  `conventions/mcp-platform-authoring.md` told the AI to hand *all* endpoint work back to the platform UI,
+  so the ENGINEER ENDPOINT refusal read as permanent. It now carries the two invariants code investigation
+  established: the `You do not have Custom ENGINEER ENDPOINT privileges` failure on `create_script` means the
+  **calling token's subject lacks the endorsement**, the check fires **before persistence** (the tool
+  transaction rolls back, so nothing partial is left behind and an identical retry fails identically), and
+  the endorsement is **grantable via a global account** — a one-time setup step to surface, with the UI
+  hand-back as the fallback only when the grant will not happen. A note records that a pre-flight honest
+  error is being added server-side. The `add_field_access` entry in the supported-tool set gained the
+  matching caveat, so the wiring tools no longer read as unconditionally available on a BSJS endpoint.
+- **`lookup_script_by_name` misses are name mismatches first.** New quirk: the exact-name lane is
+  **case-sensitive** and matches the display name **literally**, and BSJS endpoints *are* searched on both
+  lanes — so a miss is not evidence the script type is unsupported. A half-failed creation can also show up
+  as a folder child while matching nothing by name. Rule: list the folder and compare exact display names
+  before concluding a script does not exist.
+- **Trust but verify booleans set at CREATE time.** New quirk pairing the existing
+  `form`-CREATE `singleEntry` / `userUpdateable` bullet: a CREATE response echo reports what the tool was
+  *asked* to do, never a read of what was stored, so a load-bearing boolean must be re-read with an
+  authoritative reader and corrected via UPDATE. The underlying flag-handling bug is being fixed
+  server-side; the read-back habit is durable regardless.
+- **New gotcha: nullable booleans.** `gotchas/common-gotchas.md` gained a section on the fact that an
+  untouched BlueStep boolean is `null`, not `false` — so `=== false` on an opt-out flag silently excludes
+  every record where the box was never ticked, and the short result is indistinguishable from "no matching
+  records". Rule with examples: `!== true` for opt-out flags, `=== true` for opt-in. The manifest line
+  gained the matching load hook.
+
+  All four resolve ClickUp [86bb9247d](https://app.clickup.com/t/86bb9247d). Two of the reported
+  behaviors were **refuted** by code investigation and are documented as the investigated reality
+  rather than the report: `create_script` does **not** persist the endpoint before the permission
+  failure, and `lookup_script_by_name` does **not** skip BSJS endpoints.
+
 ## [plugin 0.17.0] — 2026-08-11
 
 First batch of fixes from the 2026-08 `ai-plugin` feedback triage: two reference additions

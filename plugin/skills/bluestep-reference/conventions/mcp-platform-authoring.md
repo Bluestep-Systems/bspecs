@@ -183,6 +183,11 @@ tools, not a fixed inventory.
 **Wiring / imports**
 - `add_queries`, `add_forms`, `add_field_access`, `add_record_types`
 - destructive siblings: `remove_queries`, `remove_forms`, `remove_field_access`, `remove_record_types`
+- **Against a BSJS endpoint these are privilege-gated, not unsupported.** `add_field_access` (and the
+  `add_queries` / `add_forms` siblings) on an END_POINT script requires the **ENGINEER ENDPOINT** custom
+  privilege on the token's subject; without it the call fails cleanly and applies nothing. That privilege
+  is a **grantable one-time prerequisite** (a global account can grant it), not a permanent dead end —
+  see [Known authoring quirks](#known-authoring-quirks).
 
 > **MEFR imports — wire the MEFR as a query group** (verified live 2026-07-31). A multi-entry form
 > report (MEFR) **is** a CustomDBView, so it is imported as the query group itself. The working recipe:
@@ -242,7 +247,13 @@ server-side later — verify against the org you're on if a bullet seems stale.
   and the CREATE response echo **cannot be trusted**: it reports the flags it did *not* set.
   Workaround: CREATE, then a `form` **UPDATE** with the intended flags, then verify via
   **`list_available_forms`** — the authoritative entry-mode reader (`get_form` does not reliably
-  return the entry-mode flag).
+  return the entry-mode flag). (A server-side fix for the flag handling is in flight; the read-back
+  habit below outlives it.)
+- **Trust but verify every boolean you set at CREATE time.** A CREATE response echo is the tool's
+  account of what it *was asked* to do, not a read of what was stored, so a boolean in that echo is
+  **never authoritative**. Whenever a boolean flag is load-bearing (entry mode, updateability,
+  visibility), **re-read it with an authoritative reader** after the create and **correct it with an
+  UPDATE** if it disagrees — the same detect-and-correct shape as the declaration read-back in step 6.
 - **TEXT and MEMO fields require an explicit format type on CREATE** (e.g. `textFormatType: "NONE"`)
   even though the tool schema marks it optional — omitting it fails with a missing-type-id error (it
   is a serialization discriminator server-side).
@@ -255,12 +266,32 @@ server-side later — verify against the org you're on if a bullet seems stale.
   `list_applicable_fields`, and a `field` **UPDATE** with a clean name does **not** repair the
   identifier. Workaround: create script-addressable fields in the **platform UI** with the Formula ID
   set at creation time — the MCP `field` tool alone is not sufficient for a field code will read.
-- **END_POINT authoring is privilege-gated** — **both** creating an END_POINT script (`create_script`
-  with scriptType END_POINT) **and** wiring an existing endpoint's dependencies (`add_queries` /
-  `add_forms` / `add_field_access` against an END_POINT script) fail with a `RemoteSecurityException`
-  naming the **ENGINEER ENDPOINT** custom privilege when the `b6pt_` token lacks it. FORMULA and
-  MERGE_REPORT authoring/wiring on the same token are unaffected. Route: when the token is
-  non-engineer, hand **all** endpoint work (create + wire) back to the platform UI; do not retry.
+- **END_POINT authoring is privilege-gated — a grantable prerequisite, not a dead end.** **Both**
+  creating an END_POINT script (`create_script` with scriptType END_POINT) **and** wiring an existing
+  endpoint's dependencies (`add_queries` / `add_forms` / `add_field_access` against an END_POINT script)
+  fail with a `RemoteSecurityException` naming the **ENGINEER ENDPOINT** custom privilege when the
+  `b6pt_` token's subject lacks it — verbatim on create:
+  `You do not have Custom ENGINEER ENDPOINT privileges`. FORMULA and MERGE_REPORT authoring/wiring on
+  the same token are unaffected. Read that message as a **missing endorsement on the calling user**,
+  and treat these two facts as invariants:
+  - **Nothing was created.** The privilege check fires **before** persistence and the tool's
+    transaction rolls back, so the failure leaves no partial script behind. **Retrying the identical
+    call without a grant fails identically** — do not retry, and do not go hunting for a duplicate you
+    "might have" created.
+  - **The fix is a grant, not a permanent UI hand-back.** The ENDPOINT endorsement is grantable on the
+    token's subject via a global account. Route: surface the missing privilege to the user as a
+    one-time setup step; if it will not be granted, hand **all** endpoint work (create + wire) to the
+    platform UI for that session.
+
+  (A pre-flight, honest "you lack ENGINEER ENDPOINT" error ahead of the attempt is being added
+  server-side; the invariants above hold either way.)
+- **`lookup_script_by_name` misses are name mismatches far more often than missing scripts.** The
+  exact-name lane is **case-sensitive** and matches the script's **display name literally** — trailing
+  spaces, casing, and punctuation all count — and BSJS endpoints *are* searched, so a miss is not
+  evidence the script type is unsupported. A script whose creation half-failed can also appear as a
+  **folder child** in the folder readers (`get_folder` / `list_folders`) while matching nothing by
+  name. Rule: on a miss, **list the folder and compare exact display names** before concluding the
+  script does not exist; only then create.
 - **A SIGNATURE field with `signatureFormatType: SIMPLE` renders BLANK unless its Right Label is
   set** — and the `field`/`form` tools do not require it, so an MCP-created signature silently
   doesn't render until a Right Label is added in the UI. Workaround: **always pass `rightLabel`**
