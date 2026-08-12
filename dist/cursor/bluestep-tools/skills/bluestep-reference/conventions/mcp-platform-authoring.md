@@ -1,5 +1,5 @@
 ---
-description: "The single shared procedure for performing a [PLATFORM] authoring/wiring op via the bundled platform-gateway MCP — connection-check (are the gateway tools live? fix = enable the bluestep-tools plugin + set $B6PT_TOKEN + restart) → resolve the target org to a U-number (user-supplied U-number → available_tenants map → unlisted ≠ unreachable, ask/derive) → map op to an inner tool (optional op: hint), using list_org_tools for schemas → approval echo of the concrete invoke_org_tool call (org + inner tool + args) → execute via invoke_org_tool → declaration read-back via invoke_org_tool(tool:get_script_declarations) → idempotency detect-and-skip → destructive-tool discipline, plus the supported tool set. This flow is the source of truth: /spec-execute, /quick-task, and free conversation all follow steps 2–6; only the trigger (step 1) and bookkeeping (step 7) differ. Load when about to add an import (query/form/field/MEFR) to a script or create a form/field/option-list/view/record-type/MEFR (create_mefr) via the gateway MCP."
+description: "The single shared procedure for performing a [PLATFORM] authoring/wiring op via the bundled platform-gateway MCP — connection-check (are the gateway tools live? fix = enable the bluestep-tools plugin + set $B6PT_TOKEN + restart) → resolve the target org to a U-number (user-supplied U-number → available_tenants map → unlisted ≠ unreachable, ask/derive) → map op to an inner tool (optional op: hint), using list_org_tools for schemas → approval echo of the concrete invoke_org_tool call (org + inner tool + args) → execute via invoke_org_tool → declaration read-back via invoke_org_tool(tool:get_script_declarations) → idempotency detect-and-skip → destructive-tool discipline, plus the supported tool set, the create-time display-column requirement for queries/views (columns are unfixable afterwards — the DELETE guard), and the create-time completeness read-back (displayFields / searchComponents / recordTypes / categories all come back silently empty). This flow is the source of truth: /spec-execute, /quick-task, and free conversation all follow steps 2–6; only the trigger (step 1) and bookkeeping (step 7) differ. Load when about to add an import (query/form/field/MEFR) to a script or create a query/form/field/option-list/view/record-type/MEFR (create_mefr) via the gateway MCP, on any path including raw createRelateQuery / graphql_mutation."
 ---
 
 # MCP `[PLATFORM]` authoring / wiring procedure
@@ -133,6 +133,9 @@ immediately — no manual re-pull.
 - Prove-out bar is **"declarations sufficient to code against," not byte-parity** with `/b6p-pull`.
 - If the reduced declarations are insufficient, fall back to a CLI `/b6p-pull` for the full
   `declarations/` tree.
+- **If the op created a query or view**, the same "success ≠ done" rule applies to the object itself:
+  run the [create-time completeness read-back](#create-time-completeness-read-back-queries-and-views)
+  before reporting the task complete.
 - **`get_script_declarations` may be absent from a given org's toolset** (confirm via `list_org_tools`).
   When it is, the declaration read-back step is impossible — fall back to a `b6p pull` to refresh the
   script's `declarations/`. Treat `b6p pull` as the **norm** for declaration refresh wherever this tool is
@@ -221,13 +224,35 @@ tools, not a fixed inventory.
 - `form`, `field`, `option_list`, `view`, `record_type`
 - siblings: `create_option_list`, `option_list_item`, `option_group`, `batch_fields`, `create_mefr`
 
-> **`view` tool — column/filter/sort edits on an existing view fail.** Updating an **existing** view's
-> `displayColumns` / `filterColumns` / sort configuration internally deletes and re-adds display
-> components, so the call dies on the AI-tools DELETE guard, verbatim:
-> `SecurityException: AI tools are not permitted to perform DELETE operations`.
-> What **does** work: setting columns/filters/sort at **CREATE** time, and **scalar property** updates
-> on an existing view. So: get the columns right when creating the view; **route column/filter/sort
-> edits on existing views to the platform UI** (hand back, then continue).
+> **Display columns are part of CREATE, on every query/view creation path.** A query or view created
+> without display columns is **incomplete**: it matches records but renders **blank** for a human —
+> rows with no columns to show. Always pass `displayColumns` on **every** path that creates one — the
+> `view` inner tool, **`create_mefr`**, and a raw `createRelateQuery` / `graphql_mutation` alike. There
+> is no cheap second chance: **create time is the only cheap moment.**
+>
+> The reason is the DELETE guard. Updating an **existing** view's `displayColumns` / `filterColumns` /
+> sort configuration internally deletes and re-adds display components, so the call dies, verbatim:
+> `SecurityException: AI tools are not permitted to perform DELETE operations`. Nothing in the MCP tool
+> set can repair it — the **only** recovery is manual work in the platform UI.
+>
+> What **does** still work on an existing view: **scalar property** updates. So set columns / filters /
+> sort at CREATE, and **route column/filter/sort edits on existing views to the platform UI** (hand
+> back, then continue).
+>
+> The shape, copy-pasteable:
+>
+> ```
+> displayColumns: [{ formId: "<form topId>", fieldId: "<field topId>", sortOrder: 1 }]
+> ```
+>
+> Full `DisplayColumnInput` field list: `formId`, `fieldId`, `sortOrder`, `width`, `wordWrap`,
+> `sortDirection`, `detailReportId`. Resolve `formId` / `fieldId` **by name** through the read-only
+> discovery tools — topIds are **per-org** and never portable between orgs.
+>
+> Then **read the created query back** and prove it is complete — see
+> [Create-time completeness read-back](#create-time-completeness-read-back-queries-and-views). For a
+> permission/security query the column set is fixed and one column wide:
+> [reference/staff-query-permission-gating.md](../reference/staff-query-permission-gating.md).
 
 **Read-only discovery / validation**
 - `list_applicable_forms`, `list_applicable_fields`, `list_field_access`, `describe_form`, `list_forms`,
@@ -296,6 +321,31 @@ server-side later — verify against the org you're on if a bullet seems stale.
   set** — and the `field`/`form` tools do not require it, so an MCP-created signature silently
   doesn't render until a Right Label is added in the UI. Workaround: **always pass `rightLabel`**
   when creating SIMPLE signature fields via MCP.
+
+### Create-time completeness read-back (queries and views)
+
+The declaration read-back of step 6 has a twin for **query / view creation**, and it is **equally
+mandatory**: a create call's **success response is not proof the object is complete**. Several inputs are
+accepted, reported as success, and then **silently stored as empty**. After creating a query or view —
+on any path (`view`, `create_mefr`, `createRelateQuery`, `graphql_mutation`) — **read the object back**
+and assert all four:
+
+| Read back | Assert | Why it can be silently empty |
+| --- | --- | --- |
+| `displayFields` | non-empty | display columns are dropped unless passed at CREATE (above); a query with none renders **blank** |
+| `searchComponents` | non-empty | an empty criteria set **fails open** — the backing DSG matches **every** record that passes the category filter |
+| `recordTypes` | expected type(s) | categories are categories **of** a base record type; without it the filter has nothing to hang on |
+| `mustHaveCategories` / `mustNotHaveCategories` | expected sets | accepted on create, **stored neither** |
+
+The category trap in full: **`createRelateQuery` accepts `mustHaveCategories` / `mustNotHaveCategories`,
+returns success, and stores neither.** A follow-up `updateRelateQuery` **also** drops them **unless
+`recordTypes` is sent in the same mutation** — so the repair call must carry the record types alongside
+the categories, not the categories alone.
+
+The `searchComponents` one is a **security** failure, not a cosmetic one: an empty criteria set on a
+permission query does not deny, it **admits everyone** who clears the category filter. Never conclude a
+permission query works because the create returned success — assert the read-back, exactly as step 6
+requires for declarations.
 
 ## See also
 
