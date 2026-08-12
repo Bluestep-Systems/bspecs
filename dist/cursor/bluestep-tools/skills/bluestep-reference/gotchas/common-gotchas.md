@@ -93,6 +93,29 @@ default path still works. **Match by `displayName()` (or the option's id), not `
 unless export values are known to be populated for that list. (MCP-created/edited option lists
 lacking export values is a platform-side gap, tracked separately.)
 
+## Nullable booleans — an unticked box is `null`, not `false`
+
+A BlueStep boolean field that was **never touched** reads as `null`, not `false`. Only a box someone
+explicitly set to "no" reads as `false`. So `flag === false` tests "explicitly set to no", **not** "not
+yes" — and on an opt-out flag it silently excludes every record where the box was never ticked, which
+is usually the overwhelming majority. The filtered result comes back empty or short, indistinguishable
+from a legitimate "no matching records": there is no error to debug.
+
+```typescript
+// ❌ Wrong - drops every record whose box was never ticked
+if (rec.forms.prefs.fields.optOut.val() === false) { include(rec); }
+
+// ✅ Opt-out flag: anything that is not an explicit yes counts as in
+if (rec.forms.prefs.fields.optOut.val() !== true) { include(rec); }
+
+// ✅ Opt-in flag: only an explicit yes counts as in
+if (rec.forms.prefs.fields.consented.val() === true) { include(rec); }
+```
+
+Rule: **test opt-out flags with `!== true` and opt-in flags with `=== true`.** Never write `=== false`
+against a BlueStep boolean unless you genuinely mean "was explicitly set to no" and have accepted that
+untouched records fall outside the filter.
+
 ## Error handling
 
 Always catch errors and surface a user-friendly message rather than letting the failure propagate silently.
