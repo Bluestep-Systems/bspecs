@@ -9,7 +9,7 @@ A spec lives at `.claude/specs/<feature-name>/` and consists of three files: `re
 
 ## Prerequisite
 
-Read the `draft/README.md` of each component this feature will touch (see `CLAUDE.md` → "Module context — read scoped to the task"). Read only the relevant components' READMEs, not the whole workspace. Those READMEs are your baseline for what each component does today — design decisions in Phase 2 should reference that knowledge, not re-derive it. If a relevant module's README is missing, ask the user to `/b6p-pull` it (or scaffold the README) before continuing.
+Read the `draft/README.md` of each component this feature will touch (see `AGENTS.md` → "Module context — read scoped to the task"). Read only the relevant components' READMEs, not the whole workspace. Those READMEs are your baseline for what each component does today — design decisions in Phase 2 should reference that knowledge, not re-derive it. If a relevant module's README is missing, ask the user to `/b6p-pull` it (or scaffold the README) before continuing.
 
 ## Steps
 

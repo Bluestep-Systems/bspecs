@@ -6,6 +6,8 @@
 #          a smoke check: the CLI must start and print version/help, and a
 #          scratch scaffold must succeed. No secrets — the @bluestep-systems
 #          scope resolves from public npm via .npmrc.
+#          The cross-tool-drift job regenerates the committed Cursor/Codex
+#          output and fails if it doesn't match what's checked in.
 # ============================================================================
 
 name: CI
@@ -70,9 +72,57 @@ jobs:
           node -e "JSON.parse(require('fs').readFileSync('plugin/.claude-plugin/plugin.json','utf8')); console.log('plugin.json OK')"
         shell: bash
 
-  # Release gate: any PR that changes plugin/** must bump the plugin version, or
-  # installed users never receive the change (Claude Code skips an unchanged
-  # version on update). See the "Releasing" section of README.md.
+  # Drift gate: the Cursor/Codex output (dist/, .cursor-plugin/, .agents/) is
+  # generated from plugin/** and committed. Regenerate it and fail if the result
+  # differs from what's checked in — stale or hand-edited output can't merge.
+  cross-tool-drift:
+    name: Cross-tool output drift check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # The generator is dependency-free (plain Node ESM), so no npm ci needed.
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Regenerate cross-tool output
+        run: npm run gen
+
+      # Two checks: git diff catches changes to tracked files; git status
+      # catches brand-new generated files, which never show in git diff.
+      - name: Fail on drift
+        run: |
+          set -euo pipefail
+          GEN_PATHS="dist/ .cursor-plugin/ .agents/"
+
+          if ! git diff --exit-code -- $GEN_PATHS; then
+            echo "::error::Generated output is stale. Run 'npm run gen' and commit the result (dist/, .cursor-plugin/, .agents/)."
+            exit 1
+          fi
+
+          UNTRACKED="$(git status --porcelain -- $GEN_PATHS)"
+          if [ -n "$UNTRACKED" ]; then
+            echo "$UNTRACKED"
+            echo "::error::Generated output includes uncommitted files. Run 'npm run gen' and commit the result (dist/, .cursor-plugin/, .agents/)."
+            exit 1
+          fi
+          echo "Generated output matches plugin/**. OK."
+        shell: bash
+
+      # Structural self-test + Claude-ism denylist lint on the emitted trees.
+      - name: Run generator checks
+        run: npm run gen:check
+
+  # Release gate: any PR that changes plugin/** or tools/gen-cross-tool/** must
+  # bump the plugin version, or installed users never receive the change (all
+  # tools skip an unchanged version on update — an emitter-only fix still needs
+  # the bump so regenerated output ships). See the "Releasing" section of
+  # README.md.
   plugin-version-bump:
     name: Plugin version bump check
     runs-on: ubuntu-latest
@@ -84,7 +134,7 @@ jobs:
           fetch-depth: 0  # need base + head to compare the manifest across the PR
           persist-credentials: false
 
-      - name: Require a version bump when plugin/** changes
+      - name: Require a version bump when plugin/** or tools/gen-cross-tool/** changes
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -97,10 +147,13 @@ jobs:
           # gained after this branch was cut, misattributing them to the PR.
           MB="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
 
-          if git diff --name-only "$MB" "$HEAD_SHA" | grep -q '^plugin/'; then
-            echo "plugin/** changed in this PR — a version bump is required."
+          # Both paths gate the version: plugin/** is the shipped content, and
+          # tools/gen-cross-tool/** changes what dist/ output ships to
+          # Cursor/Codex installs (single shared version stream).
+          if git diff --name-only "$MB" "$HEAD_SHA" | grep -qE '^(plugin/|tools/gen-cross-tool/)'; then
+            echo "plugin/** or tools/gen-cross-tool/** changed in this PR — a version bump is required."
           else
-            echo "No plugin/** changes — version bump not required."
+            echo "No plugin/** or tools/gen-cross-tool/** changes — version bump not required."
             exit 0
           fi
 
@@ -120,7 +173,7 @@ jobs:
             exit 1
           fi
           if [ "$BASE_VER" = "$HEAD_VER" ]; then
-            echo "::error file=$MANIFEST::plugin/** changed but version is still $HEAD_VER. Bump it so installed users receive the update (see README 'Releasing')."
+            echo "::error file=$MANIFEST::plugin/** or tools/gen-cross-tool/** changed but version is still $HEAD_VER. Bump it so installed users receive the update (see README 'Releasing')."
             exit 1
           fi
           echo "Version bumped ${BASE_VER:-<none>} -> $HEAD_VER. OK."

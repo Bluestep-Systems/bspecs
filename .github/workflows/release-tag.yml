@@ -1,0 +1,111 @@
+# ============================================================================
+# bspecs Release tagging
+# ============================================================================
+# Purpose: On every push to main, read the plugin manifest version and, if the
+#          matching `plugin-v<version>` tag doesn't exist yet, create and push
+#          it — so merging a version-bump PR is the whole release step. See the
+#          "Releasing" section of README.md.
+#
+# Dual-path design (GITHUB_TOKEN caveat): tags pushed with the default
+# GITHUB_TOKEN do NOT trigger other workflows — GitHub's recursive-workflow
+# guard — so publish.yml's on:push:tags will never fire from this automation.
+# This workflow therefore also creates the GitHub Release right after pushing
+# the tag, mirroring publish.yml's release-creation command so both paths
+# produce the same Release shape. publish.yml stays untouched and still serves
+# the manual path: a human-pushed `plugin-vX.Y.Z` tag (pushed with the user's
+# own credentials) triggers it as before, and simply pre-empts this workflow
+# (the tag-exists check below makes that a clean no-op).
+#
+# Idempotent and race-safe: tag already exists → exit 0; a concurrent push of
+# the same tag is detected and treated as success. Never uses --force.
+# ============================================================================
+
+name: Release tag
+
+on:
+  push:
+    branches: [main]
+    # Deliberately NO paths filter on the manifest: this job is cheap, and a
+    # paths filter could skip tagging when the version-bump commit lands as
+    # part of a batch whose push event lists other files (merge commits can
+    # confuse paths filters). Running always + the tag-exists check is the
+    # simpler, safer idempotency mechanism.
+
+# The ONLY bspecs workflow with write access at the top level: it must push
+# the release tag and create the GitHub Release. Everything else in this repo
+# (ci.yml validation; publish.yml elevates per-job) stays read-only.
+permissions:
+  contents: write
+
+concurrency:
+  group: release-tag-${{ github.ref }}
+  cancel-in-progress: false  # Never cancel a half-done tag+release.
+
+jobs:
+  tag-and-release:
+    name: Tag plugin version and create Release
+    runs-on: ubuntu-latest
+    steps:
+      # Shallow checkout is enough: we tag the checked-out HEAD of main, and
+      # tag existence is checked against the remote via `git ls-remote --tags
+      # origin`, which needs no local history or fetched tags. Unlike the
+      # other workflows, credentials must persist so we can push the tag.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Tag plugin version and create Release if missing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          MANIFEST="plugin/.claude-plugin/plugin.json"
+
+          # Same fs.readFileSync pattern as ci.yml (no require() module cache).
+          VERSION="$(node -e "const fs=require('fs');try{process.stdout.write(JSON.parse(fs.readFileSync('$MANIFEST','utf8')).version||'')}catch(e){process.stdout.write('')}")"
+
+          # X.Y.Z, optionally with a pre-release suffix (publish.yml's tag
+          # glob accepts e.g. plugin-v1.2.3-rc.1, so this must too).
+          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error file=$MANIFEST::version '${VERSION:-<none>}' does not look like X.Y.Z — cannot tag"
+            exit 1
+          fi
+          TAG="plugin-v$VERSION"
+
+          # Idempotency gate: if the tag already exists on the remote (a
+          # previous run, or a manual push that triggered publish.yml), there
+          # is nothing to do.
+          if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
+            echo "Tag $TAG exists, nothing to do."
+            exit 0
+          fi
+
+          # Tag author: the github-actions bot.
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "bluestep-tools $VERSION"
+
+          # Never --force. If the push fails, re-check the remote: a
+          # concurrent push of the same tag (e.g. a manual release racing
+          # this run) is success, anything else is a real failure.
+          if ! git push origin "refs/tags/$TAG"; then
+            if [ -n "$(git ls-remote --tags origin "refs/tags/$TAG")" ]; then
+              echo "::notice::Tag $TAG was pushed concurrently — nothing to do."
+              exit 0
+            fi
+            echo "::error::Failed to push tag $TAG"
+            exit 1
+          fi
+          echo "Pushed tag $TAG."
+
+          # GITHUB_TOKEN-pushed tags don't trigger publish.yml (see header),
+          # so create the Release here. Mirrors publish.yml's exact command
+          # (including its exists-check) so both paths yield the same shape.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::notice::Release $TAG already exists — skipping create"
+          else
+            gh release create "$TAG" --verify-tag --generate-notes
+          fi
+        shell: bash

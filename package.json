@@ -12,7 +12,9 @@
     "templates/"
   ],
   "scripts": {
-    "start": "node cli.js"
+    "start": "node cli.js",
+    "gen": "node tools/gen-cross-tool/index.mjs",
+    "gen:check": "node tools/gen-cross-tool/index.mjs --check"
   },
   "dependencies": {
     "@clack/prompts": "^0.9.0"
