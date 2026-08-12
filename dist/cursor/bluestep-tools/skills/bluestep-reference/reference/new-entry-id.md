@@ -1,0 +1,30 @@
+---
+description: Pre-commit shortId() returns "0" (id.isValid() === false). Always commit BEFORE reading the id of a freshly-created entry.
+---
+**For a freshly-created MEF entry (`record.forms.X.newEntry()`), `entry.id().shortId()` returns `"0"` until `B.commit()` runs. Always commit before reading the id.**
+
+The B.d.ts is explicit: *"Check whether an Id is valid. New Ids with a shortId of 0 are not valid."* — i.e. `entry.id().isValid() === false` until commit assigns a real database id.
+
+```ts
+// ❌ WRONG — id is "0" here, not the real id
+const entry = record.forms.foo.newEntry();
+entry.fields.bar.val("baz");
+const id = entry.id().shortId();   // → "0"
+B.commit();
+return id;                          // sends "0" to caller; lookup later fails
+
+// ✅ RIGHT
+const entry = record.forms.foo.newEntry();
+entry.fields.bar.val("baz");
+B.commit();
+return entry.id().shortId();        // real id, e.g. "3610234"
+```
+
+For existing entries (looked up via `forEach` / `byId` / etc.), the id is already populated, so the order doesn't matter — but committing the field changes still needs to happen before the function returns.
+
+**Seen in practice on an audit-log endpoint.** Symptom: the handler returned `auditLogId: "0"` on every turn; the client sent `"0"` back on the next turn; server lookup found no match (real entries had real ids); fell through to `newEntry()` again — producing one audit-log row per turn instead of one per conversation. Fixed by moving `B.commit()` above the `entry.id().shortId()` read.
+
+**How to apply:**
+- When you need the id of a newly-created MEF entry, structure as: `newEntry()` → set fields → `B.commit()` → `entry.id().shortId()`.
+- If you build many new entries in a loop and need their ids, commit once at the end and only then iterate to read ids — or commit per-iteration if you need the ids interleaved with other writes.
+- For sanity check during dev, you can `if (!entry.id().isValid()) throw new Error(...)` after commit to catch a missed commit early.

@@ -1,0 +1,18 @@
+{
+  "name": "bluestep",
+  "interface": {
+    "displayName": "BlueStep Tools"
+  },
+  "plugins": [
+    {
+      "name": "bluestep-tools",
+      "source": {
+        "source": "local",
+        "path": "./dist/codex/bluestep-tools"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      }
+    }
+  ]
+}

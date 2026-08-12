@@ -6,10 +6,10 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
-## [plugin 0.18.0] — Unreleased
+## [plugin 0.19.0] — Unreleased
 
-Second batch of fixes from the 2026-08 `ai-plugin` feedback triage. Entries accumulate here
-until the release is cut; date this block when it ships.
+More fixes from the 2026-08 `ai-plugin` feedback triage — the entries that missed the 0.18.0
+train. Entries accumulate here until the release is cut; date this block when it ships.
 
 ### Changed — bluestep-reference skill
 
@@ -37,6 +37,101 @@ until the release is cut; date this block when it ships.
   fails-open read-back assertion — cross-linked both ways with the authoring convention. Manifest line
   and frontmatter description gained the authoring hook so the file loads when a permission query is
   being *created*, not only consumed. Same ClickUp task.
+
+## [plugin 0.18.0] — 2026-08-12
+
+Headline: **the plugin now ships for Cursor and OpenAI Codex too.** The same `plugin/` source
+is emitted as generated native trees (`dist/cursor/`, `dist/codex/`), and this repo now doubles
+as **three** marketplaces — Claude Code (`.claude-plugin/`), Cursor (`.cursor-plugin/`), and
+Codex (`.agents/plugins/`). Resolves ClickUp
+[86bb9x4d2](https://app.clickup.com/t/86bb9x4d2). Also carries the second batch of fixes from
+the 2026-08 `ai-plugin` feedback triage. **Codex note for this release:** plugin hooks are new/changed here, so
+Codex users must (re-)trust them after updating — untrusted hooks are silently skipped.
+
+### Added — cross-tool plugin output (Cursor, Codex)
+
+- **Generated Cursor and Codex plugin trees, committed.** A dependency-free generator
+  (`tools/gen-cross-tool/` — `npm run gen`, `npm run gen:check`) reads `plugin/**` and emits
+  `dist/cursor/bluestep-tools/` and `dist/codex/bluestep-tools/` plus the two root marketplace
+  manifests (`.cursor-plugin/marketplace.json`, `.agents/plugins/marketplace.json`). Skills copy
+  near-verbatim (SKILL.md is an open standard both tools read) with `${CLAUDE_PLUGIN_ROOT}`
+  rewritten and `allowed-tools` stripped; agents copy for Cursor (frontmatter trimmed) and become
+  TOML for Codex (underscore names — `b6p_task_implementer` etc.); hooks ship as thin per-tool
+  wrappers exec-ing the shared scripts; MCP config uses each tool's env syntax
+  (`${env:B6PT_TOKEN}` on Cursor, `bearer_token_env_var` on Codex — Codex does not interpolate
+  `${VAR}`). Output is a pure function of `plugin/**` (no timestamps), so the sanitization
+  invariant holds: nothing exists in `dist/` that isn't in `plugin/`. Every layout/wiring choice
+  was locked by a live prove-out on real Cursor and Codex installs before the emitters were
+  written.
+- **CI drift gate + Claude-ism lint.** New `cross-tool-drift` job in `ci.yml`: regenerates,
+  fails on any diff or untracked file under the generated paths (stale or hand-edited `dist/`
+  can't merge), and runs `npm run gen:check` — a structural self-test plus a denylist lint
+  (`AskUserQuestion`, `/reload-plugins`, `claude plugin install`, …) that keeps the source
+  de-Claude-ing enforced instead of a one-time cleanup. The `plugin-version-bump` gate widened
+  to also fire on `tools/gen-cross-tool/**`: emitter changes bump the one shared version too
+  (single version stream — all three tools skip an unchanged version on update).
+- **Tag-on-merge release automation.** New `.github/workflows/release-tag.yml`: on push to
+  `main`, reads the manifest version and — if the `plugin-vX.Y.Z` tag is missing — creates and
+  pushes it **and creates the GitHub Release itself** (as built: tags pushed with the default
+  `GITHUB_TOKEN` never trigger other workflows, so `publish.yml` can't fire from the
+  automation; it stays untouched serving the manual-tag path). Idempotent, never `--force`;
+  merging a version-bumped PR is now the whole release, no terminal step.
+- **Documented degradations (known, not silent).** Cursor has no blocking pre-edit event
+  carrying new content, so the edit hooks (`block-generated-files`, `block-inline-frontend`)
+  run post-hoc on `afterFileEdit` as advisories — they warn, they don't block (see
+  `dist/cursor/bluestep-tools/hooks/README.md`). On Codex, plugins can't register subagents:
+  the three agents ship as TOML in `dist/codex/bluestep-tools/agents/` for manual copy into
+  `~/.codex/agents/` or a project `.codex/agents/` until `/bluestep-init` learns to write them
+  — until then, delegation is unavailable on Codex and spec skills run in-session. Codex hook
+  trust is per-definition: every hook-touching release needs re-trust.
+- **Docs.** ADR `docs/decisions/cross-tool-plugin-output.md` (seven decisions: per-tool native
+  output, committed `dist/`, no external translator, AGENTS.md bridge, single version stream,
+  tag-on-merge, deliberately-unbuilt per-tool extension point) and the per-release checklist
+  `docs/cross-tool-output-test-plan.md`.
+
+### Changed — bluestep-init skill
+
+- **`AGENTS.md` is now the scaffolded rules file; `CLAUDE.md` becomes a one-line bridge.** The
+  always-on project rules template was renamed `CLAUDE.md.template` → `AGENTS.md.template`
+  (content tool-neutralized) — `AGENTS.md` is read natively by Cursor, Codex, and dozens of
+  other tools — and a new one-line `CLAUDE.md.template` carries the `@AGENTS.md` import for
+  Claude Code, which doesn't read `AGENTS.md` natively. SKILL.md was restructured into
+  tool-neutral scaffold steps plus per-tool **Enablement** subsections (Claude Code / Cursor /
+  Codex — marketplace add, install, hook trust, token setup per OS). Idempotency extended: an
+  existing populated `CLAUDE.md` is never overwritten — the migration (content → `AGENTS.md`,
+  shrink `CLAUDE.md` to the import line) is offered, not forced.
+
+### Changed — plugin-wide (source de-Claude-ing)
+
+- **Claude-only phrasing neutralized at the source** (correct for Claude Code too, and it keeps
+  the generator a dumb transform): `AskUserQuestion` mentions became "ask one question at a time
+  with clickable options where the tool supports structured questions"; `spec-execute`'s
+  `[mechanical]` model mapping is now conditional on runtime support (Claude Code's Task-tool
+  `model` param named as the example); `CLAUDE.md` prose references swept to `AGENTS.md`;
+  "Claude Code plugin" branding became "agent plugin (Claude Code, Cursor, Codex)" with
+  per-tool `/reload-plugins` parentheticals. Regressions are caught by the `gen:check` denylist
+  lint above.
+
+### Changed — bspecs-feedback skill
+
+- **Runtime environment captured on every submission.** The skill now states which tool it runs
+  in (Claude Code / Cursor / Codex, surface, version when known — asking the user only if
+  genuinely unsure) and sends it as a new top-level `environment` string in the POST payload;
+  the intake endpoint accepts and validates it, pushes it to the ClickUp `Environment` field on
+  AI.List, and renders an `**Environment:**` line in the GitHub issue body. Older endpoint
+  deployments ignore the key, so the skill is safe on its own.
+
+### Changed — bluestep-reference skill
+
+- **`B.text` (Bluestep.Text) string helpers documented.** New "Text Utilities" section in
+  `reference/api-patterns.md`: `toPlainText` (formatted HTML → plain text, the BSJS twin of
+  Relate's), `escapeHtml`, `escapeJs`, `escapeJsInTagAttribute`, `xxsSafe`, and
+  `messageFormat(format, zone?)` — with the rule to reach for these before hand-rolling escaping
+  or regex, and cross-links to the existing `toBaseUrl64` and `B.text.csv` mentions. The
+  manifest line gained task-shaped hooks ("string escaping/HTML-stripping", "escaping output")
+  so the file loads when the AI is about to hand-roll. Resolves ClickUp
+  [86bbc8gya](https://app.clickup.com/t/86bbc8gya) /
+  [#78](https://github.com/Bluestep-Systems/bspecs/issues/78).
 
 ## [plugin 0.17.0] — 2026-08-11
 

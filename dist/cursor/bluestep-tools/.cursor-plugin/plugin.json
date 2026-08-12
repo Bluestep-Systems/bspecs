@@ -1,0 +1,9 @@
+{
+  "name": "bluestep-tools",
+  "description": "Spec-driven BlueStep (B6P) development tooling for AI coding agents (Claude Code, Cursor, Codex): b6p platform CLI skills, the spec-* workflow, BlueStep subagents, guardrail hooks, and an on-demand platform reference.",
+  "version": "0.19.0",
+  "skills": "./skills/",
+  "agents": "./agents/",
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": "./mcp.json"
+}

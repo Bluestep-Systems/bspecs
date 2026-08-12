@@ -1,0 +1,61 @@
+---
+name: spec-execute
+description: Execute one task from a feature spec. By default delegates implementation to the b6p-task-implementer subagent (isolated context); pass --inline to implement in the main session. Updates the task checkbox when done. Use after `/spec-create` has produced an approved tasks.md.
+---
+
+# /spec-execute — Execute one task from a spec
+
+## Steps
+
+1. **Parse `$ARGUMENTS`** for feature name, task number, and an optional `--inline` flag (e.g. `add-validation-on-intake 3` or `add-validation-on-intake 3 --inline`). The flag may appear anywhere; strip it before reading the feature/task. If feature or task is missing, ask.
+   - **Default (no flag):** a `[CODE]` task is implemented by delegating to the `b6p-task-implementer` subagent, so the heavy declaration/source reads stay out of this session (see step 5).
+   - **`--inline`:** implement the task directly in this session — for trivial one-liners where spinning a fresh context isn't worth the re-read.
+2. **Load context:**
+   - Read `.claude/specs/<feature>/requirements.md`
+   - Read `.claude/specs/<feature>/design.md`
+   - Read `.claude/specs/<feature>/tasks.md`
+   - Identify the task at the given number
+
+   - Read the `draft/README.md` of the component(s) this task touches, if not already in context. (Don't pre-load READMEs for unrelated components.)
+3. **Check the task's prefix:**
+   - **`[PLATFORM]`** — a platform authoring/wiring task, now **agent-executable when the gateway MCP tools are live**. Follow the shared procedure at `../bluestep-reference/conventions/mcp-platform-authoring.md` (relative to this file) (connection-check → approval echo → execute → declaration read-back). When the tools are not live, the fix is to enable the `bluestep-tools` plugin, set `$B6PT_TOKEN`, and restart the session (the gateway is bundled with the plugin — there is no `/bluestep-mcp-connect`); otherwise fall back to the human hand-back in the BlueStep UI. Do **not** restate its steps here. The **approval gate** and the mark-`[x]` bookkeeping (step 6) stay in this main session.
+   - **`[CODE]`** — proceed to step 4.
+   - **No prefix** — this is an older spec from before the convention. Warn the user once: "Task <N> has no `[PLATFORM]`/`[CODE]` prefix — treating as `[CODE]`. Consider updating the spec." Then proceed to step 4.
+4. **Verify prerequisites are done.** Scan tasks.md for any earlier `[PLATFORM]` task that is still `[ ]` (not checked). If any unchecked `[PLATFORM]` task exists *before* the requested task, STOP and tell the user:
+   > Task <N> may depend on `[PLATFORM]` task <earlier_N>: <description>. That platform work is not marked done yet. Confirm it's complete (I'll mark it `[x]`) or pick a different task.
+5. **Implement exactly one task.** No scope creep — touch only the files the task references, do not start the next task, apply rules from `AGENTS.md` (no `tsc`, no `.writable()`, no editing `declarations/`, no new components locally).
+
+   **Default — delegate to the `b6p-task-implementer` subagent:**
+   - **Pick the model for this launch** — only where the runtime supports per-launch model selection (e.g. Claude Code's Task tool `model` parameter). On runtimes without it, the `[mechanical]` tag is informational and the task runs like any other:
+     - Task line tagged `[mechanical]` → spawn with the cheapest tier (in Claude Code: the generic alias `haiku` via the Task tool's per-launch `model` parameter, which overrides the agent file's `model:` frontmatter and the inherit default).
+     - Untagged task → pass no `model`; the subagent inherits the session model.
+     - **Escalation** (applies only where the cheap tier applies): if a cheap-tier run ends with `Error`-severity diagnostics it couldn't clear, a failed verify, or a "Flags for the human" that signals it was out of its depth → re-run the same task **once** with no override (session model). Never mark `[x]` from the failed run; never retry the cheap tier in a loop. Report the escalation at the STOP (step 8).
+     - **Momentum:** after an escalation, treat the remaining `[mechanical]` tasks of the *same repeated pattern* with suspicion — if the pattern itself proved harder than tagged, drop the tag in tasks.md (with a note) rather than escalating N more times. Report the un-tagging at the STOP (step 8) — it edits the user-approved tasks.md.
+   - Spawn the `b6p-task-implementer` subagent (via the runtime's delegation mechanism — the Task/Agent tool in Claude Code) and give it the feature name and this task number. It reads the spec, the component's `declarations/`, and the relevant `bluestep-reference` skill files in its **own** context, implements the one task, and returns a structured summary — keeping that bulk out of this session.
+   - When it returns, show the user its summary and the **git diff** of what changed (`git diff` / `git status` for the touched files) so the change is reviewable here.
+   - The subagent does **not** mark the checkbox or chain other agents — the steps below (verify, mark, README sync, STOP) stay in this session.
+
+   **`--inline` — implement here:** do the edits directly in this session (the prior behavior), then continue to 5.5. No subagent is spawned, so no model override applies.
+
+5.5. **Verify IDE diagnostics.** Before marking the task done, check the most recent `ide_diagnostics` blocks injected by the `PostToolUse` hook after each `Edit`/`Write` (these fire on the subagent's edits too). Also weigh anything the subagent listed under **Flags for the human**.
+   - If any entry has `severity: "Error"` in a file this task touched: **STOP.** If this was a `[mechanical]` cheap-tier run, escalate per step 5 (one re-run at the session model) instead of patching here; otherwise fix the error and re-verify before continuing. Do not mark the task done with pending errors.
+   - `Warning` / `Information` entries (including spell-checker) can be ignored **unless** they point to a real problem — review before dismissing.
+   - If an `Error` cannot be reproduced or looks like a false positive, report it explicitly: "The IDE reports `<error>` but I think it's a false positive because `<reason>` — should I continue?"
+6. **Mark the task done:** update `.claude/specs/<feature>/tasks.md` — change `[ ]` to `[x]` for the completed task.
+7. **Check the affected module's `draft/README.md`:**
+   - If this task changed behavior that the README describes (Overview, Behavior, Fields used, External dependencies), update the README in the same change so the platform doc stays in sync.
+   - If the change is internal-only (refactor, comment, log message) and doesn't alter documented behavior, leave the README alone.
+   - When unsure, ask the user: "This task changed `<what>` — should I reflect it in `draft/README.md`?"
+8. **STOP.** Tell the user the task is done and to review and approve before running the next one. Present the next command on its own line as a **fenced code block** — with `<feature>` and `<N+1>` filled in with the real values, e.g.
+
+   ```
+   /spec-execute add-validation-on-intake 4
+   ```
+
+   so the terminal UI renders a copy button. Do **not** bury the command in inline backticks inside a sentence (no copy button there). Do not auto-continue. In the same message, surface the implementer's summary + diff (default path) and offer the optional, user-invoked follow-ups — these never fire automatically:
+   - `@b6p-commenter` — update the component's `draft/README.md` from the new code.
+   - `@b6p-code-review` — a BlueStep-aware, report-only review of the change.
+
+## When the user says a `[PLATFORM]` task is done
+
+If the user comes back and says "I did task <N> on the platform", just edit `tasks.md` to mark it `[x]`. No code changes, no push. The task is closed. (When the gateway MCP is live, such a task may instead have been completed in-session via the procedure above — mark it `[x]` the same way.)
