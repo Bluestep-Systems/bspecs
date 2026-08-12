@@ -5,13 +5,13 @@ description: On-demand BlueStep (B6P) platform reference — BsJs/RelateScript p
 
 # BlueStep Instruction Index
 
-This is the navigation hub for the on-demand BlueStep rules. It is read when needed, not auto-loaded — Tier-1 critical rules stay in `CLAUDE.md`, and the Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`) cover the high-frequency platform and BsJs material. Consult an entry below when a task needs deeper, single-topic detail; each file is self-contained and is reached in one hop from here.
+This is the navigation hub for the on-demand BlueStep rules. It is read when needed, not auto-loaded — Tier-1 critical rules stay in `AGENTS.md`, and the Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`) cover the high-frequency platform and BsJs material. Consult an entry below when a task needs deeper, single-topic detail; each file is self-contained and is reached in one hop from here.
 
 Entries read: `path — what it covers. Load when <trigger>.` Match the trigger keywords to the task at hand, then open that one file.
 
 ## reference/ — single-topic platform and API detail
 
-- [reference/api-patterns.md](reference/api-patterns.md) — B API usage: Java optionals (`.opt()/.orElse()`), field types and access, `mergeTag()` L/F/I/H codes, multi-entry-form (MEF) entries, query access, Java collections, writing date/datetime fields, `B.commit()` and formula triggers, endpoint request/response, base64, user/session. Load when calling the `B` API, reading or writing fields, or wiring an endpoint's request/response.
+- [reference/api-patterns.md](reference/api-patterns.md) — B API usage: Java optionals (`.opt()/.orElse()`), field types and access, `mergeTag()` L/F/I/H codes, multi-entry-form (MEF) entries, query access, Java collections, writing date/datetime fields, `B.commit()` and formula triggers, endpoint request/response, base64, string escaping/HTML-stripping (`B.text`: `escapeHtml`, `toPlainText` — use before hand-rolling escaping or regex), user/session. Load when calling the `B` API, reading or writing fields, escaping output, or wiring an endpoint's request/response.
 - [reference/b-include-element.md](reference/b-include-element.md) — `<b-include>` browser custom element that fetches HTML from a URL and renders it inline (client-side `<jsp:include>`/SSI); `src`/`run-scripts`/`csrf` attrs, spinner/error behavior, trusted-template-only (neutralized in user HTML). Load when injecting a dynamic async HTML fragment in the browser.
 - [reference/chronounit-months.md](reference/chronounit-months.md) — `ChronoUnit.MONTHS.between` counts elapsed (day-aware) months, not calendar-month boundaries. Load when computing a month difference or porting SQL `DATEDIFF(MONTH)`.
 - [reference/code-patterns.md](reference/code-patterns.md) — working BsJs skeletons: queries, MergeReport server/client bridge, endpoints, error handling, performance (per-row queue, lazy init), component import, debugging. Load when starting a query, MergeReport, or endpoint and you want a known-good pattern.

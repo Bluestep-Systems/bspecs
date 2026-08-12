@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "bluestep-gateway": {
+      "type": "http",
+      "url": "https://gateway.bluestep.net/mcp",
+      "bearer_token_env_var": "B6PT_TOKEN"
+    }
+  }
+}

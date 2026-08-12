@@ -55,16 +55,16 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 
 Publishing is the recommended default — but **never** push without an explicit selection: it is *pre-marked*, never *pre-executed*.
 
-Most users are non-technical, so present the choice in **plain language — avoid the words "snapshot" and "push" in what they see.** Show the one-line diff scope from step 2, then use **two** `AskUserQuestion` prompts:
+Most users are non-technical, so present the choice in **plain language — avoid the words "snapshot" and "push" in what they see.** Show the one-line diff scope from step 2, then ask **two** structured questions with clickable options (`AskUserQuestion` in Claude Code) — one at a time, never as a numbered list to answer by hand:
 
-1. **"How should this change go out?"** — two options (AskUserQuestion auto-adds an "Other" choice, so don't author a third):
+1. **"How should this change go out?"** — two options, plus an "Other" escape (`AskUserQuestion` adds "Other" automatically in Claude Code, so don't author a third option there; where the tool doesn't auto-add one, add it yourself):
    - `Publish — make it live (Recommended)` — description: "Compiles your code and updates the live version everyone sees, and saves a restore point you can roll back to." → runs `--snapshot --message`.
    - `Save draft only — not live yet` — description: "Uploads your work to the server without compiling or making it live. Use only if you're not ready for it to go live." → plain push.
 
    Selecting an option is the confirmation to push; if the user cancels, do not push.
 2. If the user chose **Publish**, a second prompt — **"Describe this change"** (it becomes the restore-point label) — with:
    - `Use suggested description (Recommended)` — pre-fill this with a concise plain-language summary you draft from the diff. Put the drafted text in the option label so the user sees what they're accepting.
-   - `Let me write my own` — the user supplies the description as free text via the auto-added "Other" choice.
+   - `Let me write my own` — the user supplies the description as free text via the "Other" escape.
 
    If the user chose **Save draft only**, skip straight to step 4.
 
