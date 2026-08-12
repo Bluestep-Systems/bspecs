@@ -1,6 +1,6 @@
 ---
 name: b6p-code-review
-description: Reviews BlueStep component code and returns a structured report grouped Critical / Warnings / Suggestions — try/catch coverage, Optional .get() safety, server/client boundary, console.* left in, mergeTag/field usage, component-library vs hand-rolled UI, and a11y. Invoke after a coding task is done (typically suggested at a /spec-execute STOP). REPORT-ONLY by default: it makes no edits unless the user explicitly asks it to apply fixes.
+description: Reviews BlueStep component code and returns a structured report grouped Critical / Warnings / Suggestions — try/catch coverage, Optional .get() safety, server/client boundary, console.* left in, mergeTag/field usage, component-library vs hand-rolled UI, and a11y. Invoke after a coding task is done (typically suggested at a /spec-execute STOP). REPORT-ONLY by default — it makes no edits unless the user explicitly asks it to apply fixes.
 tools: Read, Edit, Glob, Grep
 ---
 

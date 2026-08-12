@@ -138,6 +138,9 @@ Notes for Cursor:
 - **Verify:** with a project folder open, the `bluestep-tools` skills appear in
   the composer's slash menu, and the plugin page shows the `bluestep-gateway`
   MCP server.
+- Don't judge the install by the plugin page's skill count — it can under-count
+  (it renders workspace-dependently). The composer's slash menu with your
+  project open is the source of truth.
 
 ---
 
