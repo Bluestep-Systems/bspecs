@@ -16,7 +16,7 @@ It is **non-destructive**: any file that already exists is left untouched and re
 
 ## Collecting answers — use the picker, not a written questionnaire
 
-Every choice below is asked with the **`AskUserQuestion`** tool so the user clicks an option instead of typing free-form answers to a list. The tool always offers an "Other" escape for a custom value. The **only** value asked as plain text is a brand-new project's folder name (it has no presets). Ask one thing at a time; never dump a numbered list of questions for the user to answer by hand.
+Ask every choice below as a **structured question with clickable options** where the tool supports them (`AskUserQuestion` in Claude Code), so the user clicks an option instead of typing free-form answers to a list. Always keep an "Other" escape for a custom value (`AskUserQuestion` adds one automatically in Claude Code; add it yourself where the tool doesn't). The **only** value asked as plain text is a brand-new project's folder name (it has no presets). Ask one thing at a time; never dump a numbered list of questions for the user to answer by hand.
 
 **Framework is fixed to Preact — do not prompt for it.** The scaffold uses the `preact-ts` template. React is a valid alternative (the architecture is identical) and is documented in the pattern reference; if the user wants React, point them at that file rather than branching the flow here.
 
@@ -36,7 +36,7 @@ Node **20 or newer is required**. If it prints a version below 20 (or `node` is 
 
 Only continue past this step once `node -v` reports 20+.
 
-### 2. Collect answers via `AskUserQuestion`
+### 2. Collect answers with the picker
 
 **Target location.** Detect the current directory's basename first: `basename "$PWD"`. Then ask:
 

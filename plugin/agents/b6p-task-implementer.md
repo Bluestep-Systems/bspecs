@@ -46,7 +46,7 @@ Open the `bluestep-reference` skill index at `${CLAUDE_PLUGIN_ROOT}/skills/blues
 ### Step 4 — Implement exactly one task
 
 - Touch only the files the task references.
-- Honor the project's **Critical rules (always apply)** from `CLAUDE.md` — notably: never edit `declarations/`, never use `.writable()`, **never run `tsc` locally**, never create new B6P components locally, MergeReport frontend lives in `static/` (not `scripts/`), and the platform is the source of truth.
+- Honor the project's **Critical rules (always apply)** from `AGENTS.md` — notably: never edit `declarations/`, never use `.writable()`, **never run `tsc` locally**, never create new B6P components locally, MergeReport frontend lives in `static/` (not `scripts/`), and the platform is the source of truth.
 - Apply the platform conventions (Optional `.opt().orElse()` access, `forEach` over Java collections, strict server/client separation, no full HTML structure in merge-report `index.html`, etc. — per the `bluestep-reference` skill).
 - Check the component's `draft/README.md` and existing helpers before adding new code.
 

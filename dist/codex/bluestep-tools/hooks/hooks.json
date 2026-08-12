@@ -1,0 +1,27 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c '\"$PLUGIN_ROOT\"/hooks/block-generated-files-codex.sh'"
+          },
+          {
+            "type": "command",
+            "command": "sh -c '\"$PLUGIN_ROOT\"/hooks/block-inline-frontend-codex.sh'"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c '\"$PLUGIN_ROOT\"/hooks/block-tsc-codex.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}

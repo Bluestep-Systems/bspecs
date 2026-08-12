@@ -5,7 +5,7 @@ description: On-demand BlueStep (B6P) platform reference — BsJs/RelateScript p
 
 # BlueStep Instruction Index
 
-This is the navigation hub for the on-demand BlueStep rules. It is read when needed, not auto-loaded — Tier-1 critical rules stay in `CLAUDE.md`, and the Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`) cover the high-frequency platform and BsJs material. Consult an entry below when a task needs deeper, single-topic detail; each file is self-contained and is reached in one hop from here.
+This is the navigation hub for the on-demand BlueStep rules. It is read when needed, not auto-loaded — Tier-1 critical rules stay in `AGENTS.md`, and the Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`) cover the high-frequency platform and BsJs material. Consult an entry below when a task needs deeper, single-topic detail; each file is self-contained and is reached in one hop from here.
 
 Entries read: `path — what it covers. Load when <trigger>.` Match the trigger keywords to the task at hand, then open that one file.
 
