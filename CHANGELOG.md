@@ -6,11 +6,26 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
-## [plugin 0.20.0] — Unreleased
+## [plugin 0.20.1] — Unreleased
 
 More fixes from the 2026-08 `ai-plugin` feedback triage — the entries that missed the 0.18.0
-train, landing after the query-creation batch in 0.19.0. Entries accumulate here until the
-release is cut; date this block when it ships.
+train, landing after the query-creation batch in 0.19.0 — plus a cross-tool frontmatter fix
+from the 0.18.0 pilot. Entries accumulate here until the release is cut; date this block when
+it ships.
+
+### Fixed — bluestep-init invisible on Cursor (strict-YAML frontmatter)
+
+- **`bluestep-init`'s skill description broke strict YAML parsers.** The unquoted
+  `Non-destructive/idempotent: writes …` (colon + space inside a plain scalar) is invalid
+  strict YAML. Claude Code's lenient frontmatter parser masked it, but Cursor's composer
+  registry silently dropped the skill — `/bluestep-init` was uninvocable there (found in the
+  0.18.0 live pilot; GitHub's preview renderer flags the same error). Reworded the description
+  (`Non-destructive and idempotent — writes …`). **Guardrail:** `gen:check` now scans every
+  skill and agent frontmatter value for unquoted colons and fails CI on them, so this class
+  cannot ship again — and that new lint immediately caught a second live instance:
+  **`b6p-code-review`'s description** (`REPORT-ONLY by default: it makes …`) had the same
+  defect, explaining why that subagent was missing from Cursor's composer while the other two
+  showed. Reworded likewise.
 
 ### Changed — bluestep-reference skill
 

@@ -55,6 +55,35 @@ export function parseFrontmatter(text) {
   return null;
 }
 
+// Strict-YAML hazards in frontmatter values. Claude Code's frontmatter parser
+// (and ours above) is line-based and lenient, but Cursor's composer registry
+// and GitHub's renderer parse frontmatter with REAL YAML parsers — where an
+// unquoted plain scalar containing ": " (colon+space) or ending in ":" is a
+// parse error, and the whole skill is silently dropped (live finding,
+// 2026-08-12: bluestep-init was uninvocable on Cursor). Returns problem
+// strings for any frontmatter value that would break a strict parser.
+export function checkFrontmatterStrictYaml(rel, text) {
+  const problems = [];
+  const fm = parseFrontmatter(text);
+  if (!fm) return problems;
+  const lines = text.split('\n').slice(1, fm.endLine - 1);
+  for (const line of lines) {
+    const m = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
+    if (!m) continue;
+    const value = m[2].trim();
+    if (!value) continue;
+    const quoted = /^["'].*["']$/.test(value);
+    if (quoted) continue;
+    if (value.includes(': ') || value.endsWith(':')) {
+      problems.push(
+        `${rel}: frontmatter "${m[1]}" contains an unquoted colon — invalid strict YAML; ` +
+        `strict parsers (Cursor composer, GitHub) silently drop the skill. Reword or quote the value.`
+      );
+    }
+  }
+  return problems;
+}
+
 // Body of a file with its frontmatter block removed (for emitters that strip
 // unsupported frontmatter and re-emit their own).
 export function stripFrontmatter(text) {
@@ -254,7 +283,12 @@ export function checkPluginStructure(tree) {
     } else {
       if (!fm.data.name) problems.push(`${skill.rel}: frontmatter has no "name"`);
       if (!fm.data.description) problems.push(`${skill.rel}: frontmatter has no "description"`);
+      problems.push(...checkFrontmatterStrictYaml(skill.rel, skill.text));
     }
+  }
+
+  for (const agent of tree.files.filter((f) => f.rel.startsWith('agents/') && f.rel.endsWith('.md'))) {
+    problems.push(...checkFrontmatterStrictYaml(agent.rel, agent.text));
   }
 
   for (const rel of ['.claude-plugin/plugin.json', '.mcp.json', 'hooks/hooks.json']) {

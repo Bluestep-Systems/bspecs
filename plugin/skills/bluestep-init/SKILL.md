@@ -1,6 +1,6 @@
 ---
 name: bluestep-init
-description: Set up BlueStep (B6P) tooling in a project — new or existing — and activate the always-on platform rules. Non-destructive/idempotent: writes any missing per-project files (AGENTS.md with the rules, a one-line CLAUDE.md bridge, README.md, package.json, .gitignore, .prettierrc), skips files that already exist, guides git init, then walks the enablement steps for whichever agent tool you are running in (Claude Code, Cursor, Codex). Use it to bootstrap a new project or to activate the BlueStep rules in an existing repo that doesn't have the project AGENTS.md yet.
+description: Set up BlueStep (B6P) tooling in a project — new or existing — and activate the always-on platform rules. Non-destructive and idempotent — writes any missing per-project files (AGENTS.md with the rules, a one-line CLAUDE.md bridge, README.md, package.json, .gitignore, .prettierrc), skips files that already exist, guides git init, then walks the enablement steps for whichever agent tool you are running in (Claude Code, Cursor, Codex). Use it to bootstrap a new project or to activate the BlueStep rules in an existing repo that doesn't have the project AGENTS.md yet.
 allowed-tools: Read Write Edit AskUserQuestion Bash(git:*) Bash(ls:*) Bash(basename:*) Bash(date:*) Bash(mkdir:*)
 ---
 
