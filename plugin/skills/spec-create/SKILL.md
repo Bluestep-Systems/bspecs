@@ -31,12 +31,13 @@ Read the `draft/README.md` of each component this feature will touch (see `AGENT
 ### Phase 2 — Design
 
 1. Copy `${CLAUDE_PLUGIN_ROOT}/skills/spec-create/spec-templates/design.template.md` to `.claude/specs/<feature-name>/design.md`.
-2. Fill it in. **MUST include:**
+2. **If the feature involves AI, agents, model calls, generation, or AI tools** — read `${CLAUDE_PLUGIN_ROOT}/skills/bluestep-reference/reference/ai-services.md` **before** choosing an architecture, and prefer the platform's tenant-metered `B.ai` over a third-party provider unless the design states a reason not to.
+3. Fill it in. **MUST include:**
    - Which existing component(s) this touches
    - **The required field "Does this require modifying the component on the platform?"** with answer Yes/No and details
    - Approach summary
    - Alignment with existing patterns from the `bluestep-reference` skill's `bsjs-development.md` overview (`${CLAUDE_PLUGIN_ROOT}/skills/bluestep-reference/bsjs-development.md`)
-3. **STOP. Ask the user to approve design before tasks.**
+4. **STOP. Ask the user to approve design before tasks.**
 
 ### Phase 3 — Tasks
 
