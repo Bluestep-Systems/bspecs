@@ -6,12 +6,76 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
-## [plugin 0.20.1] — Unreleased
+## [plugin 0.21.0] — Unreleased
+
+The platform's AI surface (`B.ai`) documented, from the 2026-08 `ai-plugin` feedback triage.
+Two reporters independently designed an outbound third-party integration — one wrote a phantom
+"no home for the LLM credential" blocker into an approved design — because the reference
+mentioned model access nowhere. Entries accumulate here until the release is cut; date this
+block when it ships.
+
+### Added — bluestep-reference skill
+
+- **`reference/ai-services.md` — the platform's model access.** A new single-topic file covering
+  `B.ai`, written from the `Ai*` declarations in `declarations/B.d.ts` and from a live in-house
+  consumer, not from recollection. It states the fact both reports needed and neither had: model
+  access runs **inside the platform** and bills to the tenant, so a call needs only a prompt —
+  provider, model, and credentials come from tenant configuration (`apiKey` exists as an override,
+  so the default path needing no key is stated as the default, not as an absolute). Covers the
+  fully synchronous execution model (`AiCallResult` returned directly; the BSJS surface has no
+  Promises and no token-streaming path), one-shot `call()` and multi-turn `agent()` with the
+  boundary between them, the `B.ai.tool` factory including the Relate-native `forNewEntry` /
+  `forExistingEntry` helpers that let a model fill a form entry, spend budgets keyed by `flag`
+  (`maxSpendMicros` is micros of USD — 1,000,000 = $1.00), denial via `stopReason === "ai_denied"`
+  plus `denialMessage`, availability feature-detection (`typeof B.ai !== "undefined"` — the surface
+  is experimental and not present on every pod/tenant), audio input via `streamingAgent()`, and AI
+  write provenance in formulas via `RowContext.ai()`. Unconfirmed behavior — the full `stopReason`
+  value set and any `denialCode` values — is marked unverified rather than guessed. Indexed from
+  the manifest with a trigger that fires on model access, AI generation, agents, or AI tools.
+  Resolves ClickUp [86bbe9b36](https://app.clickup.com/t/86bbe9b36), which consolidated
+  [86bbd2w2y](https://app.clickup.com/t/86bbd2w2y).
+
+### Changed — bluestep-reference skill
+
+- **The `B` object section no longer claims to be the full API.** `bsjs-development.md`'s
+  `## The B object — full API` heading covered six namespaces; `export class B` has **25 members**,
+  so a reader who trusted the heading concluded the object had no AI surface — which is what
+  happened, twice. Renamed to **core namespaces**, with a line naming several of the undocumented
+  ones (`B.db`, `B.io`, `B.util`, `B.crypto`, `B.mail`, `B.find`, `B.org`) and pointing at the
+  component's own `declarations/B.d.ts` for the rest. A short `### B.ai — model access` subsection
+  was added immediately after `B.net` — the adjacency where "a model call is an outbound call"
+  forms — carrying one load-bearing fact, a minimal example, and a link out. Contents anchor
+  updated to match.
+- **`reference/internal-loopback-fetch.md` stops priming an outbound provider call.** Its closing
+  pointer read *"httpRequester is still correct for EXTERNAL calls like api.openai.com"* — the only
+  LLM-adjacent sentence in the whole reference, and the one a reporter traced a wrong design to.
+  The provider hostname is gone; the line now routes model access to `B.ai` and says plainly that
+  `B.net.fetch` is the default for outbound HTTP, internal or external, with `httpRequester` as the
+  older imperative API.
+
+### Changed — spec-create skill
+
+- **AI-touching features consult the AI reference before an architecture is chosen.** A new Phase 2
+  step — placed *between* copying the design template and filling it in, because the reported
+  failure was that the architecture was already settled by the time anything got written down —
+  directs a feature involving AI, agents, model calls, generation, or AI tools to read
+  `reference/ai-services.md` first and prefer tenant-metered `B.ai` over a third-party provider
+  unless the design states a reason otherwise.
+
+### Changed — bluestep-init templates
+
+- **`AGENTS.md.template` names `B.ai` and stops promising a table that does not exist.** `B.ai`
+  joins the `B`-namespace list, and *"the full namespace table"* became *"the other namespaces"* to
+  match the reference it points at. Kept to those two changes deliberately: this template is
+  always-on project context, so every word costs tokens in every session. **Reaches newly
+  scaffolded projects only** — existing projects keep their `AGENTS.md` and get the benefit through
+  the reference-side changes on their next plugin update.
+
+## [plugin 0.20.1] — 2026-08-12
 
 More fixes from the 2026-08 `ai-plugin` feedback triage — the entries that missed the 0.18.0
 train, landing after the query-creation batch in 0.19.0 — plus a cross-tool frontmatter fix
-from the 0.18.0 pilot. Entries accumulate here until the release is cut; date this block when
-it ships.
+from the 0.18.0 pilot.
 
 ### Fixed — bluestep-init invisible on Cursor (strict-YAML frontmatter)
 

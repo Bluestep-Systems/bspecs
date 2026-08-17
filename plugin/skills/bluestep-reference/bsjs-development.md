@@ -10,7 +10,7 @@ Deep reference for BlueStep TypeScript development. Critical rules live in `AGEN
 ## Contents
 
 - [Module structure](#module-structure)
-- [The `B` object — full API](#the-b-object--full-api)
+- [The `B` object — core namespaces](#the-b-object--core-namespaces)
 - [Reading and writing fields](#reading-and-writing-fields)
 - [Patterns by script type](#patterns-by-script-type)
 - [`info/` configuration](#info-configuration)
@@ -55,7 +55,11 @@ export function cleanupDuplicates(): void { /* ... */ }
 import { cleanupDuplicates } from "./cleanupDuplicates";
 ```
 
-## The `B` object — full API
+## The `B` object — core namespaces
+
+`B` exposes 25 members; the ones below are the most used. For anything else — `B.db`, `B.io`,
+`B.util`, `B.crypto`, `B.mail`, `B.find`, `B.org` among them — read the component's own
+`declarations/B.d.ts`.
 
 ### `B.net` — outbound HTTP
 
@@ -71,6 +75,23 @@ if (response.ok) {
   const data = JSON.parse(response.body);
 }
 ```
+
+### `B.ai` — model access
+
+Model access runs inside the platform and bills to the tenant: a call needs only a prompt, with
+provider, model, and credentials coming from tenant configuration. Synchronous, like the rest of the
+surface.
+
+```typescript
+const res = B.ai.call({
+  flag: "my-component-purpose",
+  systemPrompt: "You write a one-line summary. Output only the summary.",
+  message: text,
+});
+```
+
+Agents, typed tools that fill Relate form entries, spend budgets, audio input, and AI write
+provenance: [reference/ai-services.md](reference/ai-services.md).
 
 ### `B.time` — date/time
 

@@ -48,7 +48,7 @@ Component type is encoded in `draft/info/metadata.json` (and the matching `confi
 
 ## The `B` object (platform API)
 
-All platform interaction goes through the global `B` object (`B.net`, `B.io`, `B.db`, `B.queries`, `B.exports`, `B.util`, …). Two inline gotchas worth never missing: use **`B.time`** for date/time, never native `Date`; **`B.user` is null** in scheduled/cron scripts. For the full namespace table and API patterns, consult the **`bluestep-reference` skill** (`bsjs-development.md` overview) on demand — it ships with the `bluestep-tools` plugin, so nothing is auto-loaded into the session.
+All platform interaction goes through the global `B` object (`B.net`, `B.ai`, `B.io`, `B.db`, `B.queries`, `B.exports`, `B.util`, …). Two inline gotchas worth never missing: use **`B.time`** for date/time, never native `Date`; **`B.user` is null** in scheduled/cron scripts. For the other namespaces and API patterns, consult the **`bluestep-reference` skill** (`bsjs-development.md` overview) on demand — it ships with the `bluestep-tools` plugin, so nothing is auto-loaded into the session.
 
 ## Module context — read scoped to the task
 
