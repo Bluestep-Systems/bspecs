@@ -6,13 +6,12 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
-## [plugin 0.21.0] — Unreleased
+## [plugin 0.21.0] — 2026-08-17
 
 The platform's AI surface (`B.ai`) documented, from the 2026-08 `ai-plugin` feedback triage.
 Two reporters independently designed an outbound third-party integration — one wrote a phantom
 "no home for the LLM credential" blocker into an approved design — because the reference
-mentioned model access nowhere. Entries accumulate here until the release is cut; date this
-block when it ships.
+mentioned model access nowhere.
 
 ### Added — bluestep-reference skill
 
