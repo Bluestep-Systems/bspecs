@@ -6,6 +6,28 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.23.0] — Unreleased
+
+The GitSite data-access gap closed, finishing the 2026-08 GitSite feedback pair.
+
+### Changed — bluestep-reference skill
+
+- **`reference/git-site-spa.md`: "Connecting to data" now leads with the platform's real data
+  surface.** The section opened with "a git site is static — it cannot reach the DB. Pair it with
+  a `/b/<alias>` endpoint", which reads as "endpoints are the data layer" — during a live SPA port
+  that framing produced a requirements spec built on an "app-managed store" that does not exist,
+  reversed mid-flight (ClickUp
+  [86bbd250t](https://app.clickup.com/t/86bbd250t)). It now states that the platform serves a
+  session-authenticated GraphQL surface at `/gql` on the site's own domain (cookie auth, CSRF from
+  `/csrf-token`), so ordinary CRUD needs no bespoke data layer; that endpoints are for exactly
+  four things (a credential the bundle must not hold, an invariant that must hold regardless of
+  client, an unmapped domain, an oversized aggregate); and the schema behavior observed during
+  that port — `createRecord` requires `parents` (an orphan fails every later form-entry write),
+  read-scope arguments are caller-supplied filters rather than guards (scope row designs by
+  **unit**), no user mutations, alerts/messaging unmapped. Manifest entry and frontmatter gained
+  the data-layer routing hook. Scaffold-specific detail (the vendored client's mechanics) was
+  deliberately kept out of the public reference and filed on the internal scaffold repo instead.
+
 ## [plugin 0.22.0] — 2026-08-18
 
 Scopes the git-site SPA base guidance shipped in 0.15.0 — it does not reverse it. The relative

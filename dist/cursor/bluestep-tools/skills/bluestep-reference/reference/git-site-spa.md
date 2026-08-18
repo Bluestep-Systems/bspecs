@@ -1,5 +1,5 @@
 ---
-description: "Git sites serve a GitHub repo directly under /spa/ on the site's own domain — a separate SPA hosting model from the MergeReport static/ + deploy-lib path; two purposes with different Vite bases (mounted bundle vs standalone routed SPA), config fields, save-is-the-redeploy, same-origin data rules, reserved prefixes"
+description: "Git sites serve a GitHub repo directly under /spa/ on the site's own domain — a separate SPA hosting model from the MergeReport static/ + deploy-lib path; two purposes with different Vite bases (mounted bundle vs standalone routed SPA), config fields, save-is-the-redeploy, same-origin data (the /gql GraphQL surface; /b/ endpoints for the four exceptions), reserved prefixes"
 ---
 
 # Git-site SPA hosting (repo → `/spa/`)
@@ -125,8 +125,31 @@ plus the last deploy error.
 
 ## Connecting to data (the part most often gotten wrong)
 
-A git site is static — it cannot reach the DB. Pair it with a `/b/<alias>` endpoint **on the same
-domain**; `/b/` resolves on the site's own domain, so an absolute-path fetch is same-origin:
+The bundle is static, but the **platform's data surface is on the same domain**: a
+session-authenticated GraphQL API at `/gql` (cookie auth; mutations carry a CSRF token fetched from
+`/csrf-token` — both prefixes are in the reserved list below). Ordinary CRUD for an SPA goes
+straight to `/gql` — no bespoke data layer, no per-entity server code. A git site serves files and
+persists nothing, so there is no "app-managed store" to design behind it.
+
+**Reach for a `/b/` endpoint for exactly four things:** a credential that must not reach the
+bundle; an invariant that must hold regardless of client; a domain the schema does not map; an
+aggregate too large for a browser to fetch.
+
+Schema behavior observed during a live SPA port (not independently re-verified):
+
+- **`createRecord` requires `parents`** set to the unit's Entities container (plus `entityType` —
+  the record type's topId — and `displayName`). Omitting `parents` yields an orphan that reads back
+  fine and then fails every form-entry write (`Entity <id> has no unit/org parent`).
+- **Read-scope arguments are caller-supplied filters, not guards** — the session's Relate
+  permissions are the guard. Consequence for any row-scoped design: make the scoping axis a
+  **unit**, not a field the client promises to filter by.
+- The schema has **no user mutations** — role and unit assignment stays a platform-UI/MCP job,
+  never an app feature.
+- Some domains are **unmapped** (alerts and conversations return empty) — messaging has no native
+  `/gql` path.
+
+When one of the four endpoint reasons applies, pair the site with a `/b/<alias>` endpoint **on the
+same domain**; `/b/` resolves on the site's own domain, so an absolute-path fetch is same-origin:
 
 ```js
 fetch("/b/myApi?action=list"); // absolute path — same-origin: no CORS, no token plumbing
