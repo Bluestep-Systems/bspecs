@@ -78,6 +78,22 @@ Before substantive changes (implement / add / fix / refactor), skim `TODO.md` (o
 
 When a task is done and the user confirms, propose a commit message (title + body) based on the diff. Do not run `git commit` unless the user says so.
 
+## ClickUp (AI.List) via the REST API
+
+Feedback issues live on the **AI.List** list (id `901414350506`, space "AI"); the plugin-related ones carry the **`ai-plugin`** tag. For anything beyond a single task, use the REST API directly — the ClickUp MCP burns quota and context on multi-task reads (every read echoes full dropdown option lists), and browser scraping truncates long task bodies.
+
+- **Auth:** personal token in `$CLICKUP_TOKEN`, exported from `~/.profile` in WSL. Not `~/.bashrc` — Ubuntu's interactive guard returns before the export, so non-interactive `bash -lc` shells never see it. Never commit the token.
+- **Bulk read — the whole list in ~2 calls** (100 tasks/page; loop `page` until the response's `last_page` is true):
+
+  ```bash
+  curl -s -H "Authorization: $CLICKUP_TOKEN" "https://api.clickup.com/api/v2/list/901414350506/task?include_closed=true&subtasks=true&page=0"
+  ```
+
+  Each task comes with its full description and all custom-field values — no per-task fetches. Dump to JSON in a scratch dir, flatten to a digest, and analyze offline; go back to the API only for writes.
+- **Writes:** `POST /task/{id}/field/{field_id}` (custom fields — dropdowns take the option UUID), `POST /task/{id}/tag/{tag_name}`, `PUT /task/{id}` (status, assignees), `POST /task/{id}/comment`. Field and option UUIDs: `GET /list/901414350506/field`.
+- **Batch changes through a dry-run-able script** (write actions to a file, print them, then apply with `--apply`) so the plan is reviewable before anything mutates.
+- **Close-out order matters:** set `resolution` and `resolution-note` **before** flipping status to Closed — the close webhook emails the note verbatim to everyone on the `;`-separated `reporter` field (see `docs/decisions/feedback-intake-bluehq-endpoint.md`). Duplicate closes are silent: no note, add the dup's reporter to the surviving task's `reporter` field instead.
+
 ## Distribution
 
 The plugin is distributed via the public `bluestep` marketplace — this repo doubles as **three** of them: `.claude-plugin/marketplace.json` (Claude Code, `source: ./plugin`), `.cursor-plugin/marketplace.json` (Cursor, serving `dist/cursor/`), `.agents/plugins/marketplace.json` (Codex, serving `dist/codex/`). Repo: `github.com/Bluestep-Systems/bspecs`. **There is no npm publish.** Claude Code installation is `/plugin marketplace add Bluestep-Systems/bspecs` → `/plugin install bluestep-tools@bluestep` → `/bluestep-init`; Cursor imports the same repo URL as a marketplace; Codex adds it via `codex plugin marketplace add`. Updates: `/plugin marketplace update` / `autoUpdate` (Claude Code), auto-refresh-on-push (Cursor), version-keyed update (Codex). Admin enforcement uses managed settings (`extraKnownMarketplaces` + `enabledPlugins` + `strictKnownMarketplaces`), which also defends against lookalike marketplaces.
