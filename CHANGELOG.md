@@ -6,15 +6,14 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
-## [plugin 0.22.0] — Unreleased
+## [plugin 0.22.0] — 2026-08-18
 
 Scopes the git-site SPA base guidance shipped in 0.15.0 — it does not reverse it. The relative
 Vite base (`base: './'`) was verified and stays correct for its purpose: a bundle mounted into
 another page. The defect was presenting that one purpose's answer as the universal one, so anyone
 building the other kind of site — a standalone routed SPA — followed it and shipped a site that
 deploys clean and renders a blank page, with nothing reporting an error. Reported in ClickUp
-[86bbd257g](https://app.clickup.com/t/86bbd257g). Entries accumulate here until the release is
-cut; date this block when it ships.
+[86bbd257g](https://app.clickup.com/t/86bbd257g).
 
 ### Changed — bluestep-reference skill
 
