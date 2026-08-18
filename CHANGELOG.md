@@ -6,7 +6,7 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
-## [plugin 0.23.0] — Unreleased
+## [plugin 0.23.0] — 2026-08-18
 
 The GitSite data-access gap closed, finishing the 2026-08 GitSite feedback pair.
 
