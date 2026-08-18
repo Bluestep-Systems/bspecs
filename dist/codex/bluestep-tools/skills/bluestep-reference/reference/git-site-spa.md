@@ -1,5 +1,5 @@
 ---
-description: "Git sites serve a GitHub repo directly under /spa/ on the site's own domain — a separate SPA hosting model from the MergeReport static/ + deploy-lib path; five UI-only config fields, save-is-the-redeploy, and same-origin data/asset rules"
+description: "Git sites serve a GitHub repo directly under /spa/ on the site's own domain — a separate SPA hosting model from the MergeReport static/ + deploy-lib path; two purposes with different Vite bases (mounted bundle vs standalone routed SPA), config fields, save-is-the-redeploy, same-origin data rules, reserved prefixes"
 ---
 
 # Git-site SPA hosting (repo → `/spa/`)
@@ -10,10 +10,6 @@ description: "Git sites serve a GitHub repo directly under /spa/ on the site's o
 > `static/` via deploy-lib), see [vite spa merge report](vite-spa-merge-report.md) and
 > [deploy-lib workflow](../conventions/deploy-lib-workflow.md).
 
-> Mechanics below (config fields, deploy triggers, size caps, cache lifetimes, webhook behavior)
-> were **observed live 2026-07** on the then-current platform and may drift server-side — verify
-> against the platform if a specific number or behavior looks stale.
-
 ## What it is
 
 A **Git Site** (Admin → Sites → New Git Site) points at a GitHub repo; the platform serves the
@@ -22,6 +18,80 @@ there is no server-side build step, so pre-built output must be committed (a ded
 branch, or built files at the repo root). `github.com` URLs only (validated at save *and* deploy
 time); a **private** repo needs a fine-grained GitHub token with read-only *Contents* on that repo.
 As a full site object, domain binding, IP filters, and permissions apply as for any other site.
+
+## Two mounts: files under `/spa/`, routes at the root
+
+A deployed git site answers on **two mounts, and they are not equivalent**:
+
+- **`/spa/**`** serves any file in the deployed commit. `https://<domain>/spa/assets/app.js`
+  returns the file if the commit has it, a 404 if not.
+- **The domain root** is a funnel attached to the 404 branch. It adopts a request only when it is
+  a GET/HEAD **navigation** whose path has **no file extension**, and answers it with the index
+  file. Anything else — an asset path, anything with an extension — stays a clean 404 rather than
+  a 200 full of HTML.
+
+So `/records/42` gets the index (an extension-less navigation), while `/assets/app.js` gets a 404
+(an asset asked for at the wrong mount). Every base decision below follows from this model.
+
+## Which kind of site are you building?
+
+Pick the purpose first — the right Vite `base` depends on it:
+
+| Purpose | Vite `base` | Why |
+| --- | --- | --- |
+| **Mounted bundle** — the SPA is loaded *into* another page, possibly on another host | `'./'` | assets must resolve relative to wherever the entry was loaded from — see **Mounted bundle** below |
+| **Standalone routed SPA** — the site *is* the app, served at its own domain root | `command === 'build' ? '/spa/' : '/'` | assets must resolve the same no matter how deep the client-side route is — see **Standalone routed SPA** below |
+
+## Mounted bundle: keep `base: './'`
+
+When the bundle is loaded **into another page** — a page on some other domain pulling the entry
+script from the git site, directly or through the `/b/` proxy described under "Connecting to data"
+— build **host-agnostic**: a relative base (`base: './'`) makes every asset/chunk/CSS URL resolve
+relative to wherever the entry was loaded from — the git-site domain today, any other host
+tomorrow. Never hardcode a domain or an absolute prefix: the entry's final URL is not yours to
+know at build time, and an absolute base would pin every consuming page to one origin. This is a
+production pattern — don't "correct" it to an absolute base.
+
+In this purpose the host page owns the URL, so there are no deep path routes on the SPA's side:
+the relative base has exactly one depth to resolve from, and it always resolves correctly.
+
+## Standalone routed SPA: conditional base
+
+When the site **is** the app — users land on the domain root and the app owns client-side paths
+like `/records/42` — set the base conditionally:
+
+```ts
+// vite.config.ts
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/spa/' : '/',
+}));
+```
+
+Build-time `'/spa/'`, dev-time `'/'`. The dev server serves from the root, so a flat
+`base: '/spa/'` breaks local dev — always the conditional form.
+
+**Why the build base must be absolute `/spa/`:** a deep route like `/records/42` is answered by
+the root funnel with the index file. With `base: '/spa/'` the shell's assets resolve to
+`/spa/assets/app.js` — the file mount — no matter how deep the route is. Both alternatives fail:
+
+- `base: '/'` → assets resolve to `/assets/app.js`; the root funnel refuses asset paths, so every
+  asset 404s.
+- `base: './'` → assets resolve relative to the current route. At `/records/42` the browser
+  requests `/records/assets/app.js` — also a 404. A relative base only resolves correctly at one
+  route depth.
+
+**The failure is silent:** a wrong base typechecks, builds, and deploys clean, then the site
+renders a **blank page** — the index arrives, its assets 404, and nothing reports an error. If a
+standalone git site deploys fine and shows nothing, check the base first.
+
+**Deep links:** the root funnel serves the index for extension-less GET/HEAD navigations at any
+depth — that is what makes client-side routing work. Extension-less paths *under `/spa/`* may also
+fall back to the index, but that half is **unverified** — don't design routing around it; let the
+root funnel own it.
+
+**Guard the base in CI.** Nothing else catches this failure class, and the check is a few lines:
+read the built `index.html`, assert every asset `src`/`href` is addressed from `/spa/`, and fail
+the build if any root-addressed asset appears.
 
 ## The five git-deployment fields (UI-only)
 
@@ -53,15 +123,6 @@ plus the last deploy error.
   deploy can take up to that long to show in a browser that has the old bundle cached.
 - Size caps: repo zipball ≤ 64 MiB, unpacked ≤ 256 MiB — a deploy past either cap fails.
 
-## Serving behavior
-
-- **Deep links work:** extension-less paths under `/spa/` fall back to the index file (client-side
-  routing is fine). Paths that *look* like assets (have a file extension) 404 when missing instead
-  of falling back.
-- **Build with a relative base** (Vite `base: './'`) — verified end-to-end. The hard constraint is
-  that root-absolute asset URLs (`/assets/app.js`) 404, because the app lives under `/spa/`, not
-  the domain root.
-
 ## Connecting to data (the part most often gotten wrong)
 
 A git site is static — it cannot reach the DB. Pair it with a `/b/<alias>` endpoint **on the same
@@ -72,11 +133,23 @@ fetch("/b/myApi?action=list"); // absolute path — same-origin: no CORS, no tok
 fetch("./b/myApi");            // relative from /spa/ → resolves to /spa/b/myApi → 404
 ```
 
-**Inverse embedding variant** (loading a git-site bundle **into** a page on another origin, e.g. a
-merge report on an org domain): ES-module loads (`<script type="module">`, dynamic `import()`) are
-fetched in CORS mode, and the git site sends no `Access-Control-Allow-Origin` header — the browser
-blocks them (a platform CORS header was requested and declined). Verified fix: a thin **same-origin
-`/b/` proxy endpoint** that `B.net.fetch`-streams the bundle through the consuming origin; with a
-relative Vite base, hashed chunks and CSS resolve back through the proxy automatically via
-`import.meta.url`. One trap inside the proxy: the git site serves gzip, and `B.net.fetch` yields
-**decoded** bytes — serve them plain, do not forward the upstream `Content-Encoding` header.
+**Inverse embedding via a `/b/` proxy** (a sub-case of the **mounted-bundle** purpose: loading a
+git-site bundle **into** a page on another origin, e.g. a merge report on an org domain):
+ES-module loads (`<script type="module">`, dynamic `import()`) are fetched in CORS mode, and the
+git site sends no `Access-Control-Allow-Origin` header — the browser blocks them (a platform CORS
+header was requested and declined). Verified fix: a thin **same-origin `/b/` proxy endpoint** that
+`B.net.fetch`-streams the bundle through the consuming origin; with a relative Vite base, hashed
+chunks and CSS resolve back through the proxy automatically via `import.meta.url`. One trap inside
+the proxy: the git site serves gzip, and `B.net.fetch` yields **decoded** bytes — serve them
+plain, do not forward the upstream `Content-Encoding` header.
+
+## Reserved platform prefixes
+
+The platform answers these path prefixes on the site's domain before any request reaches the SPA —
+a client-side route defined under one of them never loads:
+
+`/gql`, `/csrf-token`, `/shared`, `/oauth2`, `/b`, `/data`, `/files`, `/downloadFolder`,
+`/appinfo`, `/spa`
+
+This is the known-reserved set, not necessarily an exhaustive one. If a route works everywhere
+except one prefix, suspect a server-side handler owning that prefix.

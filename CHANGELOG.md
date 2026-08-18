@@ -6,6 +6,47 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.22.0] — Unreleased
+
+Scopes the git-site SPA base guidance shipped in 0.15.0 — it does not reverse it. The relative
+Vite base (`base: './'`) was verified and stays correct for its purpose: a bundle mounted into
+another page. The defect was presenting that one purpose's answer as the universal one, so anyone
+building the other kind of site — a standalone routed SPA — followed it and shipped a site that
+deploys clean and renders a blank page, with nothing reporting an error. Reported in ClickUp
+[86bbd257g](https://app.clickup.com/t/86bbd257g). Entries accumulate here until the release is
+cut; date this block when it ships.
+
+### Changed — bluestep-reference skill
+
+- **`reference/git-site-spa.md` — one Vite base per purpose, and the file now asks which one you
+  have.** Restructured around an explicit fork. It opens with the model both answers rest on —
+  **two mounts that are not equivalent**: `/spa/**` serves any file in the deployed commit, while
+  the domain root is a funnel on the 404 branch that adopts only extension-less GET/HEAD
+  navigations (so a missing asset stays a clean 404, never a 200 full of HTML) — then a two-row
+  table routes the reader before any base advice appears. The **mounted bundle** section keeps
+  `base: './'` with its host-agnostic rationale intact (the entry may be loaded from any host —
+  this is a production pattern, not a mistake to "correct"). A new **standalone routed SPA**
+  section documents the conditional base — `command === 'build' ? '/spa/' : '/'`, shown in that
+  form because a flat `'/spa/'` breaks the dev server — why both `'/'` and `'./'` fail on deep
+  routes, and the deploys-fine-renders-blank symptom by name so it is recognisable. The old "deep
+  links work" bullet moved into the standalone section where it is true, with the
+  fallback-under-`/spa/` half explicitly marked unverified; the `/b/` proxy embedding variant is
+  relabelled as a sub-case of the mounted-bundle purpose, content unchanged. The date-stamp
+  preamble is gone per the current authoring rule (mark individual facts unverified instead).
+- **Reserved platform prefixes documented.** New section listing the prefixes the platform answers
+  before any request reaches the SPA — `/gql`, `/csrf-token`, `/shared`, `/oauth2`, `/b`, `/data`,
+  `/files`, `/downloadFolder`, `/appinfo`, `/spa` — so a client-side route defined under one is
+  known dead on arrival. Presented as the known-reserved set, not an exhaustive one.
+- **A CI base check is recommended for the standalone case**, described inline in a few lines:
+  read the built `index.html`, assert every asset `src`/`href` is addressed from `/spa/`, fail the
+  build otherwise. Nothing else catches this failure class — a wrong base typechecks, builds, and
+  deploys.
+- **Manifest entry trimmed and re-triggered.** The `git-site-spa.md` entry in `SKILL.md` was the
+  largest in the manifest at 113 words and named only the relative base; it is now ~45 words and
+  names **both purposes**, so either kind of builder routes to the file — the original failure was
+  a reader who had no way to know a second purpose existed. The file's frontmatter `description`
+  was updated in the same pass to match.
+
 ## [plugin 0.21.0] — 2026-08-17
 
 The platform's AI surface (`B.ai`) documented, from the 2026-08 `ai-plugin` feedback triage.
