@@ -61,7 +61,9 @@ on this skill and on the user's in-session decisions.
    and the one-sentence reason. Wait for approval; apply corrections first. Bot lane-assignments
    are **proposals**: the plan may overturn them silently — a wrong lane is just a status move,
    not an event. The plan also settles any `automation = candidate` values to `approved` or
-   `rejected`, judged against the same candidacy criteria in the unattended-half section below.
+   `rejected`, judged against the same candidacy criteria in the unattended-half section below —
+   and may overturn a `not-candidate` it disagrees with (set it to `candidate` or straight to
+   `approved`).
 
 6. **Apply, then verify** with a read-back (statuses, tags, assignees, reporter fields landed).
    Close-out rules are non-negotiable, per `docs/decisions/feedback-intake-bluehq-endpoint.md`:
@@ -135,8 +137,9 @@ without its evidence.
 
 Every ClickUp comment the bot writes starts with `🤖 [intake-triage]`.
 
-**The `automation` field** (dropdown on AI.List: `candidate`, `approved`, `rejected`). After the
-lane move, set it to `candidate` only when **all** of these hold:
+**The `automation` field** (dropdown on AI.List: `candidate`, `not-candidate`, `approved`,
+`rejected`). After the lane move, assess candidacy and write the verdict — `candidate` when
+**all** of these hold, `not-candidate` otherwise:
 
 - The change is purely **additive** — a new gotcha/reference file plus its manifest line, a
   pattern shipped many times before.
@@ -144,15 +147,16 @@ lane move, set it to `candidate` only when **all** of these hold:
 - `Target` is instruction/skill.
 - It touches one content file + the manifest, nothing else.
 
-**Never a candidate:** anything that modifies or contradicts existing reference text, anything
-resting on unverified platform-behavior claims, templates/hooks/agents/workflows, and cross-file
-rewrites.
+**Never a candidate** (these get `not-candidate`): anything that modifies or contradicts existing
+reference text, anything resting on unverified platform-behavior claims,
+templates/hooks/agents/workflows, and cross-file rewrites.
 
-**Lifecycle:** *(empty)* = not assessed → `candidate` (bot) → `approved` / `rejected` (human,
-step 5 of the interactive pass). The bot writes the field **only when it is empty** — a human's
-`approved`/`rejected` is never overwritten, and `rejected` is kept, not cleared. Resolve the
-field and option UUIDs at runtime via `GET /list/{id}/field` — never hardcode them. The triage
-comment states the candidacy rationale.
+**Lifecycle:** *(empty)* = not assessed yet — the assessment inbox, and on a task still in `Open`
+the signal that a run died before assessing → `candidate` / `not-candidate` (bot) →
+`approved` / `rejected` (human, step 5 of the interactive pass, on candidates). The bot writes
+the field **only when it is empty** — a human-set value is never overwritten, and `rejected` is
+kept, not cleared. Resolve the field and option UUIDs at runtime via `GET /list/{id}/field` —
+never hardcode them. The triage comment states the candidacy rationale either way.
 
 **Prohibitions:** never set `status = Closed`; never write the `resolution`, `resolution-note`,
 or `reporter` fields; never merge duplicates; never apply wont-fix; never implement fixes.
