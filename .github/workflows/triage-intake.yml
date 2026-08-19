@@ -32,6 +32,9 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Use the workflow's own token (bounded by the permissions block above)
+          # instead of the OIDC/app exchange, which would need id-token: write.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           # The action blocks bot actors by default; the intake bot is the only
           # actor allowed to trigger it via the issues event. The prompt is fixed
           # (defined here, not derived from the issue), so the allowlisted bot
