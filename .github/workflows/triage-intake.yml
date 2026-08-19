@@ -53,7 +53,7 @@ jobs:
           # File edits stay disallowed: the bot routes, it never writes code.
           claude_args: |
             --model claude-sonnet-5
-            --max-turns 30
+            --max-turns 60
             --allowedTools Bash,Read,Grep,Glob
             --disallowedTools Edit,Write,NotebookEdit
         env:

@@ -110,7 +110,10 @@ resolution**: comment on the GitHub issue saying so and exit. The task, if one e
 
 **Idempotency check (before anything else):** if the task already has a `🤖 [intake-triage]`
 comment, or its status is anything other than `Open`, the run is a no-op — note that in the
-Actions log / dispatch summary and exit. Post nothing to ClickUp.
+Actions log / dispatch summary and exit. Post nothing to ClickUp. The marker is the **ClickUp**
+comment specifically: a `🤖` comment on the GitHub issue (for example an earlier failed-resolution
+notice) does not count and must not block a rerun — a failed run leaves the task in `Open`
+precisely so it can be retried.
 
 **Procedure:** run the interactive steps 1–3 above exactly as written — dump the board, verify
 claims against `plugin/` source, dedup semantically — scoped to this one task.
