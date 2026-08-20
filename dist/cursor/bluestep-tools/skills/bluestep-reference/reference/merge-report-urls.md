@@ -31,7 +31,9 @@ Returns full `MergeReport<T>` with `viewUrl()`, `printUrl()`, `profileUrl()`, `n
 
 `contentOnlyUrl()` exists **only** on the full `MergeReport<T>` (reached via `optApplicable*`) — it is **not** on the `MergeReportMetaData` returned by `B.find.mergeReport(id, 'js')`. Use it for the report body without the surrounding page chrome — e.g. the client-side
 async-embed recipe in [merge-report-async-loading](merge-report-async-loading.md) and
-[b-include element](b-include-element.md).
+[b-include element](b-include-element.md). It is also **BSJS-only**: a RelateScript caller's
+`RelateMergeReport` exposes no `contentOnlyUrl` at all — see the caller-context caveat in
+[merge-report-async-loading](merge-report-async-loading.md).
 
 Also: `applicableBsJsMergeReportResults(...)` returns `{results, message}` for error reporting.
 
@@ -61,6 +63,7 @@ import.
 
 ## Gotchas
 
+- The `__FID_<name>` segment in a full id — and the `("id", "x")` custom-prop filters — resolve via the object's `FID=<name>` **alternate identifier**, set on the platform. How that name is assigned: [fid-alternate-identifier](fid-alternate-identifier.md).
 - `viewUrl()` is **relative**. For absolute (emails etc.) wrap with `B.toFullyQualifiedUrl(rel)`.
 - `B.siteNavigation()` returns `SiteNavItem` (pages) — **does NOT** have `optLookupMergeReport`. The `optLookup*MergeReport` methods are on `RecordNavItem`, obtainable via `record.nav()`, but `record.nav()` is documented as expensive (30+ sec on uncached orgs). Prefer `B.find.mergeReport` or `optApplicableBsJsMergeReport`.
 - `B.find.mergeReport(id, 'js')` does NOT filter by record applicability — it's an id lookup. Only `optApplicable*` methods on FormEntry filter by applies-to-this-record.

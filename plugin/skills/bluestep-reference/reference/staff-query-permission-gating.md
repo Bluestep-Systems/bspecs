@@ -20,6 +20,11 @@ Server emits capability flags, not raw data: `{ canView, canAdd, canEditDelete, 
 - Gate the New Entry button on `canAdd`; the Actions column + edit/delete on `canEditDelete`.
 - Wire `submitForm` hook + `syncToField()` **only when canAdd||canEditDelete** — Readers/No-Access never write to the memo (not even the canonicalization pass).
 
+**Context caveat:** the `meetsCriteria` guard above is proven in **endpoint/request context**. In
+formula run context (on-demand/trigger), `meetsCriteria()` on a **unit-scoped** query returns
+false even for matching records — gate on the record's own form entries there instead:
+[gotchas/meetscriteria-formula-context.md](../gotchas/meetscriteria-formula-context.md).
+
 **API facts used:** `B.optUser` is `Optional<User>` (use `isPresent()`/`get()`, NOT `orElse(null)` — null isn't assignable to `User`). `user.isGlobalSuper()`, `user.primaryId()` (BaseRecord id, falls back to user id), `user.fullName()`. RecordQuery `meetsCriteria(id)` + `optById(id): Optional<Record>`. SingleSelectField `.opt(): Optional<OptionItem>`, `OptionItem.displayName()` = label text. See also [singleselect null copy](singleselect-null-copy.md), [id full vs short](id-full-vs-short.md).
 
 ## Authoring side — creating the permission query

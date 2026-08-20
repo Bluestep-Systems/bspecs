@@ -1,5 +1,5 @@
 ---
-description: "A MergeReport whose static/script.ts uses a third-party client-side global (e.g. GridStack) prints a wall of advisory type errors on every b6p push — harmless (platform compile is authoritative), silence locally with an ambient .d.ts stub"
+description: "A MergeReport whose static/script.ts uses a third-party client-side global (e.g. GridStack) prints a wall of advisory type errors on every b6p push — harmless (the emit succeeds and the library exists at runtime in the browser), silence locally with an ambient .d.ts stub"
 ---
 
 # Third-party client-lib type noise on `b6p push`
@@ -27,8 +27,11 @@ downstream of it as `never`.
 
 ## Safe to ignore — with one real risk
 
-The local pre-push build is **advisory only**: the platform's own compile is authoritative, and the
-snapshot ships correctly despite the noise. A wall of these errors is **not** a failed push.
+These diagnostics are **advisory only**: the transpile's emit continues through them, the snapshot
+ships correctly, and the library genuinely exists at runtime in the browser — so nothing is
+actually wrong. (There is no later authoritative compile; the platform never compiles — the CLI's
+local transpile is the only build. See the diagnostics guidance in the `/b6p-push` skill's report
+step for the full benign-vs-real tell.) A wall of these errors is **not** a failed push.
 
 The real risk is masking: the noise repeats on every push of the affected component and can bury a
 **genuine new** diagnostic introduced by the session's actual change. Don't skim past the wall —

@@ -47,6 +47,13 @@ primary form — see the primary-form hard rule in
 [merge-report-urls](merge-report-urls.md)). See
 [b-include element](b-include-element.md) for the `<b-include>` attributes.
 
+**Caller-context caveat — this recipe is BSJS-only.** A RelateScript caller cannot reach it: a
+`RelateMergeReport` object exposes neither `.contentOnlyUrl` as a property (renders as an
+unresolved `[out]`) nor `.contentOnlyUrl()` as a method (blocks the save with "Cannot find method
+with matching name and arguments for RelateMergeReport data type"). If your caller is a Relate
+section-form field template, use inline `.resolve()` plus the server-side entry-id patch
+([merge-report-entry-id-patch](merge-report-entry-id-patch.md)) instead. (verified 2026-08)
+
 For dynamic async content driven from the client (rather than this server-side
 config), see [b-include element](b-include-element.md). Related merge-report detail:
 [merge-report-static-index](merge-report-static-index.md),

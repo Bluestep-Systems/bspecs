@@ -201,6 +201,10 @@ tools, not a fixed inventory.
 **Wiring / imports**
 - `add_queries`, `add_forms`, `add_field_access`, `add_record_types`
 - destructive siblings: `remove_queries`, `remove_forms`, `remove_field_access`, `remove_record_types`
+- **Writability is two independent flags** — the form-level `writable` on `add_forms` and the
+  per-field `writable` on `add_field_access`, stamped at grant time and never recalculated. Pass
+  the intended value explicitly on both, and verify with `list_field_access`, never the UI
+  checkboxes: [gotchas/field-access-writability.md](../gotchas/field-access-writability.md).
 - **Against a BSJS endpoint these are privilege-gated, not unsupported.** `add_field_access` (and the
   `add_queries` / `add_forms` siblings) on an END_POINT script requires the **ENGINEER ENDPOINT** custom
   privilege on the token's subject; without it the call fails cleanly and applies nothing. That privilege
