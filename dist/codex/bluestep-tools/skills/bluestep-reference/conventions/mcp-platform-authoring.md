@@ -1,13 +1,14 @@
 ---
-description: "The single shared procedure for performing a [PLATFORM] authoring/wiring op via the bundled platform-gateway MCP — connection-check (are the gateway tools live? fix = enable the bluestep-tools plugin + set $B6PT_TOKEN + restart) → resolve the target org to a U-number (user-supplied U-number → available_tenants map → unlisted ≠ unreachable, ask/derive) → map op to an inner tool (optional op: hint), using list_org_tools for schemas → approval echo of the concrete invoke_org_tool call (org + inner tool + args) → execute via invoke_org_tool → declaration read-back via invoke_org_tool(tool:get_script_declarations) → idempotency detect-and-skip → destructive-tool discipline, plus the supported tool set, the create-time display-column requirement for queries/views (columns are unfixable afterwards — the DELETE guard), and the create-time completeness read-back (displayFields / searchComponents / recordTypes / categories all come back silently empty). This flow is the source of truth: /spec-execute, /quick-task, and free conversation all follow steps 2–6; only the trigger (step 1) and bookkeeping (step 7) differ. Load when about to add an import (query/form/field/MEFR) to a script or create a query/form/field/option-list/view/record-type/MEFR (create_mefr) via the gateway MCP, on any path including raw createRelateQuery / graphql_mutation."
+description: "The single shared procedure for a [PLATFORM] authoring/wiring op via the bundled platform-gateway MCP — connection check, org resolution, tool mapping, approval echo, execute, declaration read-back — plus the supported tool set, create-time rules for queries/views, and the verified quirks list. Load when about to add an import (query/form/field/MEFR) to a script or create a form/field/option-list/view/record-type/MEFR/script object via the gateway MCP."
 ---
 
 # MCP `[PLATFORM]` authoring / wiring procedure
 
 This page **is** the flow. Every entry point points here and none restate it (no-duplication invariant).
 It covers **authoring / wiring only** — adding an import (query / form / field) to a script, or creating
-a form / field / option-list / view / record-type. It **never** writes a script draft and **never**
-pushes or publishes: component **sync (pull / push / audit) stays on the `b6p` CLI**, permanently. See
+a form / field / option-list / view / record-type / MEFR / script object (`create_script`). It **never**
+writes script source and **never** pushes or publishes: component **sync (pull / push / audit) stays on
+the `b6p` CLI**, permanently. See
 [../../../../docs/decisions/platform-mcp-integration.md](../../../../docs/decisions/platform-mcp-integration.md).
 
 Connection is the **bundled gateway MCP** — a single global HTTP server (`bluestep-gateway`, shipped in the
@@ -24,6 +25,13 @@ is a **relay facade** exposing three meta-tools, not a flat aggregation of each 
 Every per-org authoring/discovery tool (`add_queries`, `list_forms`, `get_script_declarations`, …) is
 reached **through** `invoke_org_tool` — the native `mcp__bluestep-<subdomain>__<tool>` per-org namespaces no
 longer exist.
+
+**How to read the dates in this page.** A `(verified YYYY-MM)` marker records when a behavior was last
+confirmed live. Fixes ride platform versions, so an org on an older version may still show a behavior
+marked fixed here — and vice versa. **An old date never licenses skipping a bullet**: the workarounds are
+harmless when the underlying bug is fixed (an extra read-back, an explicit param, a solo UPDATE), so
+follow them regardless. Only drop a UI hand-back when a **read-only** probe on the target org shows the
+behavior changed — never re-verify with a mutation.
 
 ## One procedure, three entry points
 
@@ -70,11 +78,14 @@ The `org` param is a **U-number** orgKey (`U…`, e.g. `U142030`) or a bare numb
 
 1. **Task/user supplies a U-number** (or bare number) → use it directly.
 2. **Else call `available_tenants`** and map the named subdomain / display name to its `orgKey`.
-3. **`available_tenants` is a curated directory, NOT the reachable set** (proven 2026-07-20: LDS `U129161`
-   and playground `U141832` are unlisted yet fully reachable). So if the org is **not** listed, do **not**
-   conclude it's unreachable — **ask the user for its U-number** (or derive it, e.g. from
+3. **`available_tenants` is a curated directory, NOT the reachable set** — whether an org is reachable
+   is decided per-token by that org itself, and orgs your token is authorized for stay reachable by
+   U-number even when unlisted. So if the org is **not** listed, do
+   **not** conclude it's unreachable — **ask the user for its U-number** (or derive it, e.g. from
    `read_organization_log`'s `schema=U…` line), then relay. Only a `defaultHost: null` on a **listed**
-   tenant means genuinely unreachable — report, don't `invoke_org_tool`.
+   tenant means genuinely unreachable — don't `invoke_org_tool`; request MCP enablement for that org from
+   BlueStep, and until then fall back to the human hand-back (author in the BlueStep UI, then `b6p pull`),
+   same as the 404 case in step 2.
 
 If ambiguous or multiple candidates → **ask**; never guess which org to mutate.
 
@@ -114,7 +125,9 @@ the harness sees one generic tool, so the echo is the only place the human sees 
 which org. Required at **every** entry point, conversational included.
 
 - Denial → leave the task `[ ]`, report, stop.
-- A multi-op task may take **one** approval covering the batch; report each result.
+- A multi-op task may take **one** approval covering the batch — except destructive ops and
+  no-MCP-inverse schema ops (`create_mefr`, `record_type`, …), which get individual echoes; report each
+  result.
 
 ### 6 — Execute + declaration read-back
 
@@ -128,13 +141,15 @@ immediately — no manual re-pull.
   the declarations are usable.
 - **Confirm the expected accessor names appear** in the read-back — the specific property keys /
   const names the dependent `[CODE]` task will reference, not just "declarations changed."
-- A **`null` or blank property key** in the generated declarations means **STOP and hand back to the
-  UI** (see the field-FID quirk in [Known authoring quirks](#known-authoring-quirks)).
+- A **`null` or blank property key** in the generated declarations means the field has **no
+  `formulaId`** — typically a pre-existing field. Repair per the `formulaId` bullet in
+  [Known authoring quirks](#known-authoring-quirks), then re-run the read-back.
 - Prove-out bar is **"declarations sufficient to code against," not byte-parity** with `/b6p-pull`.
 - If the reduced declarations are insufficient, fall back to a CLI `/b6p-pull` for the full
   `declarations/` tree.
 - **If the op created a query or view**, the same "success ≠ done" rule applies to the object itself:
-  run the [create-time completeness read-back](#create-time-completeness-read-back-queries-and-views)
+  run the
+  [create-time rules and completeness read-back](#create-time-rules-and-completeness-read-back-queries-and-views)
   before reporting the task complete.
 - **`get_script_declarations` may be absent from a given org's toolset** (confirm via `list_org_tools`).
   When it is, the declaration read-back step is impossible — fall back to a `b6p pull` to refresh the
@@ -151,7 +166,7 @@ next task. Conversationally there is no checkbox — just report what ran.
 **Object already exists** (re-run, or added manually) → detect via the `list_*` / `get_*` readers and
 **skip with a report**. Do not error and do not duplicate. **Caution — `list_views(formId:)` gives
 false negatives**: the formId filter misses `primaryForm` relationships and omits EntityList/MEFR
-views entirely (verified live 2026-07-31), so it cannot prove a view is absent — list **without**
+views entirely (verified 2026-07), so it cannot prove a view is absent — list **without**
 the filter and match by name/type before concluding an object doesn't exist (details:
 `gotchas/relate-query-over-mefr.md`).
 
@@ -166,9 +181,9 @@ the filter and match by name/type before concluding an object doesn't exist (det
   explicitly requires them, with **extra** confirmation. Out of default scope.
 - **Schema creation is not (currently) MCP-reversible.** The wiring trio (`add_*`) has clean `remove_*`
   inverses, but **schema-authoring** ops (`form` / `field` / `option_list` / `view` / `record_type`) do
-  **not** — verified 2026-07-08 on bkplayground: an option list created via `create_option_list` has no
-  `delete_option_list`, and `discard_pending_change` only rolls back the data-entry staging queue (it
-  errors "requires a chat session"), **not** schema objects. Treat every schema-authoring op as
+  **not** — an option list created via `create_option_list` has no `delete_option_list`, and
+  `discard_pending_change` only rolls back the data-entry staging queue (it errors "requires a chat
+  session"), **not** schema objects (verified 2026-07). Treat every schema-authoring op as
   **effectively irreversible via MCP** — removal is a manual step in the platform UI. This raises the bar
   on the approval echo for schema creation; **never** guess a `graphql_mutation` delete to clean up.
 - **Approval denied / partial failure** → leave the task `[ ]`; report exactly what did and didn't apply;
@@ -192,8 +207,14 @@ tools, not a fixed inventory.
   is a **grantable one-time prerequisite** (a global account can grant it), not a permanent dead end —
   see [Known authoring quirks](#known-authoring-quirks).
 
-> **MEFR imports — wire the MEFR as a query group** (verified live 2026-07-31). A multi-entry form
-> report (MEFR) **is** a CustomDBView, so it is imported as the query group itself. The working recipe:
+> **MEFR imports — wire the MEFR as a query group** (verified 2026-07). A multi-entry form
+> report (MEFR) **is** a CustomDBView, so it is imported as the query group itself.
+>
+> Before step 1, decide: will the script **loop records**? If yes, the query group must be a
+> record-holding `List` view, not the MEFR — see the Limitation below. `create_mefr` is irreversible;
+> don't create one the design can't use.
+>
+> The working recipe:
 >
 > 1. **`create_mefr`** (`formId` = the base form's topId, plus `folderId` / `mefrName`) — first check
 >    `list_views` **without a formId filter** for an existing MEFR of the form and reuse it (the
@@ -217,42 +238,28 @@ tools, not a fixed inventory.
 > - the base form's own topId passed directly → **excluded from the script's typedoc** unless it is the
 >   query's primary form (the original silent failure).
 >
+> **Limitation:** the read-back above verifies declaration wiring and field access — it does **not**
+> make the group iterable. A MEFR wired this way was observed to yield a query group the script
+> cannot loop over the way a List-view-backed group can: the import "succeeds" and declarations
+> generate, but record iteration does not work. When the script must **loop records**, import a real
+> record-holding query (a `List` view) as the query group instead, keeping the MEFR wiring for field
+> access / declarations; reading MEFR entry data through a proper `List` view:
+> [gotchas/relate-query-over-mefr.md](../gotchas/relate-query-over-mefr.md). (verified 2026-08)
+>
 > Design pointer: import config is **per-org** — it does not travel with `b6p push` — so a code-only
 > design often beats import expansion.
 
 **Schema authoring**
 - `form`, `field`, `option_list`, `view`, `record_type`
 - siblings: `create_option_list`, `option_list_item`, `option_group`, `batch_fields`, `create_mefr`
+- Base-record-type creation works on current platform versions: `record_type` with the Relate app's ID
+  as `parentId` and `baseType: true` creates the base type together with its base form. On orgs behind
+  that fix it instead produces an **orphaned category** with UI-only cleanup — so read the created type
+  back (`get_record_type`) and confirm `baseType: true` and a `baseForm` exist before building on it.
 
-> **Display columns are part of CREATE, on every query/view creation path.** A query or view created
-> without display columns is **incomplete**: it matches records but renders **blank** for a human —
-> rows with no columns to show. Always pass `displayColumns` on **every** path that creates one — the
-> `view` inner tool, **`create_mefr`**, and a raw `createRelateQuery` / `graphql_mutation` alike. There
-> is no cheap second chance: **create time is the only cheap moment.**
->
-> The reason is the DELETE guard. Updating an **existing** view's `displayColumns` / `filterColumns` /
-> sort configuration internally deletes and re-adds display components, so the call dies, verbatim:
-> `SecurityException: AI tools are not permitted to perform DELETE operations`. Nothing in the MCP tool
-> set can repair it — the **only** recovery is manual work in the platform UI.
->
-> What **does** still work on an existing view: **scalar property** updates. So set columns / filters /
-> sort at CREATE, and **route column/filter/sort edits on existing views to the platform UI** (hand
-> back, then continue).
->
-> The shape, copy-pasteable:
->
-> ```
-> displayColumns: [{ formId: "<form topId>", fieldId: "<field topId>", sortOrder: 1 }]
-> ```
->
-> Full `DisplayColumnInput` field list: `formId`, `fieldId`, `sortOrder`, `width`, `wordWrap`,
-> `sortDirection`, `detailReportId`. Resolve `formId` / `fieldId` **by name** through the read-only
-> discovery tools — topIds are **per-org** and never portable between orgs.
->
-> Then **read the created query back** and prove it is complete — see
-> [Create-time completeness read-back](#create-time-completeness-read-back-queries-and-views). For a
-> permission/security query the column set is fixed and one column wide:
-> [reference/staff-query-permission-gating.md](../reference/staff-query-permission-gating.md).
+> **Queries/views have create-time-only properties** (display columns, filters, sort, search criteria —
+> the DELETE guard blocks fixing them later): see
+> [Create-time rules and completeness read-back](#create-time-rules-and-completeness-read-back-queries-and-views).
 
 **Read-only discovery / validation**
 - `list_applicable_forms`, `list_applicable_fields`, `list_field_access`, `describe_form`, `list_forms`,
@@ -265,40 +272,55 @@ tools, not a fixed inventory.
 
 ### Known authoring quirks
 
-Observed live-platform behaviors (as of 2026-07) with their workarounds. These may be fixed
-server-side later — verify against the org you're on if a bullet seems stale.
+Observed live-platform behaviors with their workarounds; each bullet carries the month it was last
+verified — the dating key at the top of this page says how to read the markers.
 
-- **`form` CREATE mishandles `singleEntry` / `userUpdateable`** — the values are ignored or inverted,
-  and the CREATE response echo **cannot be trusted**: it reports the flags it did *not* set.
-  Workaround: CREATE, then a `form` **UPDATE** with the intended flags, then verify via
-  **`list_available_forms`** — the authoritative entry-mode reader (`get_form` does not reliably
-  return the entry-mode flag). (A server-side fix for the flag handling is in flight; the read-back
-  habit below outlives it.)
-- **Trust but verify every boolean you set at CREATE time.** A CREATE response echo is the tool's
-  account of what it *was asked* to do, not a read of what was stored, so a boolean in that echo is
-  **never authoritative**. Whenever a boolean flag is load-bearing (entry mode, updateability,
-  visibility), **re-read it with an authoritative reader** after the create and **correct it with an
-  UPDATE** if it disagrees — the same detect-and-correct shape as the declaration read-back in step 6.
+**Forms & fields**
+
+- **`form` UPDATE can silently drop a `singleEntry` change when other properties ride in the same
+  call** — the flag is not applied **and** the response echo reports the intended value as if it
+  were set; a solo UPDATE carrying only the flag applies cleanly. Rule: send flag-bearing `form`
+  UPDATEs **one property per call**, and verify via **`list_available_forms`** — the authoritative
+  entry-mode reader (`get_form` does not reliably return it). On orgs still on a platform version
+  predating the CREATE-time flag fix, a multi-entry form that was created single-entry and flipped
+  by UPDATE may have a broken `form_entry` data-entry path (a stuck `..._0_` entry key) — data
+  entry into such a form is a UI hand-back. (verified 2026-08)
+- **Trust but verify every boolean you set — CREATE or UPDATE.** A response echo — create or
+  update — is the tool's account of what it *was asked* to do, not a read of what was stored, so a
+  boolean in that echo is **never authoritative** (the `singleEntry` bullet above is an UPDATE echo
+  doing exactly this). Whenever a boolean flag is load-bearing (entry mode, updateability,
+  visibility), **re-read it with an authoritative reader** after the call and **correct it with a
+  solo UPDATE** if it disagrees — the same detect-and-correct shape as the declaration read-back in
+  step 6. When *reading* booleans, remember an untouched one comes back `null`, not `false` — see
+  the nullable-booleans entry in [gotchas/common-gotchas.md](../gotchas/common-gotchas.md).
 - **TEXT and MEMO fields require an explicit format type on CREATE** (e.g. `textFormatType: "NONE"`)
   even though the tool schema marks it optional — omitting it fails with a missing-type-id error (it
-  is a serialization discriminator server-side).
-- **`record_type` CREATE produces an orphaned category, not a base record type** — base-record-type
-  creation is effectively unsupported via MCP, and cleanup is UI-only (schema ops have no MCP
-  inverse — do not experiment).
-- **`form` / `field` / `batch_fields` CREATE cannot set a field's script-facing FID** (the field's
-  script-addressable identifier) — the field is created without one, so the generated declarations
-  emit a literal `readonly null:` property key, the field does **not** appear in
-  `list_applicable_fields`, and a `field` **UPDATE** with a clean name does **not** repair the
-  identifier. Workaround: create script-addressable fields in the **platform UI** with the Formula ID
-  set at creation time — the MCP `field` tool alone is not sufficient for a field code will read.
+  is a serialization discriminator server-side). (verified 2026-07)
+- **Set `formulaId` at field CREATE** — it is what makes the field appear in the generated BSJS
+  declarations. An `altIds FID=` entry is **not** `formulaId`: a field created with only altIds gets
+  `formulaId: null`, does not appear in declarations, and the tool warns about it. Repair: a `field`
+  **UPDATE** setting `formulaId`. (verified 2026-08)
+- **`altIds` is not a general field-setter.** It writes key/value alternate-id entries and nothing
+  else: a plausible-looking key (e.g. `uniqueId`) "succeeds" by appending an alt-id entry while the
+  platform field it resembles stays unset — a success response proves no specific platform field
+  was set. Concrete case: an ON_DEMAND formula's required **Identifier** (`uniqueId`) has no
+  `create_script`/`update_script` parameter and cannot be set via altIds — setting it is a UI step.
+  (For the FID-specific case see the `formulaId` bullet above.) (verified 2026-08)
+- **A SIGNATURE field with `signatureFormatType: SIMPLE` renders BLANK unless its Right Label is
+  set** — and the `field`/`form` tools do not require it, so an MCP-created signature silently
+  doesn't render until a Right Label is added in the UI. Workaround: **always pass `rightLabel`**
+  when creating SIMPLE signature fields via MCP. (verified 2026-07)
+
+**Scripts**
+
 - **END_POINT authoring is privilege-gated — a grantable prerequisite, not a dead end.** **Both**
   creating an END_POINT script (`create_script` with scriptType END_POINT) **and** wiring an existing
   endpoint's dependencies (`add_queries` / `add_forms` / `add_field_access` against an END_POINT script)
   fail with a `RemoteSecurityException` naming the **ENGINEER ENDPOINT** custom privilege when the
   `b6pt_` token's subject lacks it — verbatim on create:
   `You do not have Custom ENGINEER ENDPOINT privileges`. FORMULA and MERGE_REPORT authoring/wiring on
-  the same token are unaffected. Read that message as a **missing endorsement on the calling user**,
-  and treat these two facts as invariants:
+  the same token are unaffected (verified 2026-07). Read that message as a **missing endorsement on
+  the calling user**, and treat these two facts as invariants:
   - **Nothing was created.** The privilege check fires **before** persistence and the tool's
     transaction rolls back, so the failure leaves no partial script behind. **Retrying the identical
     call without a grant fails identically** — do not retry, and do not go hunting for a duplicate you
@@ -308,21 +330,84 @@ server-side later — verify against the org you're on if a bullet seems stale.
     one-time setup step; if it will not be granted, hand **all** endpoint work (create + wire) to the
     platform UI for that session.
 
-  (A pre-flight, honest "you lack ENGINEER ENDPOINT" error ahead of the attempt is being added
-  server-side; the invariants above hold either way.)
+  (A pre-flight error is being added server-side as of 2026-07; the invariants hold either way.)
 - **`lookup_script_by_name` misses are name mismatches far more often than missing scripts.** The
   exact-name lane is **case-sensitive** and matches the script's **display name literally** — trailing
   spaces, casing, and punctuation all count — and BSJS endpoints *are* searched, so a miss is not
-  evidence the script type is unsupported. A script whose creation half-failed can also appear as a
+  evidence the script type is unsupported. A script whose creation half-failed can appear as a
   **folder child** in the folder readers (`get_folder` / `list_folders`) while matching nothing by
-  name. Rule: on a miss, **list the folder and compare exact display names** before concluding the
-  script does not exist; only then create.
-- **A SIGNATURE field with `signatureFormatType: SIMPLE` renders BLANK unless its Right Label is
-  set** — and the `field`/`form` tools do not require it, so an MCP-created signature silently
-  doesn't render until a Right Label is added in the UI. Workaround: **always pass `rightLabel`**
-  when creating SIMPLE signature fields via MCP.
+  name (this is the non-privilege failure mode; a `RemoteSecurityException` create rolls back clean —
+  see the END_POINT bullet). Rule: on a miss, **list the folder and compare exact display names**
+  before concluding the script does not exist; only then create. (verified 2026-08)
+- **`update_script` `formulaType` changes are not self-contained.** The call echoes the new
+  formulaType back, but no parameter exists for the companion configuration the target type
+  requires (schedule timing for `SCHEDULED_*`, the required Identifier for `ON_DEMAND`), so the
+  switch can land the formula in a non-functional state with no warning. When the MCP change rides a
+  batch, prefer completing the companion config in the UI right after; otherwise treat a formulaType
+  change on an existing formula as a UI hand-back for the whole change. (verified 2026-08)
 
-### Create-time completeness read-back (queries and views)
+**Units & records**
+
+- **Unit creation is a UI hand-back.** There is no dedicated unit tool; the only MCP path is
+  `graphql_mutation createUnit`, and units it creates are structurally incomplete — the unit reads
+  back fine but its Entities container is not linked, so any later record placement into it fails.
+  `deleteRemoteObject` on such a unit also fails (opaque `INTERNAL`), so cleanup is UI-only. Create
+  units in the platform UI; if one was already created, report it to the user for manual UI
+  deletion. (verified 2026-08)
+- **MCP cannot seed a record.** Both creation paths fail: the `record` tool CREATE returns
+  `Cannot create an Entity w/o any form entries.` (it has no way to pass initial base-form field
+  data), and `graphql_mutation createRecord` fails with an opaque `INTERNAL`. Mint records in the
+  platform UI (or an app/SPA session); once a record exists, `form_entry` CREATE/UPDATE work
+  against it. `record` UPDATE and DELETE exist — the gap is CREATE only. (verified 2026-08)
+
+### Create-time rules and completeness read-back (queries and views)
+
+**Display columns are part of CREATE, on every query/view creation path.** A query or view created
+without display columns is **incomplete**: it matches records but renders **blank** for a human —
+rows with no columns to show. Always pass `displayColumns` on **every** path that creates one — the
+`view` inner tool, **`create_mefr`**, and a raw `createRelateQuery` / `graphql_mutation` alike. There
+is no cheap second chance: **create time is the only cheap moment.**
+
+The reason is the DELETE guard. Updating an **existing** view's `displayColumns` / `filterColumns` /
+sort configuration internally deletes and re-adds display components, so the call dies, verbatim:
+`SecurityException: AI tools are not permitted to perform DELETE operations`. Nothing in the MCP tool
+set can repair it — the **only** recovery is manual work in the platform UI.
+
+`searchCriteria` is under the same guard. Passing `searchCriteria` to an update (e.g.
+`updateRelateQuery`) on a query that **already has** a search component resets — deletes and re-adds —
+its child components, so the call dies on the same
+`SecurityException: AI tools are not permitted to perform DELETE operations`. Replacing or normalizing
+an existing criterion via MCP is impossible — UI hand-back. Adding criteria to a query that has
+**none** is safe to attempt (no delete occurs); if it still fails, hand back. So set `searchCriteria`
+at CREATE too — create time is the only cheap moment, same as columns. (verified 2026-08)
+
+Option-list criteria carry an extra trap: the `view` CREATE tool accepts and persists a
+SINGLE_OPTION_LIST search criterion given as an option-item topId, reports success, and `get_view`
+reads it back — but query **execution** then fails with an opaque `INTERNAL` server error, and MCP
+cannot repair the criterion (the DELETE guard above). Until the accepted stored value format is
+documented, treat an option-list criterion as **unproven until the query has been executed**: after
+creating an option-filtered query, run it (a `relateQuery` fetch or `graphql_query relateQuery` with a
+small count) — a read-back of the definition is not enough. Flag this risk in the approval echo — the
+user may prefer to add the criterion in the UI. Repairing a broken criterion is a UI hand-back (remove
+and re-add the criterion there). (verified 2026-08)
+
+What **does** still work on an existing view: **scalar property** updates. So set columns / filters /
+sort at CREATE, and **route column/filter/sort edits on existing views to the platform UI** (hand
+back, then continue). General rule: any update that replaces **child components or collections** on an
+existing object triggers the internal delete-and-re-add and dies on the guard — assume that for any
+non-scalar property not listed here; only scalar updates are safe to attempt.
+
+The shape, copy-pasteable:
+
+```
+displayColumns: [{ formId: "<form topId>", fieldId: "<field topId>", sortOrder: 1 }]
+```
+
+Full `DisplayColumnInput` field list: `formId`, `fieldId`, `sortOrder`, `width`, `wordWrap`,
+`sortDirection`, `detailReportId`. Resolve `formId` / `fieldId` **by name** through the read-only
+discovery tools — topIds are **per-org** and never portable between orgs. For a permission/security
+query the column set is fixed and one column wide:
+[reference/staff-query-permission-gating.md](../reference/staff-query-permission-gating.md).
 
 The declaration read-back of step 6 has a twin for **query / view creation**, and it is **equally
 mandatory**: a create call's **success response is not proof the object is complete**. Several inputs are
@@ -337,9 +422,8 @@ and assert all four:
 | `recordTypes` | expected type(s) | categories are categories **of** a base record type; without it the filter has nothing to hang on |
 | `mustHaveCategories` / `mustNotHaveCategories` | expected sets | accepted on create, **stored neither** |
 
-The category trap in full: **`createRelateQuery` accepts `mustHaveCategories` / `mustNotHaveCategories`,
-returns success, and stores neither.** A follow-up `updateRelateQuery` **also** drops them **unless
-`recordTypes` is sent in the same mutation** — so the repair call must carry the record types alongside
+Repairing dropped categories: a follow-up `updateRelateQuery` **also** drops them **unless
+`recordTypes` is sent in the same mutation** — the repair call must carry the record types alongside
 the categories, not the categories alone.
 
 The `searchComponents` one is a **security** failure, not a cosmetic one: an empty criteria set on a
