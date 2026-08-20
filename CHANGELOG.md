@@ -6,6 +6,49 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.25.0] — 2026-08-20
+
+Three verified corrections around the same root fact: the platform never compiles — the only build
+is the b6p CLI's local transpile, which runs without the component's `declarations/`. Plus the
+`create_mefr` displayColumns exemption from the 2026-08-20 schema verification.
+
+### Changed — bluestep-init skill
+
+- **AGENTS.md.template rule 3 no longer claims the platform compiles on push**
+  ([86bbeb659](https://app.clickup.com/t/86bbeb659), consolidating
+  [86bbd39dp](https://app.clickup.com/t/86bbd39dp)). The old second sentence — "Compilation is
+  handled by the platform on push" — was verified false: the platform is a byte mirror; the only
+  transpile is the b6p CLI's local one during a publish push. The never-run-`tsc` rule stands,
+  now with the true reason (the CLI runs the build for you; a hand-run `tsc` has no declarations
+  wired up and produces stray `.js` files and misleading errors).
+
+### Changed — b6p-push skill
+
+- **Step 5 now teaches the benign-vs-real tell for publish diagnostics**
+  ([86bbeb659](https://app.clickup.com/t/86bbeb659)). The CLI transpiles `scripts/app.ts` in
+  isolation, without `declarations/` — so a wall of `Cannot find name` on platform globals or
+  imported query/field names means nothing was type-checked (the emit still succeeded); a real
+  error names one of your own symbols. Documented mitigation: a
+  `/// <reference path='../../declarations/index.d.ts' />` directive at the top of
+  `scripts/app.ts` makes the same push report clean compilation. Also noted: re-pushing does not
+  clear the noise, and a stray unescaped backtick in a `B.out` literal is a *different*
+  `Cannot find name` cause (cross-referenced `conventions/ts-in-template-literal.md`) — that one
+  ships a genuinely broken `app.js`. The old blanket "advisory-only" exception was folded into
+  this structured tell. The CLI half (honest success reporting when nothing was type-checked)
+  stays with b6p-cli.
+
+### Changed — bluestep-reference skill
+
+- **`create_mefr` exempted from the always-pass `displayColumns` rule**
+  ([86bbh3hfy](https://app.clickup.com/t/86bbh3hfy) item 3; items 1/2/4 shipped in 0.24.0). The
+  create-time rules in `conventions/mcp-platform-authoring.md` said to pass `displayColumns` on
+  every view-creation path including `create_mefr` — but that tool has no such parameter
+  (schema-verified 2026-08: only `formId` / `folderId` / `mefrName` / `description`). It seeds
+  one display column from the base form's **first field**, so field creation order silently
+  decides the MEFR's display column — and changing it later is a UI hand-back (the DELETE
+  guard). The rule now applies to paths that accept the parameter, with the seeding behavior
+  documented.
+
 ## [plugin 0.24.0] — 2026-08-19
 
 The mcp-platform-authoring quirks section refreshed against a live prove-out. A staleness report

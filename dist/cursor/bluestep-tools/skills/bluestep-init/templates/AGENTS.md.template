@@ -19,7 +19,7 @@ This workspace is a **local copy** of components that live on the BlueStep platf
 
 1. **NEVER** edit `declarations/`, `B.d.ts`, `scriptlibrary.d.ts`, `Globals.d.ts` — platform-generated. _(enforced by hook)_
 2. **NEVER** use `.writable()`. Field writability is configured on the platform, not requested in code.
-3. **NEVER** run `tsc` locally. Compilation is handled by the platform on push. _(enforced by hook)_
+3. **NEVER** run `tsc` locally. The platform never compiles — the only build is the b6p CLI's own transpile during a publish push, and it runs that for you. A hand-run `tsc` has no declarations wired up, so it produces stray `.js` files and misleading errors. _(enforced by hook)_
 4. **NEVER** create new B6P components locally. Create them on the platform first, then pull.
 5. **ALWAYS** invoke the b6p CLI as bare `b6p`. It is a standalone binary installed separately on the machine (not an npm dependency of this project). If `b6p` is not on PATH, install the b6p-cli binary from its release before syncing.
 6. In **MergeReports**: frontend (HTML/CSS/JS) lives in `static/`, NOT in `scripts/`. Concretely: **NEVER** put a `<style>` block, HTML markup dump, or `<link>`/`<script src>` string inside a template literal in `scripts/app.ts` when the component has a `static/` folder — CSS goes in `static/styles.css`, markup in `static/index.html`, client JS in `static/script.ts` (see the `bluestep-reference` skill's `conventions/separate-files.md`). This applies from the very first line of a **new** merge report, not just when restructuring. _(enforced by hook; a user-approved exception is declared with a `// b6p:allow-inline-frontend — <reason>` comment near the top of `app.ts`)_
