@@ -362,11 +362,18 @@ verified — the dating key at the top of this page says how to read the markers
 
 ### Create-time rules and completeness read-back (queries and views)
 
-**Display columns are part of CREATE, on every query/view creation path.** A query or view created
-without display columns is **incomplete**: it matches records but renders **blank** for a human —
-rows with no columns to show. Always pass `displayColumns` on **every** path that creates one — the
-`view` inner tool, **`create_mefr`**, and a raw `createRelateQuery` / `graphql_mutation` alike. There
+**Display columns are part of CREATE, on every query/view creation path that accepts them.** A query
+or view created without display columns is **incomplete**: it matches records but renders **blank**
+for a human — rows with no columns to show. Always pass `displayColumns` on **every** path that takes
+the parameter — the `view` inner tool and a raw `createRelateQuery` / `graphql_mutation` alike. There
 is no cheap second chance: **create time is the only cheap moment.**
+
+**Exception — `create_mefr` has no `displayColumns` parameter** (its schema takes only `formId` /
+`folderId` / `mefrName` / `description`; verified 2026-08). It seeds **one** display column itself,
+from the base form's **first field** — so the order fields were created in silently decides the
+MEFR's display column. Changing that column afterwards is a **UI hand-back** (the DELETE guard below
+blocks column edits via MCP), so when the column matters, create the intended first field before the
+MEFR — or plan the UI edit up front.
 
 The reason is the DELETE guard. Updating an **existing** view's `displayColumns` / `filterColumns` /
 sort configuration internally deletes and re-adds display components, so the call dies, verbatim:
