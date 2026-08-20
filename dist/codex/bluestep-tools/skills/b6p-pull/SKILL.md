@@ -17,6 +17,11 @@ The user copies the DAV URL from the component's page in the BlueStep platform U
 
 A first pull creates the `U######/<ComponentName>/` folder (creating the U-folder if it does not exist), populates `declarations/` and `draft/`, and records the component's sync metadata.
 
+Two re-pull behaviors to know (verified 2026-08):
+
+- **A re-pull never renames the local folder.** If the component was renamed on the platform, the CLI keeps pulling into the folder it first created — don't read the folder name as the component's current display name; `draft/info/metadata.json` (when present) or the platform is authoritative.
+- **A re-pull overwrites the local `draft/README.md` with the platform's copy** — see the ephemerality warning in step 5.
+
 ## How to invoke `b6p`
 
 `b6p` is a standalone binary on the system `PATH` (the b6p-cli standalone artifact, installed separately from bspecs). Invoke it directly:
@@ -65,12 +70,12 @@ Capture the output — it prints the local path where the component landed.
 Parse the CLI output, or scan for the most recently modified `U######/<Name>/` directory under the project root. Confirm:
 
 - `declarations/` is populated
-- `draft/info/metadata.json` and `draft/info/config.json` exist
-- `draft/scripts/app.ts` (or whatever `config.json:main` points at) exists
+- `draft/scripts/app.ts` exists (or whatever `config.json:main` points at, when `draft/info/` is present)
+- `draft/info/metadata.json` and `draft/info/config.json` exist **only if the component ships a `draft/info/` folder — it is omitted for most components, and its absence is normal, not a broken pull** (see the `bluestep-reference` skill's `b6p-platform.md`)
 
 ### 4. Identify the component type
 
-Read `draft/info/metadata.json` and `draft/info/config.json`. Signals:
+Read `draft/info/metadata.json` and `draft/info/config.json` when present (if `draft/info/` is absent — normal for most components — skip straight to reading `draft/scripts/app.ts` and the folder shape). Signals:
 
 - `httpOption` + `allowedMethods` + a `path` field → **Endpoint**
 - `useAsHeaderInRelate` / `useForEditing` / `replaceRelateRecordSummary` + `draft/static/` directory present → **MergeReport**
@@ -106,6 +111,8 @@ c. **If you cannot infer the Overview with reasonable confidence** (e.g., `app.t
 
 d. **Write** the rendered README to `<Component>/draft/README.md`.
 
+e. **Warn that the scaffolded README is ephemeral until pushed.** The CLI overwrites the local `draft/README.md` with the platform's copy on **every** pull — the do-not-overwrite rule below binds this skill, not the CLI underneath it. A freshly scaffolded README must therefore be **pushed before the next pull**, or that pull silently reverts it to the platform stub. Say this in the step-6 report whenever the README was just scaffolded. (The silent overwrite is tracked upstream as a b6p-cli bug.)
+
 ### 6. Report
 
 Print a summary:
@@ -113,7 +120,7 @@ Print a summary:
 ```
 Pulled: U######/<ComponentName>/
 Type:   <Endpoint|MergeReport|...>
-README: <created from scaffold | preserved (already substantive)>
+README: <created from scaffold — push it before the next pull, or the CLI reverts it to the platform copy | preserved (already substantive)>
 
 Next: read draft/README.md, then start editing. For a new feature use /spec-create.
 ```

@@ -21,6 +21,15 @@ context you can bridge — a node emitted from `B.out` is **not** something the
 index.html client script can reliably reach, and ordering tricks like
 `DOMContentLoaded` won't fix it (B.out arrives later, in a separate region).
 
+**One narrow, verified exception — the reverse direction.** The rule above is about the
+client script *reading nodes emitted from `B.out`*. The opposite flow — a small **inline
+`<script>` emitted from `B.out` writing an attribute onto a node that `index.html` owns**
+(the mount) — was verified live to land before the `DOMContentLoaded`-gated client boot in
+the inline-embed case (verified 2026-08): the index.html node already exists when the later
+`B.out` region executes. That is the entry-id patch, and it is the only sanctioned use —
+see [merge-report-entry-id-patch](merge-report-entry-id-patch.md). It does not soften the
+rule for config islands or mounts: those still never go in `B.out`.
+
 The platform serves `static/styles.css` (and `static/.build/script.js`) for you
 while `B.out` renders the page body. So you do **not** need to read or fetch your
 own stylesheet — `B.net.fetch("static/styles.css")` + inlining it into a `<style>`

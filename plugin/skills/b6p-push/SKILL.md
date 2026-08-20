@@ -90,6 +90,8 @@ The `--yes` is **required** — without it, b6p may show an interactive confirma
 
 > **Warning — stale client JS.** If you edited `draft/static/script.ts`, verify `draft/static/script.js` was regenerated/updated **before** pushing. `b6p push` does **not** transpile `static/script.ts` → `static/script.js`, so a push after editing only the `.ts` silently ships stale client JS. Keep the compiled `.js` in sync with the `.ts`. (Detail: the `bluestep-reference` `conventions/single-script.md` caveat.)
 
+> **Warning — never-published script.** On a script that has **never been published**, `b6p push --snapshot` reports "Snapshot complete!" but creates **no live version** — every execution then throws `java.nio.file.NoSuchFileException: …/scripts/app` (that ERR-log path, via the gateway MCP's `read_script_log`, is the detection signature). The first publish must be done **once in the platform script editor** ("Snapshot Project"); after that, `--snapshot` pushes work normally. Previously-published scripts are unaffected. Tracked as a b6p-cli bug — until it's fixed, treat a first-ever publish as a UI step. (verified 2026-08)
+
 #### Fallback: a component that was never pulled via the CLI (`--root`)
 
 `b6p push --file <path>` fails with `Missing metadata` when the component has **no local sync metadata** (it was never pulled through the CLI, so there is nothing to derive the destination URL from). Push it explicitly instead:
@@ -109,7 +111,8 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
   - **Mitigation:** add `/// <reference path='../../declarations/index.d.ts' />` at the top of `scripts/app.ts` — the transpile can then resolve the platform names, and the same push reports a clean compilation.
   - **Re-pushing does not clear the noise.** The wall is deterministic — pushing again prints the same errors; only the reference directive above removes them.
   - **Don't conflate the two `Cannot find name` causes.** A stray unescaped backtick inside a `B.out` template literal *also* cascades into bogus `Cannot find name` diagnostics — but those anchor at or after the literal and hit your own symbols too, and the shipped `app.js` is genuinely broken. Rule that out first: the `bluestep-reference` skill's `conventions/ts-in-template-literal.md`. (Walls about third-party client-side globals are a third, benign case: `gotchas/third-party-lib-type-noise.md`.)
-- If the user **published**, confirm the live version was updated and a restore point recorded (with the description used). If they **saved a draft only**, tell them plainly it is **not live yet** — they must publish to make it live.
+- If the user **published**, confirm the live version was updated — **concretely, which build is live**, not by assumption: the new snapshot sits at the top of the component's version / restore-point history with the description just used; for a BSJS formula you can also confirm the running build via the gateway MCP's `read_script_log` — its `console.log` output identifies the build. (`read_script_draft` only confirms the platform received the draft source — a draft is decoupled from the live version, so it can never confirm what is live.) Inner tools are reached through `invoke_org_tool` — see the `bluestep-reference` skill's `conventions/mcp-platform-authoring.md`. If they **saved a draft only**, tell them plainly it is **not live yet** — they must publish to make it live.
+- **A stale page render can impersonate a failed publish** (verified 2026-08; distinct from the stale-client-JS warning in step 4). A formula's own on-page output — a message/modal it writes, rendered field output — can be served from a cached, stale page render, so a fully-successful publish can look like the old version is still running. Hard-refresh and **re-trigger** (re-save the record) before doubting the deploy; do **not** re-push or roll back on an unchanged-looking page alone. Run the which-build check above instead.
 - Remind the user to verify behaviour on the platform itself.
 - If `draft/README.md` was modified locally, note that the platform now has the updated docs (useful for other devs pulling the same component).
 
@@ -127,6 +130,8 @@ Two distinct failure modes — handle them differently:
 - **`command not found` / `b6p` cannot be resolved** — the b6p-cli standalone binary is not installed (or not on `PATH`). Do NOT retry. Tell the user:
   > `b6p` could not be resolved. Install the b6p-cli standalone binary and make sure it is on your `PATH` (see its release/install instructions), then retry `/b6p-push <component>`.
 - **Any other error** (network, auth, conflict, etc.) — the VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Do not retry the CLI in a loop.
+
+**Never fall back to the platform's in-browser script/page editor** (`editScript.jsp`) to save the component. It bypasses `b6p`'s recorded sync metadata and diverges local vs platform — the same hazard class as a manual WebDAV upload (see the sync-failure fallbacks in the `bluestep-reference` skill's `b6p-platform.md`). The VS Code extension is the only equivalent fallback. (The one exception is the one-time first-publish "Snapshot Project" step from the step-4 never-published warning — that publishes the already-pushed draft; it does not edit or save source through the editor.)
 
 ### Gotcha: empty `outDir` in a `static/` sub-project aborts the push
 

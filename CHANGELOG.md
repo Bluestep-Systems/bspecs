@@ -6,11 +6,90 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.27.0] — 2026-08-20
+
+The `/b6p-push` and `/b6p-pull` skill passes from the 2026-08-19 triage queue — verification and
+failure-mode guidance around the sync CLI, all from live-session reports — plus a tree-wide fix
+pass from an adversarial review of the 0.25.0–0.27.0 releases.
+
+> **Hook change — Codex users must re-trust hooks on this release.** `block-tsc.sh`'s message
+> changed (see the review-pass section below).
+
+### Fixed — adversarial-review pass (tree-wide)
+
+An adversarial review of the three releases found the 0.25.0 "platform never compiles" correction
+had not been propagated to every file asserting the old model, plus wording-precision defects in
+the new content. All fixed here:
+
+- **`block-tsc.sh` no longer prints the falsehood rule 3 removed** — its block message and header
+  comment now give the true no-tsc reason (the CLI's transpile during a publish push is the only
+  build) instead of "compilation is handled by the platform on push".
+- **The "hallucinated names fail at compile on publish" safety-net claims removed** from
+  `b6p-platform.md` and `bsjs-development.md` — under the corrected model a fabricated import
+  name joins the benign `Cannot find name` noise and ships; checking `declarations/index.d.ts`
+  is the only gate.
+- **`single-script.md` (+ manifest line) no longer attributes the static build to a BlueStep
+  server-side compiler** — only root `static/script.ts` ever compiles, whoever runs the build.
+- **The completeness read-back's `displayFields` row now special-cases MEFRs** — `create_mefr`
+  always seeds one column, so the assert is *which* field got seeded, not non-empty.
+- **`merge-report-static-index.md` and the new entry-id patch no longer contradict** — the
+  disjointness rule is scoped to the client-reads-`B.out` direction, with the live-verified
+  reverse-direction exception (a `B.out` script writing an attribute onto an index.html-owned
+  node) documented on both sides; the patch's code sample also names its FormEntry (`formEntry`,
+  previously an undefined `sectionEntry`).
+- **The two `runFormula` forms disambiguated everywhere** — the RelateScript OnDemand trigger is
+  the **named** `runFormula("name")` / `System.runFormula("name")`; the **no-arg** `runFormula()`
+  synchronously computes a field formula's own value and dispatches nothing
+  (`bsjs-development.md` + `api-patterns.md`).
+- **Custom-prop lookup args stated as (alt-id key, value)** — `("FID", "clientHeader")` matches
+  `FID=clientHeader`; the `("id", "x")` in older examples is a generic placeholder
+  (`merge-report-urls.md`, `fid-alternate-identifier.md`).
+- **The primary-form gotcha names the right lookup for a BSJS target**
+  (`lookupMergeReportScript` — the *Script* suffix names the target) and tells the reader to rule
+  out the wrong-lookup case first.
+- **`/b6p-push` precision**: the in-browser-editor DO-NOT carves out the one-time first-publish
+  "Snapshot Project" step; `read_script_draft` demoted from the which-build check (a draft can
+  never confirm what is live) with the `invoke_org_tool` routing pointed at; the stale-render
+  warning dated.
+- **`/b6p-pull` steps 3–4 reconciled with the `draft/info/`-is-usually-absent fact** from
+  `b6p-platform.md` — absence is normal, not a broken pull; type identification falls back to
+  reading the code.
+
+### Changed — b6p-push skill
+
+- **Step 5 gains the verify-which-build check** ([86bbd39bf](https://app.clickup.com/t/86bbd39bf)).
+  "Confirm the live version was updated" is now concrete: the new snapshot sits at the top of the
+  component's version / restore-point history with the description just used, and for a BSJS
+  formula the running build can be confirmed via the gateway MCP (`read_script_log` /
+  `read_script_draft`).
+- **Step 5 warns that a stale page render can impersonate a failed publish** (same task). A
+  formula's own on-page output can be served from a cached render, so a fully-successful publish
+  can look like the old version. Hard-refresh and re-trigger before doubting the deploy; never
+  re-push or roll back on an unchanged-looking page alone.
+- **"If the CLI fails" gains a page-editor DO-NOT** (same task). Never fall back to the platform's
+  in-browser script/page editor (`editScript.jsp`) — it bypasses `b6p`'s sync metadata and
+  diverges local vs platform, the same hazard class as manual WebDAV upload; the VS Code
+  extension is the only equivalent fallback.
+- **Step 4 warns about `--snapshot` on a never-published script**
+  ([86bb94f3j](https://app.clickup.com/t/86bb94f3j)). It reports "Snapshot complete!" but creates
+  no live version; every execution then throws `NoSuchFileException: …/scripts/app` (the ERR-log
+  detection signature). First publish is a one-time "Snapshot Project" in the platform script
+  editor. The CLI fix is b6p-cli work; this is the interim skill-side warning.
+
+### Changed — b6p-pull skill
+
+- **The scaffolded README is documented as ephemeral until pushed**
+  ([86bbdr4r0](https://app.clickup.com/t/86bbdr4r0)). The CLI overwrites the local
+  `draft/README.md` with the platform's copy on every pull — the skill's do-not-overwrite rule
+  binds the agent, not the CLI — so a freshly scaffolded README must be pushed before the next
+  pull. Step 5 and the report template now say so. Also noted: a re-pull never renames the local
+  component folder after a platform rename. The silent-overwrite CLI fix stays with b6p-cli.
+
 ## [plugin 0.26.0] — 2026-08-20
 
-The gotcha batch from the 2026-08-19 triage pass: six verified reference additions (four new
-gotcha files, two new reference files, one overview pattern), each from a live-session report on
-the AI.List feedback board.
+The gotcha batch from the 2026-08-19 triage pass: six verified batch items — landing as four new
+gotcha files, two new reference files, and one overview pattern — each from a live-session report
+on the AI.List feedback board.
 
 ### Added — bluestep-reference skill
 

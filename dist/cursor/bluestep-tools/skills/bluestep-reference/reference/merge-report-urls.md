@@ -63,7 +63,7 @@ import.
 
 ## Gotchas
 
-- The `__FID_<name>` segment in a full id — and the `("id", "x")` custom-prop filters — resolve via the object's `FID=<name>` **alternate identifier**, set on the platform. How that name is assigned: [fid-alternate-identifier](fid-alternate-identifier.md).
+- The `__FID_<name>` segment in a full id — and the custom-prop filters — resolve via the object's **alternate identifiers**, set on the platform. The two filter args are the alt-id **key and value**: `("FID", "clientHeader")` matches the entry `FID=clientHeader` (the `("id", "x")` in the examples above is a generic key/value placeholder, not a literal key). How the `FID=<name>` entry is assigned: [fid-alternate-identifier](fid-alternate-identifier.md).
 - `viewUrl()` is **relative**. For absolute (emails etc.) wrap with `B.toFullyQualifiedUrl(rel)`.
 - `B.siteNavigation()` returns `SiteNavItem` (pages) — **does NOT** have `optLookupMergeReport`. The `optLookup*MergeReport` methods are on `RecordNavItem`, obtainable via `record.nav()`, but `record.nav()` is documented as expensive (30+ sec on uncached orgs). Prefer `B.find.mergeReport` or `optApplicableBsJsMergeReport`.
 - `B.find.mergeReport(id, 'js')` does NOT filter by record applicability — it's an id lookup. Only `optApplicable*` methods on FormEntry filter by applies-to-this-record.

@@ -16,8 +16,9 @@ component's own URL. The client bundle's `boot()` therefore cannot read `entryId
 Have the server hand the id to the client through the DOM. In `scripts/app.ts`:
 
 ```typescript
-// topId is a METHOD, not a property — call it with parens.
-const entryId = sectionEntry.topId();
+// formEntry = the imported section-form FormEntry (whatever your component's
+// import config names it). topId is a METHOD, not a property — call it with parens.
+const entryId = formEntry.topId();
 B.out = `<script>(function(){
   var r = document.getElementById('<mount-id>');
   if (r) { r.setAttribute('data-entry-id', '${entryId}'); }
@@ -31,6 +32,11 @@ The client's `boot()` then reads `data-entry-id` off its mount element instead o
 `B.out` is injected **after** `static/index.html` in the DOM (see
 [merge-report-static-index](merge-report-static-index.md)), and the client's `boot()` is
 `DOMContentLoaded`-gated — so the attribute is set before boot fires. Verified live 2026-08.
+
+Note the direction: this is a `B.out` script **writing onto a node `index.html` owns** — which
+works because the index.html node already exists when the later `B.out` region executes. It is
+the one sanctioned exception to static-index's disjointness rule; the forbidden pattern (the
+client script *reading* a mount or config island **emitted from** `B.out`) remains forbidden.
 
 ## When you need this
 

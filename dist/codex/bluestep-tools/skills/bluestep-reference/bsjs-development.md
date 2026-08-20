@@ -330,7 +330,7 @@ OnDemand formulas run on the **task pod** — well-suited for heavy or long-runn
 
 **Critical latency caveat:** OnDemand has a ~5 second scheduler-queue delay before it starts, by design. This is fine for background / async work. It is the wrong tool for anything on a user's synchronous wait path — if a user is waiting for a response, an OnDemand hop adds ~5 s of irreducible latency before the work even begins. Prefer a synchronous task-pod **Endpoint** for user-facing create or update paths.
 
-**How an OnDemand is triggered:** in RelateScript, `runFormula()` / `System.runFormula("name")` IS the trigger — calling it dispatches the named OnDemand formula to the task pod, detached from the current save transaction (and subject to the ~5 s queue delay above). Confirmed by the platform team. The call never executes the target inline/synchronously within the save, so there is nothing to "make async" on the caller's side — do not caution users about it.
+**How an OnDemand is triggered:** in RelateScript, `runFormula("name")` / `System.runFormula("name")` — the **named** form — IS the trigger: calling it dispatches the named OnDemand formula to the task pod, detached from the current save transaction (and subject to the ~5 s queue delay above). Confirmed by the platform team. The call never executes the target inline/synchronously within the save, so there is nothing to "make async" on the caller's side — do not caution users about it. (The **no-arg** `runFormula()` is a different thing entirely — the synchronous field-formula form below.)
 
 ```typescript
 export function run(): void {
@@ -339,10 +339,11 @@ export function run(): void {
 }
 ```
 
-**Two distinct uses of `runFormula` — don't conflate them:**
+**Two distinct uses of `runFormula` — don't conflate them (and neither is the named
+RelateScript trigger above):**
 
-- **No-arg, field-formula/inline** (the example above): `const result = runFormula()` returns the
-  computed value synchronously.
+- **No-arg, in a field formula** (the example above): `const result = runFormula()` returns the
+  computed value synchronously — it computes this field's own value, it dispatches nothing.
 - **Invoke ANOTHER on-demand formula with a payload** — from a `FormEntry`, `runFormula(fid)`
   returns a **`FormulaScheduler`** builder:
 
@@ -441,7 +442,7 @@ Query, form, and field references must exist in **the component you are editing*
 2. Run `b6p pull "<DAV URL>"` to update this component's declarations.
 3. Then reference it in TypeScript.
 
-Hallucinating an import name silently passes type-check locally if the file is missing, but will fail at compile on publish/snapshot.
+Hallucinating an import name is **not** caught at publish either: the push transpile runs without `declarations/`, so the fabricated name just joins the benign `Cannot find name` noise and the broken code ships. Verify every name against `declarations/index.d.ts` before using it — that check is the only gate.
 
 ## TS narrowing pitfalls (Graal/Java types)
 

@@ -1,10 +1,10 @@
 ---
-description: "BlueStep's server-side build compiles only root static/script.ts to .build/script.js — subdirectory .ts files are NOT compiled"
+description: "The build only ever compiles root static/script.ts to .build/script.js — subdirectory .ts files are NOT compiled and never load at runtime"
 ---
 
 > This rule is the **platform-compiled** path and does **not apply to a Vite bundle** — a Vite bundle bundles off-platform, so the platform compiler never runs (nothing here about "only root `static/script.ts` compiles" is in force). See [vite spa merge report](../reference/vite-spa-merge-report.md).
 
-Keep all BlueStep merge-report client code in ONE file: `static/script.ts`. BlueStep compiles only the root `static/script.ts` → `.build/script.js`. It does NOT recursively compile `static/util/*.ts`, `static/pages/*.ts`, etc. — even though a `tsconfig.json` with `"include": ["**/*.ts"]` suggests it should.
+Keep all BlueStep merge-report client code in ONE file: `static/script.ts`. Only the root `static/script.ts` → `.build/script.js` ever gets compiled and loaded (the platform itself never compiles — whatever build runs, it covers only that root file). Nothing recursively compiles `static/util/*.ts`, `static/pages/*.ts`, etc. — even though a `tsconfig.json` with `"include": ["**/*.ts"]` suggests it should.
 
 Symptom when you get this wrong: silent 404s on every subdirectory `.build/*.js`, producing a completely blank page (no errors — the scripts just don't load).
 
