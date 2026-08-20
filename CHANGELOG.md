@@ -6,6 +6,90 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.24.0] — 2026-08-19
+
+The mcp-platform-authoring quirks section refreshed against a live prove-out. A staleness report
+(ClickUp [86bbd27pk](https://app.clickup.com/t/86bbd27pk)) plus the August wave of MCP-authoring
+feedback prompted a re-verification run on a v20 sandbox org: every fix-in-flight claim touching
+the quirks section was re-tested via the gateway MCP, and the reference now says what the platform
+does today — two stale entries removed, the current failure modes written in their place, and
+every quirk bullet dated.
+
+### Changed — bluestep-reference skill
+
+All changes in `conventions/mcp-platform-authoring.md`.
+
+- **Two stale quirk entries removed — both platform-fixed**
+  ([86bbd27pk](https://app.clickup.com/t/86bbd27pk)). `record_type` CREATE no longer produces an
+  orphaned category: base-record-type creation works (the Relate app's ID as `parentId` plus
+  `baseType: true` creates the base type together with its base form), and the schema-authoring
+  section now says so. And `field` CREATE **can** set the script-facing FID: a create-time
+  `formulaId` flows through to the generated declarations with a proper property key. With that
+  fixed, step 6's "null or blank property key → **STOP and hand back to the UI**" softened to
+  detect-and-correct: a null key means a pre-existing field with no `formulaId`, repaired by a
+  `field` UPDATE setting it — the repair path was verified live end-to-end (UPDATE → `add_forms` →
+  `add_field_access` → declarations emit the proper key).
+- **Per-bullet `(verified YYYY-MM)` dating replaces the section-level "as of 2026-07"** (proposed
+  in [86bbd27pk](https://app.clickup.com/t/86bbd27pk)). Each quirk now carries the month it was
+  last verified — everything re-checked by the prove-out reads 2026-08, the rest keep their
+  original month — so staleness is visible per entry instead of averaged over the whole section.
+- **The `singleEntry` bullet rewritten around where the bug lives now.** `form` CREATE persists
+  the entry-mode flags, so the old CREATE-then-UPDATE workaround is gone. The current quirk: a
+  `form` UPDATE **silently drops a bundled `singleEntry` change** when other properties ride in
+  the same call — and the response echo reports the intended value as if it were set (a fresh
+  defect found during the prove-out, filed as
+  [86bbh5uwr](https://app.clickup.com/t/86bbh5uwr)). Rule: one flag-bearing property per UPDATE
+  call, verified via `list_available_forms`. The bullet also scopes the legacy hazard from
+  [86bbejk0h](https://app.clickup.com/t/86bbejk0h): on orgs still on a platform version predating
+  the CREATE-time fix, a form built via the old flip may have a broken `form_entry` data-entry
+  path — data entry there is a UI hand-back.
+- **Four new quirk bullets** from the August feedback wave, each classified in the prove-out:
+  `altIds` is not a general field-setter — a plausible-looking key "succeeds" by appending an
+  alt-id entry while the platform field it resembles stays unset, and an ON_DEMAND formula's
+  required Identifier has no settable parameter at all
+  ([86bbfhvbf](https://app.clickup.com/t/86bbfhvbf)); `update_script` `formulaType` changes are
+  not self-contained — no companion-config parameters exist, so a type switch can land a formula
+  in a non-functional state with no warning
+  ([86bbfkhwp](https://app.clickup.com/t/86bbfkhwp)); unit creation is a UI hand-back —
+  `graphql_mutation createUnit` yields structurally incomplete units that `deleteRemoteObject`
+  cannot remove ([86bbd8f67](https://app.clickup.com/t/86bbd8f67)); and MCP cannot seed a record —
+  both creation paths fail, so records are minted in the UI and `form_entry` works from there
+  ([86bb9xhxd](https://app.clickup.com/t/86bb9xhxd)).
+- **The DELETE-guard blockquote grows two additions.** `searchCriteria` joins the guarded set:
+  passing it to an update on a query that already has a search component resets child components
+  and dies on the DELETE guard, so criteria — like columns — are set at CREATE
+  ([86bbe63ce](https://app.clickup.com/t/86bbe63ce)). And option-list criteria carry an extra
+  trap: the criterion persists and reads back fine, but query **execution** then fails — so an
+  option-filtered query is unproven until it has been *run*, and the create-time completeness
+  read-back section now cross-references that execution read-back
+  ([86bbek4mj](https://app.clickup.com/t/86bbek4mj)).
+- **MEFR-as-query-group recipe: iteration limitation appended**
+  ([86bbdn6qa](https://app.clickup.com/t/86bbdn6qa)). The recipe's read-back verifies declaration
+  wiring and field access — it does not make the group iterable: an MEFR wired this way was
+  observed to yield a group the script cannot loop over the way a List-view-backed group can.
+  When the script must loop records, import a real record-holding query (a `List` view) instead,
+  keeping the MEFR wiring for declarations; cross-linked to `gotchas/relate-query-over-mefr.md`.
+- **The trust-every-boolean bullet gained one cross-reference**: when *reading* booleans, an
+  untouched one comes back `null`, not `false` — pointing at the nullable-booleans entry in
+  `gotchas/common-gotchas.md` (the gotcha itself shipped in 0.18.0; only the pointer is new).
+- **A page-level dating key, and one create-time home for query/view rules** (adversarial-review
+  pass on the refresh). The key — one paragraph at the top of the page — says how to read the
+  `(verified YYYY-MM)` markers: dates mark perishable observations, not disciplines; fixes ride
+  platform versions, so an old date never licenses skipping a bullet (the workarounds are harmless
+  when the bug is fixed, and only a read-only probe may retire a UI hand-back — never a
+  re-verifying mutation). Structurally, the create-time query/view rules (display columns, the
+  DELETE guard, `searchCriteria`, option-list criteria) merged into the completeness-read-back
+  section — now "Create-time rules and completeness read-back (queries and views)" — so the
+  create-time story lives in one place, with a two-line pointer from the schema-authoring tool
+  list.
+
+Deliberately **not** written: quirk entries the prove-out showed fixed. The
+`summaryFieldLabels` + create-time-FID failure ([86bbeeaxy](https://app.clickup.com/t/86bbeeaxy))
+and the format-type discriminator requirement on DATE/MEMO/SINGLE_OPTION_LIST `field` UPDATEs
+([86bbafgmx](https://app.clickup.com/t/86bbafgmx),
+[86bbagdx4](https://app.clickup.com/t/86bbagdx4)) no longer reproduce on v20 — a verified-fixed
+claim closes its task instead of adding doc text.
+
 ## [plugin 0.23.0] — 2026-08-18
 
 The GitSite data-access gap closed, finishing the 2026-08 GitSite feedback pair.
