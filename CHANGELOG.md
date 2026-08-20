@@ -6,6 +6,41 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.27.0] — 2026-08-20
+
+The `/b6p-push` and `/b6p-pull` skill passes from the 2026-08-19 triage queue — verification and
+failure-mode guidance around the sync CLI, all from live-session reports.
+
+### Changed — b6p-push skill
+
+- **Step 5 gains the verify-which-build check** ([86bbd39bf](https://app.clickup.com/t/86bbd39bf)).
+  "Confirm the live version was updated" is now concrete: the new snapshot sits at the top of the
+  component's version / restore-point history with the description just used, and for a BSJS
+  formula the running build can be confirmed via the gateway MCP (`read_script_log` /
+  `read_script_draft`).
+- **Step 5 warns that a stale page render can impersonate a failed publish** (same task). A
+  formula's own on-page output can be served from a cached render, so a fully-successful publish
+  can look like the old version. Hard-refresh and re-trigger before doubting the deploy; never
+  re-push or roll back on an unchanged-looking page alone.
+- **"If the CLI fails" gains a page-editor DO-NOT** (same task). Never fall back to the platform's
+  in-browser script/page editor (`editScript.jsp`) — it bypasses `b6p`'s sync metadata and
+  diverges local vs platform, the same hazard class as manual WebDAV upload; the VS Code
+  extension is the only equivalent fallback.
+- **Step 4 warns about `--snapshot` on a never-published script**
+  ([86bb94f3j](https://app.clickup.com/t/86bb94f3j)). It reports "Snapshot complete!" but creates
+  no live version; every execution then throws `NoSuchFileException: …/scripts/app` (the ERR-log
+  detection signature). First publish is a one-time "Snapshot Project" in the platform script
+  editor. The CLI fix is b6p-cli work; this is the interim skill-side warning.
+
+### Changed — b6p-pull skill
+
+- **The scaffolded README is documented as ephemeral until pushed**
+  ([86bbdr4r0](https://app.clickup.com/t/86bbdr4r0)). The CLI overwrites the local
+  `draft/README.md` with the platform's copy on every pull — the skill's do-not-overwrite rule
+  binds the agent, not the CLI — so a freshly scaffolded README must be pushed before the next
+  pull. Step 5 and the report template now say so. Also noted: a re-pull never renames the local
+  component folder after a platform rename. The silent-overwrite CLI fix stays with b6p-cli.
+
 ## [plugin 0.26.0] — 2026-08-20
 
 The gotcha batch from the 2026-08-19 triage pass: six verified reference additions (four new
