@@ -25,7 +25,13 @@ on this skill and on the user's in-session decisions.
 | Duplicate of **already-shipped** work, reporter on an older plugin version | close `shipped`, resolution-note names the fixed version + how to update | `Closed` |
 | Needs a human decision (capability request, wont-fix candidate, scoping call) | comment stating the exact decision needed | `blocked/waiting` |
 
-**Fix-verification lanes** (used by verification waves, not by intake triage): `check on 20` = a fix is claimed to have landed, awaiting re-verification on a current-platform org; a verification run moves each task out — pass = `Closed` (verified-fixed note), fail = `Rejected fix` (the claimed fix did not hold; the evidence comment cites the failing check, and the task goes back to its assignee). Between waves, `check on 20` should trend to empty. Before re-verifying anything, **read the task's comment thread first** — implementer dispositions (PR links, refutations, rulings) and prior retests live there, and a claim already retested is not re-run without new cause.
+**Fix-verification lanes** (used by verification waves, not by intake triage): `check on 20` = a fix
+is claimed to have landed, awaiting re-verification on a current-platform org; a verification run
+moves each task out — pass = `Closed` (verified-fixed note), fail = `Rejected fix` (the claimed fix
+did not hold; the evidence comment cites the failing check, and the task goes back to its assignee).
+Between waves, `check on 20` should trend to empty. Before re-verifying anything, **read the task's
+comment thread first** — implementer dispositions (PR links, refutations, rulings) and prior retests
+live there, and a claim already retested is not re-run without new cause.
 
 ## Steps
 
@@ -57,7 +63,8 @@ on this skill and on the user's in-session decisions.
 
 4. **Build the plan as a dry-run script** (`plan.py` in the scratch dir, `--apply` gated): every
    tag, assignment, field write, comment, and status move as explicit API calls, printed first.
-   Statuses move via `PUT /task/{id}` — exact names: `up next`, `blocked/waiting`, `Closed`, and for verification waves `check on 20` / `Rejected fix`.
+   Statuses move via `PUT /task/{id}` — exact names: `up next`, `blocked/waiting`, `Closed`, and for
+verification waves `check on 20` / `Rejected fix`.
 
 5. **STOP. Show the user the plan** — one line per input task: id, verdict, destination status,
    and the one-sentence reason. Wait for approval; apply corrections first. Bot lane-assignments
