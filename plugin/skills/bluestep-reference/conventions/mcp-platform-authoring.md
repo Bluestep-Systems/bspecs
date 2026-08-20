@@ -428,7 +428,7 @@ and assert all four:
 
 | Read back | Assert | Why it can be silently empty |
 | --- | --- | --- |
-| `displayFields` | non-empty | display columns are dropped unless passed at CREATE (above); a query with none renders **blank** |
+| `displayFields` | non-empty — and for a MEFR, that the **seeded column is the intended field** | display columns are dropped unless passed at CREATE (above); a query with none renders **blank**. `create_mefr` always seeds one column (never empty), so its check is *which* field got seeded — the base form's first field, per the exemption above |
 | `searchComponents` | non-empty | an empty criteria set **fails open** — the backing DSG matches **every** record that passes the category filter |
 | `recordTypes` | expected type(s) | categories are categories **of** a base record type; without it the filter has nothing to hang on |
 | `mustHaveCategories` / `mustNotHaveCategories` | expected sets | accepted on create, **stored neither** |

@@ -1,15 +1,21 @@
 ---
-description: "lookupMergeReport / optApplicable* applicability lookups return null/empty for a BSJS MergeReport with NO Primary Form assigned — the applicability tag alone is not sufficient; assign the target form as the report's Primary Form in the platform UI"
+description: "Applicability lookups (lookupMergeReportScript / optApplicable*) return null/empty for a BSJS MergeReport with NO Primary Form assigned — the applicability tag alone is not sufficient; assign the target form as the report's Primary Form in the platform UI"
 ---
 
 # BSJS MergeReports need a Primary Form for applicability lookup
 
 ## Symptom
 
-`System.lookupMergeReport(key, value)` from a Relate field template — or the BSJS
-`optApplicable*` equivalents — returns **null / empty** for a BSJS MergeReport, and the embedding
-field renders `[no data]`, **even though the applicability tag (custom property) is correctly set**
-on the component.
+The applicability lookup — `System.lookupMergeReportScript(key, value)` from a Relate field
+template for a BSJS target, or the BSJS `optApplicable*` equivalents — returns **null / empty**
+for a BSJS MergeReport, and the embedding field renders `[no data]`, **even though the
+applicability tag (custom property) is correctly set** on the component.
+
+(First rule out the wrong lookup for the target's language: the *Script* suffix names the
+**target** — `lookupMergeReportScript` finds BSJS reports, plain `lookupMergeReport` finds
+RelateScript reports; see the mapping in
+[merge-report-urls](../reference/merge-report-urls.md). This gotcha is about the lookup that
+*matches* the target's language still returning nothing.)
 
 ## Cause
 

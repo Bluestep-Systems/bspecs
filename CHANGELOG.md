@@ -9,7 +9,51 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 ## [plugin 0.27.0] — 2026-08-20
 
 The `/b6p-push` and `/b6p-pull` skill passes from the 2026-08-19 triage queue — verification and
-failure-mode guidance around the sync CLI, all from live-session reports.
+failure-mode guidance around the sync CLI, all from live-session reports — plus a tree-wide fix
+pass from an adversarial review of the 0.25.0–0.27.0 releases.
+
+> **Hook change — Codex users must re-trust hooks on this release.** `block-tsc.sh`'s message
+> changed (see the review-pass section below).
+
+### Fixed — adversarial-review pass (tree-wide)
+
+An adversarial review of the three releases found the 0.25.0 "platform never compiles" correction
+had not been propagated to every file asserting the old model, plus wording-precision defects in
+the new content. All fixed here:
+
+- **`block-tsc.sh` no longer prints the falsehood rule 3 removed** — its block message and header
+  comment now give the true no-tsc reason (the CLI's transpile during a publish push is the only
+  build) instead of "compilation is handled by the platform on push".
+- **The "hallucinated names fail at compile on publish" safety-net claims removed** from
+  `b6p-platform.md` and `bsjs-development.md` — under the corrected model a fabricated import
+  name joins the benign `Cannot find name` noise and ships; checking `declarations/index.d.ts`
+  is the only gate.
+- **`single-script.md` (+ manifest line) no longer attributes the static build to a BlueStep
+  server-side compiler** — only root `static/script.ts` ever compiles, whoever runs the build.
+- **The completeness read-back's `displayFields` row now special-cases MEFRs** — `create_mefr`
+  always seeds one column, so the assert is *which* field got seeded, not non-empty.
+- **`merge-report-static-index.md` and the new entry-id patch no longer contradict** — the
+  disjointness rule is scoped to the client-reads-`B.out` direction, with the live-verified
+  reverse-direction exception (a `B.out` script writing an attribute onto an index.html-owned
+  node) documented on both sides; the patch's code sample also names its FormEntry (`formEntry`,
+  previously an undefined `sectionEntry`).
+- **The two `runFormula` forms disambiguated everywhere** — the RelateScript OnDemand trigger is
+  the **named** `runFormula("name")` / `System.runFormula("name")`; the **no-arg** `runFormula()`
+  synchronously computes a field formula's own value and dispatches nothing
+  (`bsjs-development.md` + `api-patterns.md`).
+- **Custom-prop lookup args stated as (alt-id key, value)** — `("FID", "clientHeader")` matches
+  `FID=clientHeader`; the `("id", "x")` in older examples is a generic placeholder
+  (`merge-report-urls.md`, `fid-alternate-identifier.md`).
+- **The primary-form gotcha names the right lookup for a BSJS target**
+  (`lookupMergeReportScript` — the *Script* suffix names the target) and tells the reader to rule
+  out the wrong-lookup case first.
+- **`/b6p-push` precision**: the in-browser-editor DO-NOT carves out the one-time first-publish
+  "Snapshot Project" step; `read_script_draft` demoted from the which-build check (a draft can
+  never confirm what is live) with the `invoke_org_tool` routing pointed at; the stale-render
+  warning dated.
+- **`/b6p-pull` steps 3–4 reconciled with the `draft/info/`-is-usually-absent fact** from
+  `b6p-platform.md` — absence is normal, not a broken pull; type identification falls back to
+  reading the code.
 
 ### Changed — b6p-push skill
 
@@ -43,9 +87,9 @@ failure-mode guidance around the sync CLI, all from live-session reports.
 
 ## [plugin 0.26.0] — 2026-08-20
 
-The gotcha batch from the 2026-08-19 triage pass: six verified reference additions (four new
-gotcha files, two new reference files, one overview pattern), each from a live-session report on
-the AI.List feedback board.
+The gotcha batch from the 2026-08-19 triage pass: six verified batch items — landing as four new
+gotcha files, two new reference files, and one overview pattern — each from a live-session report
+on the AI.List feedback board.
 
 ### Added — bluestep-reference skill
 

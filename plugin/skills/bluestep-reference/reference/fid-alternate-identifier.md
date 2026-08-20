@@ -12,7 +12,7 @@ The runtime docs consume FIDs everywhere — `entry.fields.<name>`, the bare que
 
 | Mechanism | Set where | Resolves |
 | --- | --- | --- |
-| **`FID=<name>` alternate identifier** — a key/value entry (key `FID`) in the object's alternate-identifier / custom-lookup list | platform UI (the object's Alt IDs / custom lookup properties), or the MCP `altIds` param | name-addressability of **formulas, merge reports, and queries**: the `__FID_<name>` full-id encoding, `B.find.mergeReport("…__FID_<name>")`, `optApplicable*("id", "<x>")` custom-prop lookups, `.altIds()` walks — and observed live making `runFormula("<name>")` resolve (2026-08) |
+| **`FID=<name>` alternate identifier** — a key/value entry (key `FID`) in the object's alternate-identifier / custom-lookup list | platform UI (the object's Alt IDs / custom lookup properties), or the MCP `altIds` param | name-addressability of **formulas, merge reports, and queries**: the `__FID_<name>` full-id encoding, `B.find.mergeReport("…__FID_<name>")`, `optApplicable*("FID", "<name>")` custom-prop lookups (args = alt-id key, value), `.altIds()` walks — and observed live making `runFormula("<name>")` resolve (2026-08) |
 | **Field `formulaId`** — a dedicated "Formula ID" property on **fields** | field CREATE (or a repair UPDATE) — the `formulaId` param on the MCP `field` tool | the field's **property key in the generated BSJS declarations** (`entry.fields.<name>`, `readonly <name>:` in `declarations/`) |
 | **ON_DEMAND `Identifier`** (`uniqueId`) — a required, plain single-value text field on ON_DEMAND formulas | platform UI only ("Edit Formula Options"; no MCP parameter exists) | the platform's documented key for **scheduling** the on-demand formula from other code |
 
@@ -37,8 +37,8 @@ On the platform, add alternate identifier `FID=clientHeader` to a merge report. 
 carries the encoding — `530024__FID_clientHeader` — and code resolves it by that name:
 
 ```typescript
-B.find.mergeReport("530024__FID_clientHeader").viewUrl()   // full-id lookup
-formEntry.optApplicableBsJsMergeReport("id", "clientHeader") // custom-prop lookup
+B.find.mergeReport("530024__FID_clientHeader").viewUrl()      // full-id lookup
+formEntry.optApplicableBsJsMergeReport("FID", "clientHeader") // custom-prop lookup: (alt-id key, value)
 ```
 
 ## Where the runtime surfaces are documented
@@ -48,4 +48,4 @@ formEntry.optApplicableBsJsMergeReport("id", "clientHeader") // custom-prop look
 - The `__FID_<name>` encoding, `.altIds()`, and `optApplicable*` lookups:
   [merge-report-urls](merge-report-urls.md).
 - Invoking an on-demand formula by name (`runFormula` / the `FormulaScheduler` builder):
-  `bsjs-development.md` → "OnDemand / Field Formula".
+  [bsjs-development.md](../bsjs-development.md) → "OnDemand / Field Formula".

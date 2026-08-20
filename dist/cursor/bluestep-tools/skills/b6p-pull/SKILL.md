@@ -70,12 +70,12 @@ Capture the output — it prints the local path where the component landed.
 Parse the CLI output, or scan for the most recently modified `U######/<Name>/` directory under the project root. Confirm:
 
 - `declarations/` is populated
-- `draft/info/metadata.json` and `draft/info/config.json` exist
-- `draft/scripts/app.ts` (or whatever `config.json:main` points at) exists
+- `draft/scripts/app.ts` exists (or whatever `config.json:main` points at, when `draft/info/` is present)
+- `draft/info/metadata.json` and `draft/info/config.json` exist **only if the component ships a `draft/info/` folder — it is omitted for most components, and its absence is normal, not a broken pull** (see the `bluestep-reference` skill's `b6p-platform.md`)
 
 ### 4. Identify the component type
 
-Read `draft/info/metadata.json` and `draft/info/config.json`. Signals:
+Read `draft/info/metadata.json` and `draft/info/config.json` when present (if `draft/info/` is absent — normal for most components — skip straight to reading `draft/scripts/app.ts` and the folder shape). Signals:
 
 - `httpOption` + `allowedMethods` + a `path` field → **Endpoint**
 - `useAsHeaderInRelate` / `useForEditing` / `replaceRelateRecordSummary` + `draft/static/` directory present → **MergeReport**
