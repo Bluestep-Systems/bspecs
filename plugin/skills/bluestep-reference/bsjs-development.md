@@ -339,6 +339,26 @@ export function run(): void {
 }
 ```
 
+**Two distinct uses of `runFormula` — don't conflate them:**
+
+- **No-arg, field-formula/inline** (the example above): `const result = runFormula()` returns the
+  computed value synchronously.
+- **Invoke ANOTHER on-demand formula with a payload** — from a `FormEntry`, `runFormula(fid)`
+  returns a **`FormulaScheduler`** builder:
+
+  ```typescript
+  cur.runFormula("<formula-fid>")
+    .message(JSON.stringify({ recordId: cur.id().toString(), action: "recalc" }))
+    .start();
+  ```
+
+  `.message(str)` attaches the payload the invoked formula reads on its side as its `message`
+  variable; `.start()` enqueues it on the task pod (subject to the ~5 s scheduler delay above).
+  The builder also has `.schedule()` and `.expireBy()` (see `FormulaScheduler` in
+  `declarations/B.d.ts`). This is the core mechanic of a trigger → async-builder multi-formula
+  pipeline. How the target formula acquires the name that resolves it:
+  [reference/fid-alternate-identifier.md](reference/fid-alternate-identifier.md).
+
 ### Scheduled / cron
 
 `B.user` is null. Use stored credentials or hardcoded service identities, and guard accordingly.

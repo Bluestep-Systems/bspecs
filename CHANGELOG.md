@@ -6,6 +6,66 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.26.0] — 2026-08-20
+
+The gotcha batch from the 2026-08-19 triage pass: six verified reference additions (four new
+gotcha files, two new reference files, one overview pattern), each from a live-session report on
+the AI.List feedback board.
+
+### Added — bluestep-reference skill
+
+- **`gotchas/meetscriteria-formula-context.md`** ([86bbed9a6](https://app.clickup.com/t/86bbed9a6)).
+  `meetsCriteria()` on a **unit-scoped** RecordQuery returns false in formula run context
+  (on-demand/trigger) even for matching records — regardless of `currentUnit()` +
+  `clearSearchAndSort()` first, record object or id string alike — while top-level queries work
+  in the same context. The silent false negative corrupted 41.7% of an org's cached records in a
+  live incident before it was found. Rule: in formula context, gate on the record's own form
+  entries (try/catch as the mid-creation guard); reserve `meetsCriteria` for endpoint/request
+  contexts. Cross-referenced from `staff-query-permission-gating.md`'s user-match step.
+- **`gotchas/read-relatescript-source.md`** ([86bbd39f9](https://app.clickup.com/t/86bbd39f9)).
+  MCP `get_script`/`read_script_draft` error `FormulaModelRemote cannot be cast to …
+  UserCodeScript` on legacy RelateScript formulas — the error means "legacy RelateScript", not
+  "missing". Workaround: the `editformuladetails.jsp` wizard (`submitWizard(2,
+  "autoNamedForm0")` → read the `#formula` textarea; non-destructive).
+- **`gotchas/field-access-writability.md`** ([86bbe6qhj](https://app.clickup.com/t/86bbe6qhj)).
+  Writability is two independent flags — form-level row (`add_forms writable`) and per-field
+  grant (`add_field_access writable`) stamped at grant time and never recalculated; unchecking
+  the row does not clear granted fields, and the UI can show the intended state while the stored
+  grant disagrees. Fix: remove and re-issue the grant; verify with `list_field_access`. Plus:
+  endpoint MCP reads are not gated by ENGINEER ENDPOINT. Cross-linked from
+  `mcp-platform-authoring.md`'s wiring section.
+- **`gotchas/merge-report-primary-form-required.md`** +
+  **`reference/merge-report-entry-id-patch.md`** + a caller-context caveat in
+  `reference/merge-report-async-loading.md`
+  ([86bbfdjea](https://app.clickup.com/t/86bbfdjea)). The merge-report trio from a live
+  section-form cutover: (1) `lookupMergeReport`/`optApplicable*` return null for a BSJS
+  MergeReport with no Primary Form assigned, applicability tag notwithstanding; (2) an
+  inline-embedded report with a `static/` bundle gets its `entryId` via `formEntry.topId()` +
+  a `B.out` script setting `data-entry-id` on the mount (works because `B.out` injects after
+  `index.html`); (3) the `contentOnlyUrl()` + `<b-include>` async-embed recipe is BSJS-only —
+  a RelateScript caller's `RelateMergeReport` exposes no `contentOnlyUrl` at all, so it uses
+  inline `.resolve()` + the entry-id patch. Also noted in `merge-report-urls.md`.
+- **`reference/fid-alternate-identifier.md`**
+  ([86bbd39et](https://app.clickup.com/t/86bbd39et), reconciled with
+  [86bbfhvbf](https://app.clickup.com/t/86bbfhvbf)). The authoring side the runtime docs
+  assumed: the identifier taxonomy settled by the 0.24.0 prove-out — `FID=<name>` alternate
+  identifier (name-addressability of formulas/reports/queries) ≠ field `formulaId` (the
+  declarations property key) ≠ ON_DEMAND `Identifier`/`uniqueId` (the scheduling key, UI-only) —
+  three different mechanisms, with which-resolves-what stated and both live `runFormula`
+  observations recorded. Back-pointers added from `api-patterns.md` and `merge-report-urls.md`.
+- **`bsjs-development.md` OnDemand section: the `FormulaScheduler` builder pattern**
+  ([86bbd39e4](https://app.clickup.com/t/86bbd39e4)). After the no-arg field-formula example:
+  `cur.runFormula("<fid>").message(JSON.stringify({…})).start()` invokes another on-demand
+  formula with a payload it reads as its `message` variable; `.schedule()`/`.expireBy()` noted.
+  The `api-patterns.md` formula-triggers bullet now points at it.
+
+### Changed — bluestep-reference skill
+
+- **`gotchas/third-party-lib-type-noise.md` no longer claims "platform compile is
+  authoritative".** Same false premise the 0.25.0 rule-3 fix removed: there is no later
+  authoritative compile. The noise is harmless because the emit succeeds and the library exists
+  at runtime in the browser; the file now points at `/b6p-push`'s benign-vs-real tell.
+
 ## [plugin 0.25.0] — 2026-08-20
 
 Three verified corrections around the same root fact: the platform never compiles — the only build
