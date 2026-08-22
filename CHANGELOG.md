@@ -6,6 +6,37 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.29.0] — 2026-08-22
+
+One fix, from [86bbj3452](https://app.clickup.com/t/86bbj3452) / [#126](https://github.com/Bluestep-Systems/bspecs/issues/126).
+
+> **No hook changes** — Codex users do not need to re-trust.
+
+### Fixed — the scaffolded `AGENTS.md` no longer contradicts itself about what a plain push does
+
+The template's "Sync workflow (b6p CLI)" paragraph still described the choice as
+history-vs-no-history — *"a plain push overwrites the draft with **no** server-side history; a
+snapshot records a restorable version entry"* — which reads as though **both** modes deploy and
+they differ only in whether a rollback point is kept. Critical rule 9 in the same file had already
+been corrected; this paragraph had not, and it is the one a reader lands on when running the CLI by
+hand rather than through `/b6p-push`. Because this template is also what gets scaffolded into each
+project, every project created from it inherited the wrong framing.
+
+It now matches rule 9: a plain push uploads the draft source only, does not compile, and does not
+change the live version, so it is invisible to anyone viewing the component.
+
+**Added with it — the trap that made this expensive rather than merely imprecise.** After a plain
+push the platform genuinely *does* have the new code, as a draft, while the page keeps serving the
+previously published build; `read_script_draft` reads the **draft**, so it confirms the change is on
+the platform while the live version is still the old one. Both readings are true at once, so the
+tooling appears to corroborate the mistaken belief. The template now says to **check the push mode
+first** when a change does not appear — before theorising about caches, `config.json`, or
+compilation. (`/b6p-push` already carried this in its which-build check; the template did not.)
+
+The reporter hit this on a live build: nine successive plain pushes, each reporting "Push complete!"
+and each confirmed on the platform, while the rendered page never changed — costing two wrong
+theories and a needlessly renamed static file that then orphaned itself.
+
 ## [plugin 0.28.0] — 2026-08-21
 
 A staleness pass over the b6p skills after **b6p-cli 0.6.0 and 0.6.1** shipped (both 2026-08-21,
