@@ -23,17 +23,17 @@ Any file inside the component works as the `--file` argument; the CLI walks up t
 
 ### 0. Auth preflight (do this first, before any `b6p` call)
 
-`b6p` stores BlueStep platform credentials globally in `~/.b6p/`. On a machine that has never run `b6p auth set`, the first `push` prompts for credentials **interactively** — a prompt you (Claude) cannot answer, so the call hangs silently. `--yes` does **not** save you here: it guards the *confirmation* prompt, not the *missing-credentials* one.
+`b6p` stores a BlueStep platform **access token** globally in `~/.b6p/` (since b6p-cli 0.6.0 / core 0.5.0 — bearer auth replaced the old username + password, with **no** migration path, so every pre-0.6.0 user is re-prompted once). Without a stored token the first `push` prompts for one **interactively** — a prompt you (Claude) cannot answer. The CLI now **fails loudly**: it names the prompt it could not answer and exits `1`. (Before 0.6.0 it hung, then drained and exited `0` having done nothing — so an old "it succeeded" is not evidence the push happened.) `--yes` does **not** save you here: it guards the *confirmation* prompt, not the *missing-token* one.
 
-Before running the push, check that credentials exist:
+Before running the push, check for the secrets store:
 
 ```
 test -f ~/.b6p/secrets.enc && echo OK
 ```
 
-- If it prints `OK` → credentials are set, continue.
 - If it prints nothing (file absent) → STOP. Do **not** run the push. Tell the user:
-  > `b6p` has no BlueStep platform credentials on this machine yet, so the push would hang on an interactive prompt I can't answer. Run `b6p auth set` once (it stores credentials globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-push <component>`.
+  > `b6p` has no BlueStep platform access token on this machine yet, so the push would stop at an interactive prompt I can't answer. Run `b6p auth set` once (it stores the token globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-push <component>`.
+- If it prints `OK` → continue, but treat this as a **negative check only**. `secrets.enc` holds every secret under its own key, so a machine that authenticated before 0.6.0 has the file *without* an access token in it — the preflight passes and the push still stops at `Enter your access token` and exits `1`. That failure is self-describing: surface it verbatim and give the user the same `b6p auth set` instruction rather than retrying.
 
 ### 1. Identify the component
 
@@ -85,7 +85,7 @@ b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"
 
 Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
 
-The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call will hang. Always include it.
+The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call fails with exit `1` naming that prompt. Always include it.
 
 > **Warning — stale client JS.** If you edited `draft/static/script.ts`, verify `draft/static/script.js` was regenerated/updated **before** pushing. `b6p push` does **not** transpile `static/script.ts` → `static/script.js`, so a push after editing only the `.ts` silently ships stale client JS. Keep the compiled `.js` in sync with the `.ts`. (Detail: the `bluestep-reference` `conventions/single-script.md` caveat.)
 
@@ -104,6 +104,13 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
 - The choice from step 3 **still applies** — carry `--snapshot --message "<description>"` if the user chose Publish (the recommended default). Do **not** trial-and-error the argument shape: guessing can land on a plain draft-only push that never compiles or goes live, defeating the user's explicit choice.
 
 ### 5. Report
+
+**Check the exit code first — it is now load-bearing.** Since b6p-cli 0.6.0 `b6p push` exits `1` when it did not do what was asked, so a zero exit is what confirms the upload happened. Two distinct non-zero cases, neither of which is a CLI malfunction:
+
+- **Nothing was uploaded** (`pushed: false`) — the push found no draft to send. In practice that is a wrong `--root` (see the fallback above) or an empty `draft/`. Before 0.6.0 this printed a success line and exited `0`, so a typo could mark a CI deploy green. Fix the path or the draft and re-run; do **not** fall back to another tool for this.
+- **A snapshot shipped without its history entry** (`historyRecorded: false`) — the code *is* uploaded but the restore point was not recorded, so the user has no rollback for this version. Say so plainly and offer to re-run the publish.
+
+`b6p --json push …` prints core's `PushResult` — `{"pushed": true, "historyRecorded": true}` — which tells you which of the two it was without parsing prose. Reach for it when the exit code is non-zero and the message is ambiguous. One shape to expect: if the user cancelled at a target-URL prompt the CLI prints `{"cancelled": true}` and exits `0` — there is no `pushed` key at all, so test for it rather than assuming it is false.
 
 - **Publish** runs the TypeScript build and ships the compiled output — surface any compile diagnostics the CLI reports. **Save draft only** does not compile at all.
 - **Reading the diagnostics — benign wall vs. real error.** The CLI transpiles `scripts/app.ts` in isolation, **without** the component's `declarations/`. So a wall of `Cannot find name` errors on **platform globals or imported query/field names** (`B`, your query-group consts, …) means nothing was actually type-checked — the emit still succeeded and the push went through. A **real** error names one of **your own** symbols (a variable or function defined in your source). Three follow-ups:
@@ -124,11 +131,13 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
 
 ## If the CLI fails
 
-Two distinct failure modes — handle them differently:
+Three distinct failure modes — handle them differently:
 
 - **`command not found` / `b6p` cannot be resolved** — the b6p-cli standalone binary is not installed (or not on `PATH`). Do NOT retry. Tell the user:
   > `b6p` could not be resolved. Install the b6p-cli standalone binary and make sure it is on your `PATH` (see its release/install instructions), then retry `/b6p-push <component>`.
-- **Any other error** (network, auth, conflict, etc.) — the VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Do not retry the CLI in a loop.
+- **Exit `1` from the push itself** (`pushed: false` / `historyRecorded: false`) — **not** a CLI failure and **not** a reason to change tools. The CLI ran correctly and is telling you the push did not do what was asked; handle it as step 5 describes (fix the `--root` or the empty draft, or re-run the publish to record the missing restore point).
+- **Exit `1` naming a prompt it could not answer** (`Enter your access token`, or any other prompt) — **not** a tool failure. Same handling as above: relay the message, tell the user to run `b6p auth set`, retry. This is the standard post-0.6.0 upgrade path even when the step-0 preflight printed `OK`, so do **not** send them to the VS Code extension for it.
+- **Any other error** (network, conflict, a real auth *rejection* by the platform, etc.) — the VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Do not retry the CLI in a loop.
 
 **Never fall back to the platform's in-browser script/page editor** (`editScript.jsp`) to save the component. It bypasses `b6p`'s recorded sync metadata and diverges local vs platform — the same hazard class as a manual WebDAV upload (see the sync-failure fallbacks in the `bluestep-reference` skill's `b6p-platform.md`). The VS Code extension is the only equivalent fallback. (The one exception is the one-time first-publish "Snapshot Project" step from the step-4 never-published warning — that publishes the already-pushed draft; it does not edit or save source through the editor.)
 

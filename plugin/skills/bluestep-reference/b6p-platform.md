@@ -134,11 +134,21 @@ Options:
 A successful first pull:
 
 - Creates the `U######/` folder (if not present) and the `<ComponentName>/` subfolder under it
-- Populates `draft/scripts/` and (in older modules) `draft/objects/`; `draft/info/` is **omitted for most components** — its absence is normal, not a broken pull
+- Populates `draft/scripts/` and (in older modules) `draft/objects/`; `draft/info/` is **legacy and usually absent** — see below. Its absence is normal, not a broken pull
 - Populates `declarations/` with the platform-generated `.d.ts` files, including `declarations/index.d.ts` (field/query/form declarations)
 - Records the component's sync metadata (WebDAV id, file hashes, script key) so future pulls/pushes can resolve it
 
-Subsequent pulls verify per-file integrity and only rewrite files whose content changed.
+Subsequent pulls verify per-file integrity and only rewrite files whose content changed — and since b6p-cli 0.6.0 they **keep** a file you edited locally instead of overwriting it, listing every kept file in one warning at the end. The guard compares against a recorded last-sync hash; that record is machine-local, so a first pull on a fresh clone (no record) still writes the platform copy over local content.
+
+### `draft/info/` is deprecated — read it, never expect it
+
+`draft/info/` (`metadata.json`, `config.json`, `permissions.json`) is **deprecated platform behavior**, not a pull that went wrong. Newly-created formulas never get it — that configuration now lives on the component's **setup page**, readable through the gateway MCP inspector (see `conventions/mcp-platform-authoring.md`). Components created years ago still serve it, so treat it as **legacy, read-only when present**:
+
+- Never make a step conditional on `draft/info/` existing, and never report its absence as a problem.
+- Need the component type, display name, paths/methods or permissions? Read `draft/info/metadata.json` **if it happens to be there**; otherwise go to the setup page via the gateway MCP, or infer the type from `draft/scripts/app.ts` and the folder shape.
+- Do not write or recreate `draft/info/` locally to "fix" its absence.
+
+Tracked as ClickUp 86bb91km5 (platform-side; the CLI is faithfully mirroring what WebDAV serves).
 
 ### Push a component
 

@@ -9,7 +9,7 @@ This file is NOT for planning new work — use `/spec-create` for that
 (specs live under .claude/specs/<feature-name>/).
 
 When `/b6p-pull` scaffolds this file, it infers what it can from the
-component's code (app.ts), metadata (draft/info/metadata.json), and
+component's code (app.ts), its legacy draft/info/metadata.json if it has one, and
 static assets (for MergeReports). Sections it cannot infer are left
 empty or marked "TODO" — fill them in before editing code.
 -->

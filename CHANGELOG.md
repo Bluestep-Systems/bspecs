@@ -6,6 +6,141 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.28.0] — 2026-08-21
+
+A staleness pass over the b6p skills after **b6p-cli 0.6.0 and 0.6.1** shipped (both 2026-08-21,
+alongside b6p-core 0.6.1). Three things the CLI changed had made shipped plugin content wrong:
+authentication became a single access token, an unanswerable prompt now fails instead of hanging,
+and `pull` stopped overwriting locally-edited files. Plus the `draft/info/` deprecation, verified
+platform-side. ClickUp [86bbjeuda](https://app.clickup.com/t/86bbjeuda).
+
+> **No new or changed hooks in this release** — Codex users do not need to re-trust.
+
+### Fixed — auth is an access token, and a prompt now fails loudly (`/b6p-push`, `/b6p-pull`, `/b6p-audit`)
+
+- **The three near-duplicate auth-preflight passages were wrong on three counts and are rewritten
+  consistently.** b6p-core 0.5.0 replaced basic auth with bearer auth, so it is now one **access
+  token**, not a username and password — and there is **no migration path by construction**, so
+  every pre-0.6.0 user is re-prompted once on upgrade. b6p-cli 0.6.0 then fixed the prompt itself:
+  an unanswerable prompt used to hang, drain, and exit **`0` having done nothing**; it now names
+  the prompt it could not answer and exits **`1`**. "The call hangs silently" is gone from all
+  three skills, both scaffolded project templates (`AGENTS.md.template`, `README.md.template`), and
+  the two `--yes` notes that said a missing confirmation would hang.
+- **The `secrets.enc` preflight is documented as a negative check only** — this is the case that
+  actually bites right now. `secrets.enc` holds every secret under its own key, so a machine that
+  authenticated **before** 0.6.0 has the file *without* an access token in it: the preflight prints
+  `OK` and the command still stops at `Enter your access token` and exits `1`. Since 0.6.0
+  re-prompts every existing user, that is the common path on upgrade, not an edge case. All three
+  skills now say to surface that failure verbatim rather than retrying.
+- **A missing-token exit `1` is carved out of the "fall back to the VS Code extension" rule** in
+  `/b6p-push` and `/b6p-pull`. Both files listed "auth" among the errors that mean *switch tools*,
+  which would have sent the upgrade case — the common one — to the editor instead of to
+  `b6p auth set`. `/b6p-audit` already handled this correctly; the three now agree. A real auth
+  *rejection* by the platform still routes to the extension.
+- **Where an access token comes from is still undocumented upstream.** The skills say to run
+  `b6p auth set` and stop there — deliberately no invented URL or procedure.
+
+### Fixed — `/b6p-pull` no longer claims the CLI eats your README
+
+- **The scaffolded-README ephemerality warning added in 0.27.0 is removed** — b6p-cli 0.6.0 fixed
+  the underlying bug ([86bbdr4r0](https://app.clickup.com/t/86bbdr4r0), named in its changelog). A
+  pull now **keeps** a file that differs from both the platform copy and the last-synced hash, so a
+  scaffolded README survives the next pull. Two caveats kept: the guard needs a recorded last-sync
+  hash and **that record is machine-local**, so a first pull on a fresh clone (or a new machine, or
+  after cleared state) still writes the platform copy over local content; and pushing the README is
+  still the only way other people get the docs. Step 5e, the two re-pull behaviours, and the
+  report template all say this now.
+- **The skill's own "do NOT overwrite a substantive `draft/README.md`" rule is deliberately
+  unchanged.** It binds *this skill's* writes; the CLI's divergence guard governs what `b6p pull`
+  writes. They are different things, and the rule is not made redundant by the fix.
+
+### Added — `/b6p-pull` reads the kept-files warning
+
+- **New step 3 half: a pull that keeps local files must be reported.** The CLI ends with one
+  aggregated warning listing every kept file (capped at 10, then `…and N more`), and
+  `b6p --json pull` reports the same set as a `keptLocalPaths` array. The pull still exits `0` —
+  the guard working as designed — so nothing else flags it, and a reader who assumes a clean pull
+  is working against stale content. Kept paths now carry into the step-6 report.
+- **The recovery advice is corrected for a non-interactive caller.** Core's own message suggests
+  taking the platform copy via an audit pull, but 0.6.0 made `b6p audit --pull` default to
+  *Cancel* — so under `--yes` it declines. For an agent the working recovery is **delete the file
+  and pull again**; the audit-pull route needs a human answering the confirmation.
+
+### Added — `/b6p-push` reads the exit code
+
+- **Step 5 now checks the exit code first.** b6p-cli 0.6.0 made `push` exit `1` when it did not do
+  what was asked — `pushed: false` (a wrong `--root` or an empty draft; this previously printed
+  success and exited `0`, so a typo could mark a CI deploy green) or `historyRecorded: false` (the
+  code shipped but the restore point was not recorded). `b6p --json push` emits core's `PushResult`
+  to disambiguate the two.
+- **A push that exits `1` is carved out of the "fall back to the VS Code extension" rule.** It is
+  not a CLI malfunction — the CLI ran correctly and is reporting that the push did not happen.
+  Routing that to another tool hides a wrong `--root` instead of fixing it.
+
+### Changed — `draft/info/` is deprecated, not merely absent
+
+0.27.0 reconciled `/b6p-pull` steps 3–4 with "`draft/info/` is usually absent", which frames it as
+a quirk. Verified platform-side ([86bb91km5](https://app.clickup.com/t/86bb91km5), platform-side and
+still open): it is **deprecated** — newly-created formulas never get one and that configuration now
+lives on the component's **setup page**, while a 2022-era formula still serves it. Every place that
+still treated it as required or expected is switched to legacy-read-only-when-present, with the
+setup page (via the gateway MCP inspector) as the real source:
+
+- **`b6p-platform.md`** gains the canonical statement — a short "`draft/info/` is deprecated — read
+  it, never expect it" section: never make a step conditional on it, never report its absence as a
+  problem, never recreate it locally. The pull description also notes that subsequent pulls now
+  keep locally-edited files.
+- **The `b6p-commenter` agent** still lists `metadata.json` / `config.json` in its "read everything"
+  step, but they are now marked legacy-and-usually-absent with an explicit "never block on the
+  folder's absence"; the README title and Fields-used table fall back to the setup page, `app.ts`,
+  and the folder shape.
+- **`AGENTS.md.template`** stops teaching `draft/info/metadata.json` as *the* way to identify a
+  component type (code + folder shape first) and drops it from the component-discovery tip; the
+  module-structure tree marks `info/` legacy.
+- **`/b6p-pull` step 4 (identify the component type) was rebuilt, not just reworded.** Five of its
+  six type signals (`httpOption`, `triggerType`, `language`, …) are `draft/info/` JSON keys that
+  cannot appear in `app.ts`, so simply telling the reader to lead with the code left the step
+  unusable on exactly the modern components it was rewritten for. It now leads with the two signals
+  the code and folder shape really give — `draft/static/` present → MergeReport, `B.net.request` /
+  `B.net.response` → Endpoint — and states plainly that for a formula the **trigger type is not
+  knowable from source**: read it off the setup page, or from a legacy `draft/info/`. The JSON-key
+  table is kept below, labelled as the shortcut that applies only when `draft/info/` is present.
+- **`bsjs-development.md`'s ``info/`` section is retitled "(legacy)"** and its `config.json`
+  subsection no longer says "(required)". It sat in the same skill directory as the new canonical
+  rule while still telling readers the folder was mandatory — an agent could have followed it into
+  creating an `info/` folder locally, which the new rule explicitly forbids. Its module-structure
+  tree is marked legacy too.
+- **A `/b6p-audit` example**, the `/b6p-pull` README-title step, the component README template, and
+  the `AGENTS.md.template` module-structure tree no longer use a `draft/info/` path as the ordinary
+  case. (The template's tree also gained a working cross-reference to its own
+  "Identifying a component" paragraph, which it previously pointed at by implication only.)
+
+### Fixed — the two-bearer-token confusion
+
+`/bluestep-init`'s security section, the repo's own `CLAUDE.md`, and `README.md`'s Prerequisites all
+described the b6p CLI side as WebDAV credentials. That misdescribes what the CLI stores now — an
+access token —
+and, with both sides being bearer tokens since 0.6.0, the confusion risk went **up**, not down. Both
+now say plainly that the gateway's `B6PT_TOKEN` and the CLI's `b6p auth set` token are separate
+credentials configured independently, without asserting anything about interchangeability.
+
+### Verified clean — no change needed
+
+Audited and deliberately left alone, recorded so the next pass does not re-derive it:
+
+- **`b6p audit --pull`** (which now defaults to *Cancel*, so `--yes` declines rather than
+  overwriting): nothing in the tree ever *invokes* it. Before this release `--pull` appeared exactly
+  once, in `/b6p-audit`'s existing "Do NOT pass `--pull`" rule, so no shipped skill broke. This
+  release adds a second mention — `/b6p-pull` step 3 now explains that the audit-pull recovery route
+  declines under `--yes` — which is still not an invocation.
+- **No noun-first command tree anywhere.** That b6p-cli PR was dropped; `b6p script push` and
+  friends appear in neither `plugin/` nor `dist/`. The commands remain `b6p push` / `pull` / `audit`.
+- **No TypeScript-version claims in `plugin/`.** b6p-cli and b6p-core both rolled back to exactly
+  `5.9.2` (b6p-cli ADR 0002 — TS 7 cannot compile in-process, which snapshot pushes need), but no
+  plugin content asserts a version. `block-tsc.sh` and `bsjs-development.md` already carry 0.27.0's
+  corrected "the CLI's transpile during a publish push is the only build" wording, which is
+  version-agnostic and stays true. The no-local-`tsc` rule is unaffected.
+
 ## [plugin 0.27.0] — 2026-08-20
 
 The `/b6p-push` and `/b6p-pull` skill passes from the 2026-08-19 triage queue — verification and

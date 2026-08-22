@@ -30,8 +30,7 @@ If the user names files/components, use those. Otherwise Glob for recently modif
 - `draft/scripts/app.ts` — main server-side entry
 - `draft/objects/imports.ts` — query definitions (if present)
 - `draft/static/script.ts` and `draft/static/index.html` — client-side (MergeReports only)
-- `draft/info/metadata.json` — displayName, type, paths/methods, permissions
-- `draft/info/config.json` — script type and any configured models (e.g. `genericComponents`)
+- `draft/info/metadata.json` / `config.json` — displayName, type, paths/methods, permissions, configured models (e.g. `genericComponents`). **Legacy and usually absent** — `draft/info/` is deprecated platform behavior; newly-created formulas never get one and that configuration now lives on the component's setup page. Read these when the component happens to ship them; when it does not, that is normal, not a failed pull — take the same facts from the setup page via the gateway MCP inspector (`bluestep-reference` → `conventions/mcp-platform-authoring.md`), or infer the type from `app.ts` and the folder shape. Never block on the folder's absence.
 - the current `draft/README.md`
 
 ### Step 3 — Consult platform rules on demand
@@ -42,10 +41,10 @@ When a BlueStep-specific quirk affects the explanation (why `.opt().orElse()` in
 
 Write to `draft/README.md` using the section layout enumerated below — this list **is** the canonical structure; do **not** invent a different layout. (It matches the empty skeleton `/b6p-pull` seeds when it first scaffolds a component's `draft/README.md`.) Fill every section you can infer; for what you genuinely cannot determine, leave the placeholder or mark `TODO`. Preserve any meaningful existing content — augment, don't clobber a good doc.
 
-- **`# <displayName from metadata.json>`**
+- **`# <component display name>`** — from a legacy `metadata.json` if present, else the setup page or the component's folder name.
 - **## Overview** — one paragraph: what the component does, who uses it, why it exists. Be specific ("displays a resident's treatment targets" beats "shows data").
 - **## Type** — Endpoint / MergeReport / Post-Save / OnDemand / Scheduled / Formula, plus the type-specific details (endpoint paths + methods + auth model; MergeReport pages/sections and whether it owns the frontend; Post-Save trigger form(s); Scheduled cadence).
-- **## Fields used** — the FID / Display name / Form / Access (read|write) table, from the field names actually referenced in the code and `metadata.json`.
+- **## Fields used** — the FID / Display name / Form / Access (read|write) table, from the field names actually referenced in the code (plus `metadata.json`, on a component that still ships one).
 - **## Behavior** — one bullet per coherent runtime behavior: what triggers it, key branching, what gets written/output/returned and where it goes.
 - **## External dependencies** — outbound HTTP endpoints, libraries, other B6P components this one calls or expects.
 - **## Edge cases / known gotchas** — non-obvious things, BlueStep quirks, data states that could break it, dependencies on other scripts/forms/config. Leave blank if none.

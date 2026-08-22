@@ -14,15 +14,15 @@ The skills, subagents, hooks, and BlueStep reference for this project come from 
 
 The `b6p` CLI is a **standalone binary** installed separately on the machine — not an npm dependency of this project. The b6p skills (`/b6p-pull`, `/b6p-push`, `/b6p-audit`) invoke it as bare `b6p`. If `b6p` is not on PATH, install the b6p-cli binary from its release.
 
-### Configure platform credentials (one-time)
+### Configure your platform access token (one-time)
 
-Set your BlueStep platform credentials once per machine:
+Store your BlueStep platform access token once per machine:
 
 ```bash
 b6p auth set
 ```
 
-Without this, the first `b6p pull` will prompt for credentials interactively, which Claude Code cannot answer — the call will hang. Run `auth set` before invoking `/b6p-pull`.
+Without it, the first `b6p pull` prompts for the token interactively, which Claude Code cannot answer — the call fails with exit `1`. Run `auth set` before invoking `/b6p-pull`. If you used `b6p` before version 0.6.0 you will be asked once more even though you set it up already: bearer auth replaced the old username + password and a token cannot be derived from them.
 
 The DAV URL passed to `b6p pull` is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
 
