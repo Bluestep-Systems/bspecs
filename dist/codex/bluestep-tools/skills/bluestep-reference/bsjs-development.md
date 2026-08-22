@@ -39,7 +39,7 @@ Deep reference for BlueStep TypeScript development. Critical rules live in `AGEN
             ├── static/            ← MergeReport only: HTML, CSS, client JS
             └── info/
                 ├── config.json
-                ├── metadata.json  ← identifies component type (read to know what this is)
+                ├── metadata.json  ← LEGACY: identifies component type, when present
                 └── permissions.json
 ```
 
@@ -380,9 +380,16 @@ export function run(): void {
 B.io.sendMessage(channelId, JSON.stringify({ type: "update", payload: data }));
 ```
 
-## `info/` configuration
+## `info/` configuration (legacy)
 
-### `config.json` (required)
+> **`draft/info/` is deprecated platform behavior and is absent from most components.** Newly-created
+> formulas never get one — that configuration now lives on the component's **setup page**, readable
+> through the gateway MCP inspector (`conventions/mcp-platform-authoring.md`). Components created
+> years ago still serve it. So read this section as *how to interpret an `info/` folder you were
+> given*, never as a folder you should expect, require, or create locally. The canonical rule is in
+> [b6p-platform.md](b6p-platform.md).
+
+### `config.json` (on a component that ships `info/`)
 
 ```json
 {

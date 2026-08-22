@@ -27,17 +27,17 @@ Always pass `--yes` so b6p does not show interactive prompts that Claude cannot 
 
 ### 0. Auth preflight (do this first, before any `b6p` call)
 
-`b6p` stores BlueStep platform credentials globally in `~/.b6p/`. On a machine that has never run `b6p auth set`, the first `audit` prompts for credentials **interactively** — a prompt you (Claude) cannot answer, so the call hangs silently. `--yes` does **not** save you here: it guards the *confirmation* prompt, not the *missing-credentials* one.
+`b6p` stores a BlueStep platform **access token** globally in `~/.b6p/` (since b6p-cli 0.6.0 / core 0.5.0 — bearer auth replaced the old username + password, with **no** migration path, so every pre-0.6.0 user is re-prompted once). Without a stored token the first `audit` prompts for one **interactively** — a prompt you (Claude) cannot answer. The CLI now **fails loudly**: it names the prompt it could not answer and exits `1`. (Before 0.6.0 it hung, then drained and exited `0` having done nothing — so an old "it succeeded" is not evidence the audit happened.) `--yes` does **not** save you here: it guards the *confirmation* prompt, not the *missing-token* one.
 
-Before running the audit, check that credentials exist:
+Before running the audit, check for the secrets store:
 
 ```
 test -f ~/.b6p/secrets.enc && echo OK
 ```
 
-- If it prints `OK` → credentials are set, continue.
 - If it prints nothing (file absent) → STOP. Do **not** run the audit. Tell the user:
-  > `b6p` has no BlueStep platform credentials on this machine yet, so the audit would hang on an interactive prompt I can't answer. Run `b6p auth set` once (it stores credentials globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-audit <component>`.
+  > `b6p` has no BlueStep platform access token on this machine yet, so the audit would stop at an interactive prompt I can't answer. Run `b6p auth set` once (it stores the token globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-audit <component>`.
+- If it prints `OK` → continue, but treat this as a **negative check only**. `secrets.enc` holds every secret under its own key, so a machine that authenticated before 0.6.0 has the file *without* an access token in it — the preflight passes and the audit still stops at `Enter your access token` and exits `1`. That failure is self-describing: surface it verbatim and give the user the same `b6p auth set` instruction rather than retrying.
 
 ### 1. Identify the component
 
@@ -61,7 +61,7 @@ Read the JSON output. The shape is:
 
 ```json
 {
-  "changedFiles": ["draft/scripts/app.ts", "draft/info/metadata.json (new)", ...],
+  "changedFiles": ["draft/scripts/app.ts", "draft/static/script.ts (new)", ...],
   "baseUrl": "<DAV URL>"
 }
 ```

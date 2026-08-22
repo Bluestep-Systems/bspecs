@@ -227,8 +227,10 @@ across every org. Handle it accordingly, and be honest with the user about its l
 - **Not encrypted at rest.** The token lives in plaintext in the `B6PT_TOKEN` env var (shell profile /
   Windows user env). It is user-private and uncommitted, but readable by any process running as the user.
   No agent tool offers an encrypted-header MCP mechanism, so plaintext-user-private is the floor. This is a
-  *separate* credential from the b6p CLI's encrypted `~/.b6p/` WebDAV creds — it is **not** the same as the
-  `b6p auth set` credentials.
+  **separate credential from the b6p CLI's**, set up independently: the CLI stores its own platform access
+  token, encrypted, in `~/.b6p/` via `b6p auth set` (bearer since b6p-cli 0.6.0), while this one lives in the
+  `B6PT_TOKEN` env var and authenticates the gateway MCP. Both are now bearer tokens, so keep them straight —
+  configuring one does nothing for the other.
 - **Recommend an expiry + least-privilege scopes at creation.** The Access Tokens screen has Scopes and
   Expires columns; a never-expiring, unscoped global-super token is the riskiest shape. Setting an expiry
   and scopes — and questioning whether it needs to be a global-super token at all — reduces risk more than

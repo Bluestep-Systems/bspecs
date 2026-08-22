@@ -39,11 +39,13 @@ and hooks depend on them.
   Then authenticate **once per machine**:
 
   ```sh
-  b6p auth set   # credentials stored globally in ~/.b6p, not per project
+  b6p auth set   # access token stored globally in ~/.b6p, not per project
   ```
 
 - **`B6PT_TOKEN`** *(optional)* — only needed for platform MCP authoring, and a
-  **separate** credential from the `b6p` CLI's WebDAV login. The platform MCP is
+  **separate** credential from the `b6p` CLI's own access token (`b6p auth set`, stored in
+  `~/.b6p/`; also a bearer token since b6p-cli 0.6.0, so keep the two straight — they are
+  configured independently). The platform MCP is
   the **bundled `bluestep-gateway` server** — no per-org connect step; you just
   set `$B6PT_TOKEN` and it auto-registers once the plugin is enabled (in a
   **fresh session** — restart the app after setting it). It's an OS environment

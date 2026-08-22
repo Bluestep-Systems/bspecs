@@ -33,18 +33,18 @@ This workspace is a **local copy** of components that live on the BlueStep platf
 ```
 <project-root>/
 ├── U######/                       ← Unit folder (created by `b6p pull`, one per unit)
-│   └── ComponentName/             ← any component type — read metadata.json to identify
+│   └── ComponentName/             ← any component type — see "Identifying a component" below
 │       ├── declarations/          ← platform-generated, DO NOT EDIT
 │       └── draft/
 │           ├── README.md          ← what this module does today — read before editing
 │           ├── scripts/           ← TypeScript source (BsJs)
 │           ├── objects/           ← legacy: imports.ts may exist in older modules
 │           ├── static/            ← MergeReport only: HTML, CSS, client JS
-│           └── info/              ← config.json, metadata.json, permissions.json
+│           └── info/              ← LEGACY, usually absent: config.json, metadata.json, permissions.json
 └── U######/                       ← another unit, more components — same shape
 ```
 
-Component type is encoded in `draft/info/metadata.json` (and the matching `config.json`). When you need to know whether a component is an Endpoint, MergeReport, etc., read those — don't infer from folder names.
+**Identifying a component.** To tell whether a component is an Endpoint, MergeReport, etc., read `draft/scripts/app.ts` and the folder shape (a `draft/static/` directory means MergeReport, and so on) — don't infer from folder names. `draft/info/metadata.json` states the type outright and is the quickest answer **when the component ships one**, but `draft/info/` is deprecated platform behavior: newly-created formulas never get it, that configuration now lives on the component's setup page, and only older components still serve it. Its absence is normal — never treat it as a broken pull, and never recreate the folder locally.
 
 ## The `B` object (platform API)
 
@@ -52,7 +52,7 @@ All platform interaction goes through the global `B` object (`B.net`, `B.ai`, `B
 
 ## Module context — read scoped to the task
 
-**Read `draft/README.md` only for the component(s) the current task touches** — not every component in the workspace. A workspace can hold dozens of components totalling thousands of lines of README; loading all of them into every session is wasteful and slow. If a request is ambiguous about which component it maps to, ask — don't pre-load everything to be safe. To discover which components exist without reading their READMEs, list the `U######/*/` directories or read a single `draft/info/metadata.json`.
+**Read `draft/README.md` only for the component(s) the current task touches** — not every component in the workspace. A workspace can hold dozens of components totalling thousands of lines of README; loading all of them into every session is wasteful and slow. If a request is ambiguous about which component it maps to, ask — don't pre-load everything to be safe. To discover which components exist without reading their READMEs, list the `U######/*/` directories.
 
 Two distinct docs, separated by lifecycle:
 
@@ -100,7 +100,7 @@ The `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills own the exact `b6p …` in
 
 **Push is never plain-by-default.** Every push decision — plain vs. snapshot — is the user's to make explicitly (Critical rule 9), *regardless of how the push is triggered*. `/b6p-push` presents this choice as a step; if you ever run `b6p push` by hand instead of through the skill, you still owe the user that same choice before pushing. A plain push overwrites the draft with **no** server-side history; a snapshot (`--snapshot --message "<summary>"`) records a restorable version entry. Never pick for the user, and never auto-snapshot.
 
-**One-time platform auth:** `b6p` needs BlueStep credentials stored in `~/.b6p/` (once per machine). The first command on a fresh machine prompts interactively and would hang the AI agent, so run `b6p auth set` once before the first sync. The `/b6p-*` skills preflight this automatically.
+**One-time platform auth:** `b6p` needs a BlueStep **access token** stored in `~/.b6p/` (once per machine). The first command on a machine without one stops at an interactive prompt the AI agent cannot answer and exits `1`, so run `b6p auth set` once before the first sync. Upgrading from a pre-0.6.0 `b6p` also re-prompts once — bearer auth replaced the old username + password and a token cannot be derived from them. The `/b6p-*` skills preflight this automatically.
 
 ## Self-improvement
 
