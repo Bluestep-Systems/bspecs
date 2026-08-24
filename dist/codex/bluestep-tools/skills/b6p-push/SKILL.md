@@ -52,7 +52,7 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 - **Publish** (`--snapshot --message`) — compiles the code, updates the **live** version, and records a restorable snapshot the user can roll back to.
 - **Save draft only** (plain push) — uploads the draft source as-is; does **not** compile and does **not** change the live version. Rarely what the user wants.
 
-Publishing is the recommended default — but **never** push without an explicit selection: it is *pre-marked*, never *pre-executed*.
+Publishing is the recommended default — but **never** push without an explicit selection: it is *pre-selected*, never run on its own.
 
 Most users are non-technical, so present the choice in **plain language — avoid the words "snapshot" and "push" in what they see.** Show the one-line diff scope from step 2, then ask **two** structured questions with clickable options (`AskUserQuestion` in Claude Code) — one at a time, never as a numbered list to answer by hand:
 
@@ -105,7 +105,7 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
 
 ### 5. Report
 
-**Check the exit code first — it is load-bearing.** `b6p push` exits `1` when it did not do what was asked, so a zero exit is what confirms it did. Three distinct non-zero cases, none of which is a CLI malfunction:
+**Check the exit code first — it's the real success signal.** `b6p push` exits `1` when it did not do what was asked, so a `0` exit is what confirms it did. Three distinct non-zero cases, none of which is a CLI bug:
 
 - **Nothing was uploaded** (`pushed: false`) — the push found no draft to send. In practice that is a wrong `--root` (see the fallback above) or an empty `draft/`. Before 0.6.0 this printed a success line and exited `0`, so a typo could mark a CI deploy green. Fix the path or the draft and re-run; do **not** fall back to another tool for this.
 - **A snapshot shipped without its history entry** (`historyRecorded: false`) — the code *is* uploaded but the restore point was not recorded, so the user has no rollback for this version. Say so plainly and offer to re-run the publish.
@@ -119,7 +119,7 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
   - **Client-bundle noise is separate and does NOT fail the push.** A MergeReport `static/` bundle can reference browser-only third-party globals it declares nowhere (GridStack, Swal); those print as **advisory** diagnostics (visible with `--verbose`) and are excluded from `typeCheckDiagnostics`, so they never fail the push and do not mean anything is wrong. See the `bluestep-reference` skill's `gotchas/third-party-lib-type-noise.md`.
   - **Re-pushing does not clear real diagnostics** — they are deterministic; fix the cause.
 - If the user **published**, confirm the live version was updated — **concretely, which build is live**, not by assumption: the new snapshot sits at the top of the component's version / restore-point history with the description just used; for a BSJS formula you can also confirm the running build via the gateway MCP's `read_script_log` — its `console.log` output identifies the build. (`read_script_draft` only confirms the platform received the draft source — a draft is decoupled from the live version, so it can never confirm what is live.) Inner tools are reached through `invoke_org_tool` — see the `bluestep-reference` skill's `conventions/mcp-platform-authoring.md`. If they **saved a draft only**, tell them plainly it is **not live yet** — they must publish to make it live.
-- **A stale page render can impersonate a failed publish** (verified 2026-08; distinct from the stale-client-JS warning in step 4). A formula's own on-page output — a message/modal it writes, rendered field output — can be served from a cached, stale page render, so a fully-successful publish can look like the old version is still running. Hard-refresh and **re-trigger** (re-save the record) before doubting the deploy; do **not** re-push or roll back on an unchanged-looking page alone. Run the which-build check above instead.
+- **A stale page render can look like a failed publish** (verified 2026-08; distinct from the stale-client-JS warning in step 4). A formula's own on-page output — a message/modal it writes, rendered field output — can be served from a cached, stale page render, so a fully-successful publish can look like the old version is still running. Hard-refresh and **re-trigger** (re-save the record) before doubting the deploy; do **not** re-push or roll back on an unchanged-looking page alone. Run the which-build check above instead.
 - Remind the user to verify behaviour on the platform itself.
 - If `draft/README.md` was modified locally, note that the platform now has the updated docs (useful for other devs pulling the same component).
 
