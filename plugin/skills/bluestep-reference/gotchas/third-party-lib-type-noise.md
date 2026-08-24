@@ -29,9 +29,13 @@ downstream of it as `never`.
 
 These diagnostics are **advisory only**: the transpile's emit continues through them, the snapshot
 ships correctly, and the library genuinely exists at runtime in the browser — so nothing is
-actually wrong. (There is no later authoritative compile; the platform never compiles — the CLI's
-local transpile is the only build. See the diagnostics guidance in the `/b6p-push` skill's report
-step for the full benign-vs-real tell.) A wall of these errors is **not** a failed push.
+actually wrong. They come from a **client-bundle** sub-project (`static/`, its own `tsconfig.json`),
+which `b6p push` deliberately **excludes from `typeCheckDiagnostics`** — so a wall of them never
+raises the count, never trips the "published without a passing type-check" warning, and never fails
+the push (exit stays `0`). That gating applies only to the platform code (`scripts/app.ts`), whose
+diagnostics — unlike these — now DO fail the push. (There is no later authoritative compile; the
+platform never compiles — the CLI's local transpile is the only build. See the diagnostics guidance
+in the `/b6p-push` skill's report step for the full picture.)
 
 The real risk is masking: the noise repeats on every push of the affected component and can bury a
 **genuine new** diagnostic introduced by the session's actual change. Don't skim past the wall —
