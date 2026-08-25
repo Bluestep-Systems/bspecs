@@ -6,6 +6,26 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.29.3] — 2026-08-25
+
+One new reference entry, from [86bbccc7j](https://app.clickup.com/t/86bbccc7j) / [#79](https://github.com/Bluestep-Systems/bspecs/issues/79).
+
+> **No hook changes** — Codex users do not need to re-trust.
+
+### Added — a gotcha for document-library subfolder keys carrying a trailing slash
+
+New `bluestep-reference` gotcha, `gotchas/document-library-folder-keys.md`. `Folder.subFolders()`
+and `subFoldersAsMap()` key each child folder by its name **plus a trailing slash** (`"Name/"`), so
+`subFolders()["Name"]` — the obvious lookup — never matches. And because `subFolders()` hands back a
+plain JS object, the miss is a silent `undefined`, not an error, so it reads as "the folder isn't
+there." The fix is to strip the trailing slash before comparing, or fetch by the real slash-suffixed
+key. The entry also documents that on a record `documentLibrary()` and `recordFiles()` return the
+**same** root folder — same path, same subfolder set — so you don't have to reconcile two trees.
+
+Proved out live on a playground org: creating a subfolder `X` makes the map key come back as `"X/"`,
+`subFolders()["X"]` misses, `subFolders()["X/"]` hits, and the two record-file accessors report the
+same path and subfolder set.
+
 ## [plugin 0.29.0] — 2026-08-22
 
 One fix, from [86bbj3452](https://app.clickup.com/t/86bbj3452) / [#126](https://github.com/Bluestep-Systems/bspecs/issues/126).
