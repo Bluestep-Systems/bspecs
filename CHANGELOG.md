@@ -6,6 +6,31 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.29.4] — 2026-08-25
+
+One reference change, from [86bbgjbef](https://app.clickup.com/t/86bbgjbef) / [#110](https://github.com/Bluestep-Systems/bspecs/issues/110).
+
+> **No hook changes** — Codex users do not need to re-trust.
+
+### Changed — `merge-report-urls.md` now documents the record-scoped `_id`/`_id2` URL
+
+The file presented `B.find.mergeReport(...).viewUrl()` as *the* way to get a merge-report URL
+without ever saying it returns a **record-less** URL. Following it loads the report's static header
+and then renders "No Record Selected" — which reads like a permissions/applicability bug but is
+really a missing-record URL. The file's record-scoped alternative (`optApplicable*`) is gated by the
+primary-form hard rule, and `record.nav()` is flagged as expensive — so for the common case "link a
+user to a report **on a record**," the doc steered to an API that silently can't do it.
+
+Added a **Record-scoped URLs** section: `viewUrl()` carries no record; to open a report on a
+specific record, build `/shared/relate/detailreportpage.jsp?_event=view&_id=<record>&_id2=<report>`
+— `_event=view` required, `_id2` takes the short id **or** the FID form, `_a` optional. Cross-linked
+from the Gotchas `record.nav()` bullet and the SKILL.md manifest line.
+
+Proved out live on a playground org (a scratch merge report + real record, four URL variants): the
+report renders scoped to the record only when `_id` is present; dropping `_id` falls back to the
+record-less state, dropping `_event=view` returns an error with no body, and `_id2` resolves from
+either the short id or the FID form — `_a` never needed.
+
 ## [plugin 0.29.3] — 2026-08-25
 
 One new reference entry, from [86bbccc7j](https://app.clickup.com/t/86bbccc7j) / [#79](https://github.com/Bluestep-Systems/bspecs/issues/79).

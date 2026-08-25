@@ -17,6 +17,32 @@ B.find.mergeReport("530024__FID_clientHeader").viewUrl()
 
 Returns `MergeReportMetaData` (inherits `viewUrl()`, `editUrl()`, `id()`, `displayName()` from `BaseObject`). No `printUrl()` here.
 
+## Record-scoped URLs — `viewUrl()` does not carry record context
+
+`viewUrl()` — on both the `MergeReportMetaData` from `B.find.mergeReport` and the full
+`MergeReport<T>` from `optApplicable*` — returns the report's **own** URL: report id, **no record**.
+Follow it and the page loads the report's static header (the filter/search chrome from
+`static/index.html`) and then renders **"No Record Selected. Please select a record."** — which
+reads like a permissions or applicability failure but is really a missing-record URL.
+
+To open a report **on a specific record**, build the URL with two ids — `_id` (the record) and
+`_id2` (the report) — plus `_event=view`:
+
+```typescript
+const reportId = B.find.mergeReport("FID_myReport", "js").id();
+const url = `/shared/relate/detailreportpage.jsp?_event=view&_id=${record.id()}&_id2=${reportId}`;
+```
+
+- `_event=view` is **required** — omit it and the page returns an error, with no report body.
+- `_id2` accepts **either** the short id (`530024___788`) **or** the FID form
+  (`530024__FID_myReport`).
+- `_a` (the Relate app id) is **not** required, so both ids stay dynamic and org-independent.
+
+Use this whenever the record-scoped `optApplicable*` path isn't available — it returns an empty
+Optional when the target report's primary form differs from the calling `FormEntry`'s form (see the
+**Primary-form hard rule** below) — and it avoids the expensive `record.nav()` lookup (see
+**Gotchas**). `viewUrl()` is relative; wrap with `B.toFullyQualifiedUrl(...)` for absolute links.
+
 ## Lookup by custom property, scoped to a record's form (true equivalent of `lookupMergeReport`)
 
 ```typescript
@@ -65,7 +91,7 @@ import.
 
 - The `__FID_<name>` segment in a full id — and the custom-prop filters — resolve via the object's **alternate identifiers**, set on the platform. The two filter args are the alt-id **key and value**: `("FID", "clientHeader")` matches the entry `FID=clientHeader` (the `("id", "x")` in the examples above is a generic key/value placeholder, not a literal key). How the `FID=<name>` entry is assigned: [fid-alternate-identifier](fid-alternate-identifier.md).
 - `viewUrl()` is **relative**. For absolute (emails etc.) wrap with `B.toFullyQualifiedUrl(rel)`.
-- `B.siteNavigation()` returns `SiteNavItem` (pages) — **does NOT** have `optLookupMergeReport`. The `optLookup*MergeReport` methods are on `RecordNavItem`, obtainable via `record.nav()`, but `record.nav()` is documented as expensive (30+ sec on uncached orgs). Prefer `B.find.mergeReport` or `optApplicableBsJsMergeReport`.
+- `B.siteNavigation()` returns `SiteNavItem` (pages) — **does NOT** have `optLookupMergeReport`. The `optLookup*MergeReport` methods are on `RecordNavItem`, obtainable via `record.nav()`, but `record.nav()` is documented as expensive (30+ sec on uncached orgs). Prefer `B.find.mergeReport` or `optApplicableBsJsMergeReport` — but note `B.find.mergeReport(...).viewUrl()` is **record-less**; to link a user to a report **on a record**, use the `_id`/`_id2` pattern in **Record-scoped URLs** above.
 - `B.find.mergeReport(id, 'js')` does NOT filter by record applicability — it's an id lookup. Only `optApplicable*` methods on FormEntry filter by applies-to-this-record.
 - Both APIs work in `MergeReportB` and `CommitableB` contexts (read-only).
 - **The `BsJs` prefix names the TARGET, not the caller.** Pick `optApplicableMergeReport` if the merge report you're looking up is a relatescript merge report — even when you're calling from a BSJS endpoint. Pick `optApplicableBsJsMergeReport` only if the target itself is a BSJS merge report. Confirmed in practice: looking up a relatescript merge report from a BSJS CommitableB endpoint required `optApplicableMergeReport`, not the BsJs variant.
