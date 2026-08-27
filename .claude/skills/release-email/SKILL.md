@@ -1,253 +1,205 @@
 ---
 name: release-email
-description: Draft and send a BlueStep-branded release-update email across both products (the bluestep-tools plugin + the b6p CLI) since the last-sent watermark. Maintainer-only, repo-local, manual — probes a restricted BlueHQ endpoint, collects changes, renders the email-safe template, gates on in-session approval, POSTs to the endpoint, and writes a no-addresses history file. Use when you want to tell users what changed and how to update. Never automatic.
+description: Draft and queue a BlueStep-branded release-update email across three products (the bluestep-tools plugin, the b6p CLI, and the gateway MCP) since the last-sent watermarks. Maintainer-only, repo-local, manual — reads watermarks over the gateway MCP, collects changes (CHANGELOG / gh / ClickUp), renders the email-safe template, queues an entry on the BlueHQ outbox form behind an in-session approval gate, drives the test send, and hands the human the signature step that performs the real send on the platform. Never automatic; the agent can never send.
 ---
 
-# /release-email — Send the release-update digest
+# /release-email — Draft and queue the release-update digest
 
 A repo-local **maintainer** skill (same tier as `.claude/skills/bspecs-triage/`, **not** shipped in
-`plugin/`). It builds a short, on-brand email that tells users what changed in the `bluestep-tools`
-plugin **and** the `b6p` CLI since the last send, and how to update each. The skill drafts and
-renders; a restricted BlueHQ endpoint does the actual per-recipient send with the recipient list and
-send secrets held server-side.
+`plugin/`). It builds a short, on-brand email covering what changed in the `bluestep-tools` plugin,
+the `b6p` CLI, and the **gateway MCP**, then queues it as an **entry on the BlueHQ outbox form**.
+The platform does every send: a **post-save formula** on that form sends the test preview when the
+test checkbox is saved, and sends the **real** email when — and only when — a human **signs the
+Approval signature field** on the entry.
 
-**Manual only.** There is no release hook, cron, or polling — you run this by hand when a digest is
-worth sending, and nothing goes out without your explicit in-session approval.
+**Manual only.** No release hook, cron, or polling — run this by hand when a digest is worth
+sending. **The agent cannot send at all**: MCP writes don't fire the platform's save formulas
+(verified), so even the test send needs a human Save in the UI, and the real send needs a human
+signature. Nothing in this skill can reach the real recipient list.
 
 Read the governing ADR [`docs/decisions/release-update-email.md`](../../../docs/decisions/release-update-email.md)
-for *why* the split exists, and the setup guide
+(especially its 2026-08-27 outbox addendum) for *why* this shape, and
 [`docs/bluehq-release-email-endpoint-setup.md`](../../../docs/bluehq-release-email-endpoint-setup.md)
-for the field names and the exact probe/send/response contract this skill codes against.
+for what exists on the platform.
 
-## The credential boundary (read this first)
+## Hard rules (read first)
 
-**The Basic Auth credential must never enter a Claude session.** That is a hard rule, and it shapes
-the whole flow below:
-
-- **The agent (Claude) never reads `.env`, never runs the authenticated `curl`, and never sees or
-  prints the credential.** Do not `cat`/`grep`/`source` `.claude/skills/release-email/.env`, do not
-  run the probe or the send, do not `echo` the credential or its base64.
-- **The human runs every authenticated call** (the probe in step 2, the send in step 6) in their
-  **own** terminal, where their shell reads `.env`. The agent *generates* the exact command + the
-  `payload.json` (which contains no secret) and hands them over; the human runs them and pastes back
-  the JSON response for the agent to parse.
-- **Why (do not rewire this to auto-run):** the credential is a live send credential for the whole
-  user list. HTTP Basic Auth is reversible base64, not a hash — so any command the agent runs with
-  it, or any read of `.env`, puts the real secret in this session's blast radius. Keeping the
-  authenticated calls human-run is the only thing that removes that risk. Prefer a **scoped,
-  revocable token / service account** over a personal password, so even a slip is contained.
-
-## What this skill will NOT do
-
-- **Never write a recipient address to the repo.** The address list lives *only* in the endpoint's
-  memo field. History files carry a recipient **count**, never a list. Per-address send failures are
-  surfaced only in the human-run response and are **never** written to a file.
-- **Never hand-edit a history file to "fix" a version range.** The watermark is
-  **server-authoritative** — the form fields on the endpoint are the source of truth. Always
-  re-probe; a stale local checkout is harmless.
-- **Never hardcode the endpoint URL or credential in a committed file.** Both live in the
-  gitignored `.claude/skills/release-email/.env` (copied from `.env.example`), keeping the
-  org-specific URL and the secret out of this public repo — and, per the boundary above, out of the
-  session.
+- **Never read the `recipients` or `testRecipients` fields** on the config form — not via
+  `form_entry`, not via GraphQL, not via any read path. Recipient addresses must never enter a
+  session, the repo, or an outbox entry. The watermark and sender-identity fields are fine to read.
+- **Never write the signature field** (`approvalSignature`). The real send is a human-only
+  platform action. (The platform refuses such writes anyway; do not attempt them.)
+- **Never include a signature fieldId in a `form_entry` READ** — the platform crashes server-side
+  on serializing it. Always pass an explicit `fieldIds` list that excludes it.
+- **Every MCP write is echoed and approval-gated in-session** (tool + target + a content summary),
+  per the `bluestep-reference` `mcp-platform-authoring` procedure.
+- **"Signed = armed."** Any UI save of a signed, not-yet-sent entry performs the real send — not
+  just the signing save. Warn the human whenever a signed-or-stale unsent entry exists, and never
+  leave scratch/abandoned entries around unsigned cleanup.
+- **No recipient address ever lands in the repo.** History files carry counts, never lists.
 
 ## Steps
 
 ### 1. Preconditions
 
-Confirm all of these before doing anything. If any is missing, stop with a clear message and change
-nothing.
+Confirm all of these before doing anything. If any is missing, stop with a clear message and
+change nothing. **Fail closed — never draft a digest that silently drops a product.**
 
-- **`gh` is installed and authenticated** (`gh auth status`). The CLI half of the digest depends on
-  it — see step 3. Without it, stop before drafting (do **not** send a plugin-only email that
-  silently drops CLI news).
-- **`.env` exists** — `.claude/skills/release-email/.env` (gitignored; the human copies it from
-  `.env.example` and fills in `B6P_RELEASE_EMAIL_URL` + `B6P_RELEASE_EMAIL_AUTH`). Confirm only that
-  the **file is present** — do **not** read, cat, grep, or source it (the credential boundary above).
-  The human's shell reads it when *they* run the authenticated commands.
+- **`gh` is installed and authenticated** (`gh auth status`) — the CLI product depends on it.
+- **`$CLICKUP_TOKEN` works** — the MCP product depends on it. Verify with a cheap authorized call
+  (e.g. `curl -s -o /dev/null -w '%{http_code}' -H "Authorization: $CLICKUP_TOKEN" https://api.clickup.com/api/v2/user`
+  → expect `200`). Note the WSL/`~/.profile` sourcing gotcha if it comes back empty.
+- **The gateway MCP is live for the owning org** — a `describe_tool(form_entry)` sanity check.
+  If the tools aren't registered, the fix is enable-plugin + `$B6PT_TOKEN` + fresh session.
+  **There is no manual fallback for queuing** — the `emailHtml` field is hidden on purpose, and
+  hand-pasting HTML through the form editor mangles it (WYSIWYG), so never instruct the human to
+  complete an entry by hand. On MCP failure: keep the rendered draft in the scratch dir (nothing
+  is lost), fix the connection, resume at the queue step.
+- **Shell note:** `gh` and `$CLICKUP_TOKEN` live in WSL, not Git Bash — run those commands via
+  `wsl -e bash -lc '…'` (see the repo's shell conventions).
+- **`assets.local.json` exists** (non-secret render config: `logoUrl`, `releaseUrl`). If missing,
+  copy `assets.example.json`; if `logoUrl` is unset, drop the logo `<img>` tags; if `releaseUrl`
+  is a placeholder, flag it.
 
-  ```bash
-  test -f .claude/skills/release-email/.env && echo present || echo "missing — copy .env.example to .env and fill it in"
-  ```
+Work in a gitignored scratch dir (`.release-email/`) so nothing intermediate is tracked.
 
-  If missing, stop: *"create `.claude/skills/release-email/.env` from `.env.example` and set both
-  values (see docs/bluehq-release-email-endpoint-setup.md §3b)."*
+### 2. Read the watermarks over MCP
 
-Work in a gitignored scratch dir so nothing intermediate is tracked:
+Read the config form entry's **three watermark fields only** — `lastPluginVersion`,
+`lastCliVersion`, `lastMcpSent` — via `form_entry` READ with an explicit `fieldIds` list (never
+the recipient memos, never more than named). Also read `froms`/`sender`/`replyTo` only if the
+sender identity needs confirming. Empty watermarks mean "first run covers everything" — surface
+that loudly before drafting (an empty plugin watermark means ~all changelog history).
 
-```bash
-mkdir -p .release-email && cd .release-email
-# add .release-email/ to .git/info/exclude if it isn't already ignored
-```
-
-### 2. Probe the endpoint — **human-run**
-
-`GET ?probe=1` returns the current watermarks + recipient count **without sending** and **without
-ever returning the addresses**. Per the credential boundary, **the agent does not run this** — it
-prints the command for the human, who runs it in their own terminal and pastes the JSON back.
-
-Agent: hand the human this block verbatim (it reads `.env` in *their* shell; nothing is expanded
-here):
-
-```bash
-set -a; . .claude/skills/release-email/.env; set +a
-curl -sS "$B6P_RELEASE_EMAIL_URL?probe=1" \
-  -H "Authorization: Basic $(printf %s "$B6P_RELEASE_EMAIL_AUTH" | base64 | tr -d '\n')"
-```
-
-Ask the human to paste the JSON response. Parse `{ watermark:{plugin,cli}, recipientCount, froms,
-sender, replyTo }` from what they paste, and show them the **recipient count** and **current
-watermarks**. Interpret the outcome the human reports:
-
-- **`401`/`403`** → the credential is missing/wrong or lacks access. Ask them to check
-  `B6P_RELEASE_EMAIL_AUTH` in `.env`; write no history, change nothing.
-- **Empty `200`** → the endpoint likely needs a snapshot (compile + publish); see setup guide §5.
-  Stop and report.
-- **Unreachable / other error** → report and stop.
+Also `form_entry` LIST the outbox form (fields: subject, sentAt) and **warn about any unsent
+entry** — a queued-but-unsigned entry means a previous run is still pending: its version ranges
+go stale the moment a newer entry sends, and if it is *signed*-unsent it is armed. Ask before
+queuing another.
 
 ### 3. Collect changes, per product
 
-Diff each product independently against its own watermark. Keep only **user-facing** changes.
+Diff each product against its own watermark. Keep only **user-facing** changes.
 
-- **Plugin** — parse the local `CHANGELOG.md`. Take the `## [plugin X.Y.Z]` version blocks **newer
-  than `watermark.plugin`** up to HEAD, and pull their `### Added` / `### Changed` / `### Fixed`
-  (etc.) entries. Prefer reporter-facing changes; skip internal-only churn. The newest plugin
-  version in range becomes the plugin `toVersion`. *(Coupling: this depends on the
-  `## [plugin X.Y.Z]` header shape — note it if the changelog format ever drifts.)*
-- **CLI** — list `b6p-cli` releases newer than `watermark.cli`:
+- **Plugin** — parse the local `CHANGELOG.md`: `## [plugin X.Y.Z]` blocks newer than
+  `lastPluginVersion`, their `### Added/Changed/Fixed` entries. Newest version in range =
+  `toVersions.plugin`. *(Coupling: the `## [plugin X.Y.Z]` header shape.)*
+- **CLI** — `gh release list --repo Bluestep-Systems/b6p-cli`, then `gh release view <tag>` for
+  each release newer than `lastCliVersion`. Newest in range = `toVersions.cli`. Re-check `gh`
+  here; stop before drafting if it fails. *(Coupling: the `gh` release shape.)*
+- **MCP** — ClickUp REST (the repo's bulk-read convention — direct `curl` with `$CLICKUP_TOKEN`,
+  **not** the ClickUp MCP server):
 
   ```bash
-  gh release list --repo Bluestep-Systems/b6p-cli
-  gh release view <tag> --repo Bluestep-Systems/b6p-cli   # for the changelog body of each in range
+  curl -s -H "Authorization: $CLICKUP_TOKEN" \
+    "https://api.clickup.com/api/v2/team/1282031/task?space_ids%5B%5D=90144479373&tags%5B%5D=mcp&include_closed=true&date_closed_gt=<lastMcpSent as epoch-ms>&page=0"
   ```
 
-  Filter to user-facing changes; the newest release in range becomes the CLI `toVersion`.
-  **Fail closed:** if `gh` is unavailable or unauthenticated (it should have been caught in step 1,
-  but re-check here), **stop before drafting** — never ship a plugin-only email that drops CLI news.
-  The documented fallback is a public raw-URL fetch of the `b6p-cli` changelog, but prefer `gh`.
-  *(Coupling: this depends on the `gh` release shape.)*
+  Paginate until `last_page` is true. Keep tasks whose status type is **closed**; task names (and
+  descriptions when a name is too terse) become the entry notes, filtered to user-facing changes.
+  `toVersions.mcp` = the **max `date_closed`** among included tasks, as ISO-8601. An empty
+  `lastMcpSent` = first run; omit `date_closed_gt` and filter closed-only.
 
-If **both** ranges are empty, report *"nothing new since plugin `<x>` / cli `<y>`"* and **stop** —
-that is the natural idempotent no-op.
+If **all three** ranges are empty, report *"nothing new since plugin `<x>` / cli `<y>` / mcp
+`<z>`"* and **stop** — the natural idempotent no-op. A subset being empty just drops that
+product's section; only present products go into `toVersions` (only their watermarks will move).
 
 ### 4. Draft and render
 
-Read the template `.claude/skills/release-email/templates/email.html` (see its sibling
-`templates/AUTHORING.md` for the placeholder tokens and marked regions) and produce the finished
-HTML in a **working file** in the scratch dir — never edit the template itself.
+Read the template `.claude/skills/release-email/templates/email.html` (see `templates/AUTHORING.md`
+for tokens, marked regions, and optional blocks) and produce the finished HTML in a working file in
+the scratch dir — never edit the template itself.
 
-- Set `[SUBJECT]` (also the `<!-- SUBJECT: ... -->` comment on line 1 and the `<title>`).
-- Set `[OVERLINE]` to fit what changed — `Tooling update` when both changed, `Plugin update` or
-  `CLI update` when only one did.
-- Replace the `<!-- INTRO -->` sample paragraphs with the lead prose (plain, friendly, short).
-- For **each product that changed**, clone the `<!-- PRODUCT_SECTION:START -->` … `:END -->` block:
-  set `[PRODUCT_NAME]` (e.g. `bluestep-tools plugin`, `b6p CLI`), set `[UPDATE_INSTRUCTION]`
-  (plugin → `/plugin marketplace update`; CLI → the `b6p-cli` update command), and clone the
-  `<!-- ENTRIES:START -->` … `:END -->` row **once per entry** (version cell + text cell). **Delete
-  the sample entries** and any product section with no changes.
-- Fill `[LOGO_URL]` and `[RELEASE_URL]` from **`.claude/skills/release-email/assets.local.json`**
-  (`logoUrl` / `releaseUrl`). This is a **non-secret** gitignored config the agent CAN read (it holds
-  no credential — the secret stays in `.env`, which the agent never reads). If `assets.local.json`
-  is missing, copy it from `assets.example.json`; if `logoUrl` is unset, drop the two logo `<img>`
-  tags (the wordmark carries the header); if `releaseUrl` is a placeholder, note it.
-- **Footer:** there's no per-recipient merge, so give the footer a plain, honest line (no
-  `[RECIPIENT]`/`[OPT_OUT]` tokens) — e.g. "You're on the BlueStep tooling update list. Reply to
-  unsubscribe."
-- **Optional blocks** — when a release needs more than the standard product sections (a breaking
-  change, action-required steps, a screenshot, a click-to-play video), copy the matching **email-safe
-  block from `AUTHORING.md` → "Optional blocks"**, fill its tokens, and paste it at the right spot.
-  Images must be **hosted public URLs** (see AUTHORING.md → "Images & hosting"); never inline a local
-  file, and video is a poster-that-links-out, not embedded playback.
-- Also write a **plain-text alternative** (`text`) — a readable, link-preserving version of the same
-  digest for clients that don't render HTML.
-- After rendering, **strip non-MSO HTML comments** so template notes don't ship in the email (keep
-  the `<!--[if mso]> … <![endif]-->` Outlook conditionals).
+- `[SUBJECT]` (+ line-1 comment + `<title>`), `[OVERLINE]` (`Tooling update` when multiple
+  products changed; otherwise `Plugin update` / `CLI update` / `MCP update`), intro prose,
+  `[LOGO_URL]` / `[RELEASE_URL]` from `assets.local.json`.
+- Clone the `PRODUCT_SECTION` block per product with changes; clone the `ENTRIES` row per entry.
+  - Plugin section: `[UPDATE_INSTRUCTION]` = `/plugin marketplace update`; version cell = version.
+  - CLI section: the b6p-cli update command; version cell = version.
+  - **MCP section:** `[PRODUCT_NAME]` = "BlueStep gateway MCP"; **no update instruction** —
+    replace that block with a line saying the changes are already live server-side; version cell =
+    a short close date (e.g. `Aug 27`).
+- Footer: plain and honest, no `[RECIPIENT]`/`[OPT_OUT]` merge tokens ("You're on the BlueStep
+  tooling update list. Reply to unsubscribe.").
+- Also write the **plain-text alternative**. Strip non-MSO comments after rendering. No
+  flexbox/grid/gap/SVG (see AUTHORING.md).
+- Build `payloadJson`: `{ "fromVersions": {…}, "toVersions": {…} }` with only the products that
+  changed (`plugin`/`cli` version strings, `mcp` ISO timestamp).
 
-Do not reintroduce flexbox / grid / gap / SVG (see `AUTHORING.md`); the template is email-safe and
-must stay that way.
+### 5. Queue the outbox entry — approval gate #1
 
-### 5. Show for approval — the gate
+Show the user in-session: the subject, the rendered body (and text alternative), the version
+ranges, and the target (org + outbox form). **Wait for explicit approval.** On decline: stop —
+nothing was written anywhere.
 
-Show the user, in-session:
+On approval, create the entry over MCP (`form_entry` CREATE on the outbox form, on the office
+record): `subject`, `emailHtml`, `emailText`, `payloadJson`. Resolve fieldIds with
+`describe_form`/`get_form` if not already known. Then **read the entry back** (excluding the
+signature field) and **byte-compare `emailHtml`** against what was sent — abort and report on any
+mismatch (nothing can send from a corrupt entry; the platform round-trip is normally
+byte-faithful).
 
-- the **subject**,
-- the **rendered body** (and the plain-text alternative),
-- the **recipient count** and the **test-recipient count** from the probe (if `testRecipientCount`
-  is 0, tell them to add addresses to the `Test Recipients` field before the preview send).
+Tell the human where the entry lives (the office record → the outbox form → the new entry) — the
+embedded **Email Preview** merge report on the entry renders the exact stored HTML.
 
-**Wait for explicit approval to start the preview.** On decline: stop — nothing is POSTed, no
-watermark moves, no history file is written. This mirrors `/bspecs-feedback` and `/spec-execute`.
+### 6. Test send — approval gate #2, human-fired
 
-### 6. Preview → real — a two-phase, human-run send
+The test send goes **only** to the config form's `testRecipients`. Two moving parts, split
+human/agent because MCP writes don't fire the post-save:
 
-The endpoint has a **preview mode**: `test: true` sends to the `Test Recipients` field (the
-maintainer's own validation addresses) and does **not** advance any watermark; `test: false` sends
-to the real `Recipients` and advances the watermark. Always do the preview first, let the human
-validate the *actual* email in their inbox, then do the real send as a separate gate.
+1. **Agent (gated):** set `testSendRequested = true` on the entry via `form_entry` UPDATE.
+2. **Human:** open the entry in the UI, confirm the preview looks right, and **Save** (the
+   checkbox is already ticked). The post-save sends the test, stamps `testSentAt`, clears the
+   flag. *(Or the human just ticks the box themselves — same thing.)*
 
-Per the credential boundary, the **agent builds `payload.json`** (no secret — just versions,
-subject, HTML, text) and hands over the command; **the human runs it** in their own terminal.
-Include only the product(s) that changed — the endpoint advances only the watermark(s) present in
-the payload.
+The human validates the email in their **real inbox** (Outlook + Gmail: rendering, the
+"on behalf of" label, the logo). The agent re-reads `testSentAt`/`sendResult` to confirm the run.
+An empty-`testRecipients` refusal shows up in `sendResult`; fix the config form and repeat.
 
-**6a. Preview send** — agent writes `payload.json` with `"test": true` (use `jq` so the HTML/text
-encode safely), then hands the human:
+### 7. Hand off the real send — the signature
 
-```bash
-set -a; . .claude/skills/release-email/.env; set +a
-curl -sS "$B6P_RELEASE_EMAIL_URL" \
-  -H "Authorization: Basic $(printf %s "$B6P_RELEASE_EMAIL_AUTH" | base64 | tr -d '\n')" \
-  -H "Content-Type: application/json" \
-  --data @payload.json
-```
+The skill does **not** perform the real send and must say so explicitly. Wrap up by telling the
+human:
 
-The human runs it, then opens the email in **their inbox** (Outlook + Gmail) and checks it renders
-as the real thing. If empty-`Test Recipients`, the endpoint returns a clear error — they add
-addresses and re-run. Ask them to paste the response and confirm the email looks right.
+> The entry is queued and test-validated. To send for real: open the entry, check the preview one
+> last time, **sign the Approval field, and Save**. That save emails the full `recipients` list,
+> advances the watermarks, and permanently locks the entry (`sentAt`). Signing is irreversible in
+> effect — a signed, unsent entry sends on its next save, whoever saves it.
 
-**6b. Real send** — a **separate approval gate**. Only after the human confirms the preview, the
-agent flips the payload to `"test": false` (same file, re-`jq`'d) and hands over the **same command**
-again. The human runs it; the real recipients get the digest and the watermark(s) advance.
+If they report a refusal in `sendResult` instead (empty `recipients`, bad payload), help fix the
+config/entry — a refused entry stays sendable; `sentAt` is only stamped by an actual send.
 
-Both phases return `{ ok, sentCount, failures:[{email,error}], watermark }` (the preview also echoes
-`test:true`). Show `sentCount` + the new `watermark`; per-address `failures` are for the human's
-follow-up and are **never** written to a file.
+### 8. Record
 
-### 7. Record
+After the human confirms the real send (or a watermark re-read over MCP shows the advance), write
+two files under `.claude/skills/release-email/sent/`, same basename
+`<YYYY-MM-DD>-plugin<vA>-cli<vB>-mcp<date>` (drop the token for a product not in the send):
 
-On a successful (non-test) response, write two files under `.claude/skills/release-email/sent/`,
-same basename:
+- `….md` — the ranges per product, sent-at, subject, `sentCount`, failure count. **No addresses.**
+- `….html` — the exact rendered HTML that was queued/sent.
 
-- `sent/<YYYY-MM-DD>-plugin<vA>-cli<vB>.md` — the ranges (`from`→`to` for each product), sent-at
-  timestamp, subject, recipient **count**, and failure **count**. **No addresses.** (If a product
-  wasn't in this send, note it as unchanged rather than inventing a range.)
-- `sent/<YYYY-MM-DD>-plugin<vA>-cli<vB>.html` — the exact rendered HTML that was sent (the footer is
-  generic — there is no per-recipient merge yet; see the open item below).
-
-Then **propose a commit** (title + body) for those two files. Do **not** run `git commit` — leave
-that to the maintainer.
+Then **propose a commit** for those two files. Do not run `git commit` unless told.
 
 ## Edge cases (quick reference)
 
-- **One product empty** → a single-section email; only that product's watermark advances.
-- **Both empty / re-run** → report and stop (idempotent).
-- **`gh` missing/unauthed** → stop *before* drafting; fix `gh` and re-run. Raw-URL fetch is the
-  documented fallback.
-- **Partial send failures** → the watermark still advanced (the digest went out); failed addresses
-  are shown in-session for manual follow-up, never re-blasted, never written down.
-- **`401`/`403` / endpoint unreachable / empty `200`** (from the human-run probe or send) → report
-  clearly, write no history, watermarks unchanged.
-- **Credential must stay out of session** → the agent never reads `.env` or runs the authenticated
-  probe/send; it generates the commands + `payload.json` and the human runs them (see the credential
-  boundary at the top).
-- **Empty `Test Recipients` on a preview** → the endpoint returns a clear error (it never falls back
-  to the real list); add addresses to the field and re-run the preview.
-- **Stale local history** (sent from another machine) → harmless; the form fields, not the repo, are
-  the range source of truth. Always re-probe.
+- **Some products empty** → their sections are dropped and their watermarks stay put; the entry's
+  `toVersions` names only what changed.
+- **All empty / re-run** → report and stop (idempotent).
+- **`gh` or `$CLICKUP_TOKEN` missing/broken** → stop *before* drafting.
+- **A queued unsent entry already exists** → warn at step 2; signed-unsent means ARMED.
+- **Round-trip mismatch on `emailHtml`** → abort the run; investigate before anything can send.
+- **Partial real-send failures** → watermarks still advanced (the digest went out);
+  `sendResult` carries counts/reasons only; never re-blast, never write failures to a file.
+- **A sent entry** (`sentAt` set) → inert forever; re-saves and re-signs are no-ops by design.
+- **Stale local history** → harmless; the config form's watermark fields are the source of truth.
+  Never "fix" a watermark by editing a history file — fix the form field.
+- **Fresh-org rebuild** → the provisioning checklist is
+  [`docs/bluehq-release-email-endpoint-setup.md`](../../../docs/bluehq-release-email-endpoint-setup.md).
 
 ## Known gaps / open items
 
-- **No hosted logo yet** → the email shows the "BlueStep" wordmark only; hosting a PNG + setting the
-  template's `[LOGO_URL]` is a to-do (setup guide §4).
-- **No per-recipient opt-out** → the footer is generic ("reply to unsubscribe"); the endpoint does
-  not substitute per-recipient `[RECIPIENT]`/`[OPT_OUT]` tokens. A real opt-out (a suppression list +
-  an unsubscribe link) is a deferred open item.
+- **Watermark seeding** — until seeded, a first run covers all history (~55 plugin versions).
+  Seed the three fields on the config form before the first real digest.
+- **`releaseUrl`** in `assets.local.json` is a placeholder until the full release-notes page
+  exists.
+- **No per-recipient opt-out** — the footer stays generic ("reply to unsubscribe"); a real
+  suppression list + unsubscribe link is a deferred open item.

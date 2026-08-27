@@ -1,6 +1,8 @@
 # ADR: A maintainer-only release-update email, built in the repo and sent from a BlueHQ endpoint
 
-**Status:** Accepted (2026-08-27)
+**Status:** Accepted (2026-08-27) — **amended 2026-08-27 by the addendum below** (the send trigger,
+credential model, and endpoint lifetime changed; the skill-drafts / platform-sends split, the
+no-addresses rule, and the manual-only stance are unchanged)
 
 **Date:** 2026-08-27
 
@@ -124,3 +126,96 @@ The feedback endpoint is intentionally public-write because it only *files* tria
 - [`../../plugin/skills/bluestep-reference/reference/staff-query-permission-gating.md`](../../plugin/skills/bluestep-reference/reference/staff-query-permission-gating.md) — the fail-closed `B.optUser` posture.
 - [`../../.claude/specs/release-update-email/`](../../.claude/specs/release-update-email/) — requirements, design, tasks for this change.
 - [`../bluehq-release-email-endpoint-setup.md`](../bluehq-release-email-endpoint-setup.md) — the one-time human setup guide (form + fields, token form, access config, from/sender, test-mode send). *(Authored in a later task.)*
+
+---
+
+## Addendum (2026-08-27): the outbox rebuild — signed form entry + post-save send, endpoint retired
+
+Implemented by spec [`release-email-outbox`](../../.claude/specs/release-email-outbox/). The
+original decision's *shape* survives — the skill drafts and renders, the platform does the
+side-effectful send, no recipient address ever enters the repo or a session — but the trigger,
+the transport, and the credential model were rebuilt, and the endpoint is gone.
+
+### What changed and why
+
+**Each release email is now an entry on a multi-entry "outbox" form** (same record type as the
+config form): subject, the finished email HTML, plain-text alternative, a payload-JSON blob with
+the version ranges, a test-send request checkbox, an approval **Signature** field, and
+post-save-written result fields (`testSentAt`, `sentAt`, `sendResult`). A merge report embedded on
+the entry renders the stored HTML in a sandboxed `<iframe srcdoc>` so approval happens against the
+exact artifact. Every send has a durable, previewable, attributable platform record.
+
+**The real send is a post-save formula, fired by signing.** A POST_SAVE formula on the outbox form
+(its Primary Form) applies a decision ladder on every UI save: already-sent → no-op forever;
+signed → real send to the config form's `recipients`, advance the watermark(s) for the products in
+the payload, stamp `sentAt` + a counts-only `sendResult`; test-requested → send to
+`testRecipients`, stamp `testSentAt`, clear the flag; otherwise no-op. The send is native
+`B.util.email` — no HTTP hop, no stored credential anywhere.
+
+**The gateway MCP replaced the endpoint.** The skill now reads the watermarks and creates/updates
+outbox entries over the bundled gateway MCP (`form_entry`), approval-gated in-session. With
+nothing left for the endpoint to do (probe → MCP read; queue → MCP create; test send → the
+checkbox; real send → the signature), the restricted endpoint, its Basic Auth credential, the
+gitignored `.env`, and every human-run `curl` were retired. The superseded sections above
+("Restricted Basic-Auth endpoint", "Credential never enters an agent session", the probe/`test:
+true` contract) describe the retired path.
+
+**The digest gained a third product: gateway-MCP changes.** MCP changes ship server-side with no
+version stream, so their source is ClickUp — closed tasks tagged `mcp` in the tooling space, read
+via the REST API (`$CLICKUP_TOKEN`), watermarked by a new `lastMcpSent` timestamp field on the
+config form (`toVersions.mcp` = the max `date_closed` among included tasks). CLI notes stay on
+GitHub releases.
+
+### The new security boundary
+
+The old boundary (agent never reads `.env` / never runs the authenticated call) died with the
+endpoint. Its replacements are hard rules on the MCP path:
+
+- **The agent never reads the `recipients` or `testRecipients` fields** through any read path.
+  Watermarks and sender identity are fine to read; the audience is not.
+- **The agent never writes the signature field.** The platform also refuses `form_entry` signature
+  writes (verified: boolean → "Get/set type not supported", string → "not in the required
+  format"), but the skill forbids the attempt regardless.
+- **Blast radius by construction:** with the endpoint gone, nothing agent-callable can reach the
+  real list. MCP `form_entry` writes do not fire save formulas (verified live), so even a
+  test send requires a human UI save. The only path to the real audience is a human signature.
+
+### "Signed = armed" (learned the hard way)
+
+Any UI save of a **signed, not-yet-sent** entry performs the real send — not just the save that
+adds the signature. During the build this fired live: a signature made against the earlier
+logging-stub version of the formula was still on the scratch entry when the real send logic
+deployed, and the next save sent the raw template to the (fortunately maintainer-only) recipient
+list and advanced the watermarks with scratch values (both restored). Rules that follow: never
+deploy send-logic changes while any entry is signed-and-unsent, and the skill's queue step warns
+when a signed-unsent entry exists. The `sentAt` guard held everywhere else: sent entries are
+inert on every later save.
+
+### Platform findings the implementation depends on (all verified live 2026-08-27)
+
+- **`form_entry` round-trips HTML byte-faithfully** (13.8KB template: MSO conditionals, entities,
+  comments, trailing newline intact) — it is the queue transport.
+- **UI saves mangle editable HTML memos** (the WYSIWYG rewrites them — `<mce:noscript>`
+  artifacts, collapsed whitespace). Fix: `emailHtml` and `payloadJson` are
+  `fieldControlType: HIDDEN_DEFAULT` — hidden fields render no editor, so UI saves can't touch
+  them; verified byte-intact across UI saves. The merge-report preview is the human's view.
+- **`form_entry` READ crashes server-side if a SIGNATURE fieldId is included** (Gson
+  serialization error) — reads must always exclude signature fields.
+- **A multi-entry form wired as a current-record `add_forms` dependency is a silent no-op
+  (`formsAdded: 0`) unless it is the script's Primary Form.** The post-save had it as Primary
+  Form from `create_script`; the merge report needed the UI-only Primary Form assignment first
+  (`update_script primaryFormId` is FORMULA-only).
+- **No merge-report field type exists in the MCP `field` tools** — embedding the preview on the
+  form is a UI hand-back.
+
+### Consequences (delta)
+
+- Platform inventory: the outbox form, the post-save formula, and the preview merge report exist
+  on the org (gitignored `platform/U*/` working copies; ids in run notes, not here). The endpoint
+  component and its working copy are deleted; `.env` / `.env.example` are gone from the skill.
+- The skill's preconditions are now `gh`, `$CLICKUP_TOKEN`, and the gateway MCP — no send
+  credential at all.
+- The recipient-count display died with the probe (no address-free way to count over MCP); the
+  post-send `sendResult` records the actual sent count.
+- Setup/provisioning moved to the reworked
+  [`../bluehq-release-email-endpoint-setup.md`](../bluehq-release-email-endpoint-setup.md).
