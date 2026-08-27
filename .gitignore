@@ -2,6 +2,9 @@ node_modules/
 build/
 .env
 .env.local
+# Non-secret but org-specific local config the skill reads at render time (logo /
+# release-notes URLs) — kept out of this public repo; a committed *.example.json documents it.
+assets.local.json
 *.log
 .DS_Store
 .claude/settings.local.json

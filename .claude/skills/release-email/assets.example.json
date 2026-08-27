@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy to assets.local.json (gitignored) and fill in. These are NON-secret, org-specific URLs the skill reads at render time to fill [LOGO_URL] and [RELEASE_URL]. Kept OUT of the secret .env so the agent can read them freely without ever touching the Basic Auth credential.",
+  "logoUrl": "https://<your-bluestep-host>/download/<file-id>/logo.png",
+  "releaseUrl": "https://<your-bluestep-host>/<full-release-notes-page>"
+}
