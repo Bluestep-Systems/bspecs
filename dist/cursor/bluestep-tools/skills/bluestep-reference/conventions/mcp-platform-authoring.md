@@ -71,6 +71,12 @@ specifically `mcp__plugin_bluestep-tools_bluestep-gateway__available_tenants` an
   per-org exposure gap, **not** a gateway-connection problem — do **not** retry. Request MCP enablement for
   that org from BlueStep; until then fall back to the human hand-back (author in the BlueStep UI, then
   `b6p pull`).
+- **Connected, but an org's op fails with a `403` whose body says `AI tools are disabled for this organization`** →
+  an **org-level setting**, not a credential fault (surfaces as a gateway `DOWNSTREAM_ERROR`: `The org at
+  <host> answered HTTP 403: {"error":"AI tools are disabled for this organization"}`; verified live
+  2026-08). The `b6pt_` token is global across every org, so **never rotate or re-issue it over this
+  error** — a "fresh token" fixes nothing here and breaks every session using the old one. Ask BlueStep to
+  enable AI tools for that org; until then fall back to the human hand-back, same as the `404` case.
 
 ### 3 — Resolve the target org (to a U-number)
 

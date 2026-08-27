@@ -53,7 +53,9 @@ formEntry.optApplicableBsJsMergeReport("id", "x").get()
 formEntry.optApplicableMergeReport("id", "x").get()
 ```
 
-Returns full `MergeReport<T>` with `viewUrl()`, `printUrl()`, `profileUrl()`, `newEntryUrl()`, `copyUrl()`, `editUrl()`, `contentOnlyUrl()`, `profileNewEntryUrl()`, `profileCopyUrl()`, `mergeTagResult()`, `displayName()`, `id()`, `altIds()`, etc.
+Returns full `MergeReport<T>` with `viewUrl()`, `printUrl()`, `profileUrl()`, `newEntryUrl()`, `copyUrl()`, `editUrl()`, `contentOnlyUrl()`, `profileNewEntryUrl()`, `profileCopyUrl()`, `displayName()`, `id()`, `altIds()`, etc.
+
+`mergeTagResult()` is **not** on `MergeReport<T>` — it lives only on the `MergeReportMetaData` returned by `B.find.mergeReport(id, 'js')` (the mirror image of the `contentOnlyUrl()` split below), so it is not an inline-render escape hatch for the `optApplicable*` result: coding it there fabricates an API (`declarations/B.d.ts` declares it on the metadata type only). To capture a rendered report body server-side from a full `MergeReport<T>`, fetch its `contentOnlyUrl()` via [internal-loopback-fetch](internal-loopback-fetch.md).
 
 `contentOnlyUrl()` exists **only** on the full `MergeReport<T>` (reached via `optApplicable*`) — it is **not** on the `MergeReportMetaData` returned by `B.find.mergeReport(id, 'js')`. Use it for the report body without the surrounding page chrome — e.g. the client-side
 async-embed recipe in [merge-report-async-loading](merge-report-async-loading.md) and
