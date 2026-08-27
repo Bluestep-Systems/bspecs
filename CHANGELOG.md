@@ -29,8 +29,12 @@ The "Line 1 is ALWAYS `/// <reference path='../../../scriptlibrary' />`" bullet 
 that resolves nowhere in a pulled workspace (`<Unit>/scriptlibrary` does not exist) — and the
 reporters' proposed corrected path is itself obsolete since the b6p-cli 0.6.0 refresh: the publish
 build wires `declarations/` in, and `/b6p-push` explicitly says not to add reference directives.
-The bullet now says no reference line is needed (tsconfig `include` supplies editor types) and to
-delete the dead line from older formulas instead of copying it forward.
+The bullet now says no reference line is needed (tsconfig `include` supplies editor types) and
+not to copy the line forward; in existing formulas the line is inert — keep or remove, either is
+safe. The suspicion that the platform-side script editor still resolved the path was checked and
+disproven live (2026-08-27, current-platform org): the in-browser editor error-marks the
+reference line itself, wires no declarations at all (platform globals are unresolved there
+regardless), and the DAV path it would point to returns 404.
 
 ### Changed — `merge-report-urls.md`: `mergeTagResult()` is not on `MergeReport<T>`
 
