@@ -6,6 +6,70 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.30.0] — 2026-08-27
+
+Six `bluestep-reference` fixes from the 2026-08 feedback wave: two corrections, three new pages,
+one new connection-check branch. Claims verified against live provenance 2026-08-27: a fresh-pull
+`B.d.ts` (`mergeTagResult` on `MergeReportMetaData` only; `MergeReport<T>` carries
+`printUrl`/`contentOnlyUrl`/`mergeTag` but not it), a 40-component and a 17-component pulled
+workspace (no `<Unit>/scriptlibrary` anywhere; tsconfig `include` wires `../declarations/`), and
+the live gateway (`get_option_list` omits export values; `RelateListItem.value` returns them; the
+no-fragment validation error and the 403 "AI tools are disabled" body both reproduced verbatim).
+Reporter-verified, not independently re-run: the BSJS truncation itself (its storage-clean half
+reproduced live on the affected lists), the `javascript:submitForm` wrapper (live DOM evidence),
+and the grouped-list nesting / global-`sortOrder` traps (no grouped list on the test org).
+
+> **No hook changes** — Codex users do not need to re-trust.
+
+### Changed — `formula-patterns.md`: dropped the dead `/// <reference>` mandate
+
+From [86bbjg3wt](https://app.clickup.com/t/86bbjg3wt) / [#129](https://github.com/Bluestep-Systems/bspecs/issues/129)
+and [86bbj6nrr](https://app.clickup.com/t/86bbj6nrr) / [#127](https://github.com/Bluestep-Systems/bspecs/issues/127).
+The "Line 1 is ALWAYS `/// <reference path='../../../scriptlibrary' />`" bullet prescribed a path
+that resolves nowhere in a pulled workspace (`<Unit>/scriptlibrary` does not exist) — and the
+reporters' proposed corrected path is itself obsolete since the b6p-cli 0.6.0 refresh: the publish
+build wires `declarations/` in, and `/b6p-push` explicitly says not to add reference directives.
+The bullet now says no reference line is needed (tsconfig `include` supplies editor types) and to
+delete the dead line from older formulas instead of copying it forward.
+
+### Changed — `merge-report-urls.md`: `mergeTagResult()` is not on `MergeReport<T>`
+
+From [86bbjg3y4](https://app.clickup.com/t/86bbjg3y4) / [#130](https://github.com/Bluestep-Systems/bspecs/issues/130).
+The full-`MergeReport<T>` method list included `mergeTagResult()`, which `B.d.ts` declares only on
+`MergeReportMetaData` (the `B.find.mergeReport(id, 'js')` return) — coding against the doc
+fabricated an API. Removed from the list, with a callout mirroring the existing `contentOnlyUrl()`
+split, and pointed server-side body capture at the internal-loopback fetch of `contentOnlyUrl()`.
+
+### Added — `gotchas/viewurl-is-javascript-call.md`
+
+From [86bbm52y7](https://app.clickup.com/t/86bbm52y7) / [#140](https://github.com/Bluestep-Systems/bspecs/issues/140).
+`entry().viewUrl()` returns `javascript:submitForm('Relate','commit','<url>')`, not a URL — as an
+href it silently ignores `target="_blank"` and clicking it commits the enclosing form. Documents
+the unwrap regex (pass-through on non-match) and the read-the-live-href-first debugging rule.
+
+### Added — `gotchas/singleselect-displayname-truncation.md`
+
+From [86bbjcehm](https://app.clickup.com/t/86bbjcehm) / [#128](https://github.com/Bluestep-Systems/bspecs/issues/128)
+(doc half — the runtime fix is platform work and stays on the task). On some option lists the BSJS
+`OptionItem` string chain returns a display name truncated by one trailing character while
+storage, native rendering, and MCP reads are all clean. Documents the symptom, the
+compare-against-storage diagnosis, and the correct-by-export-value workaround.
+
+### Added — `reference/option-list-export-values.md`
+
+From [86bbmv1b1](https://app.clickup.com/t/86bbmv1b1) / [#143](https://github.com/Bluestep-Systems/bspecs/issues/143)
+(doc half — the `get_option_list` improvement is gateway work). `get_option_list` omits export
+values, but GraphQL exposes them as `RelateListItem.value`; documents the working query and its
+two traps (inline fragments required; grouped lists nest items one level down, so `[{},{}]` means
+groups) plus the sortOrder-is-global-across-groups warning.
+
+### Changed — `mcp-platform-authoring.md`: 403 "AI tools are disabled" branch
+
+Salvaged from GitHub [#66](https://github.com/Bluestep-Systems/bspecs/issues/66) (filed against a
+skill that no longer exists). A `403` whose body says `AI tools are disabled for this
+organization` is an org-level setting, not a credential fault — the global `b6pt_` token must not
+be rotated over it. New bullet in the step-2 connection check, next to the 404 exposure-gap case.
+
 ## [plugin 0.29.5] — 2026-08-27
 
 Two reference corrections, from [86bbhr90t](https://app.clickup.com/t/86bbhr90t) / [#125](https://github.com/Bluestep-Systems/bspecs/issues/125).

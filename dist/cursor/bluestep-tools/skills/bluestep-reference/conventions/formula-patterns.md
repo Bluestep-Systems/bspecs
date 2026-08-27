@@ -8,7 +8,7 @@ Use these patterns as the baseline for every BlueStep post-save (or any) formula
 
 ## Structure
 
-- Line 1 is ALWAYS: `/// <reference path='../../../scriptlibrary' />`
+- No `/// <reference … />` line is needed: the editor gets the ambient types (`B`, the query/form consts, `console`) from `draft/tsconfig.json`'s `include`, and the publish build wires the component's `declarations/` in itself (see the diagnostics guidance in the `/b6p-push` skill). A leftover `/// <reference path='../../../scriptlibrary' />` line in an older formula is dead — from `draft/scripts/` that path resolves to `<Unit>/scriptlibrary`, which does not exist — so delete it rather than copying it into new formulas.
 - Formulas run as bare top-level statements — NO IIFE, no `main()`, no `export default`.
 - No bare `return` statements — use a guard `if` block, or `throw` inside try/catch, for early exits.
 
