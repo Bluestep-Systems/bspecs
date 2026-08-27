@@ -1,0 +1,219 @@
+<!-- SUBJECT: [SUBJECT] -->
+<!--
+  BlueStep Tools release-update email — email-safe HTML shell.
+
+  This is a HAND-EDITABLE, table-based, inline-styled template. It is the send body:
+  the /release-email skill fills the placeholders, clones the per-product section
+  block once per product that has changes, and POSTs the finished HTML to the
+  BlueHQ send endpoint. See AUTHORING.md in this folder before editing — do NOT
+  reintroduce flexbox / grid / gap / SVG; email clients (Outlook especially) drop them.
+
+  Placeholder tokens the skill substitutes:
+    [SUBJECT]            - subject line (also the HTML comment on line 1)
+    [LOGO_URL]           - absolute URL of the hosted PNG logo (no SVG, no repo-relative path)
+    [OVERLINE]           - short uppercase kicker above the intro (e.g. "Plugin update", "Tooling update")
+    [RELEASE_URL]        - link to the full release-notes page
+    [RECIPIENT]          - per-recipient address (merged ON THE ENDPOINT, never in the repo)
+    [OPT_OUT]            - opt-out / unsubscribe URL (merged on the endpoint)
+    [PRODUCT_NAME]       - product heading inside a section block (e.g. "bluestep-tools plugin")
+    [UPDATE_INSTRUCTION] - that product's update command (e.g. "/plugin marketplace update")
+  Marked regions (HTML comments in the body below — search for these names, no angle
+  brackets here because a literal comment-close would end THIS comment early):
+    INTRO                     greeting / lead prose the skill writes
+    PRODUCT_SECTION START/END the repeatable per-product unit (clone per product)
+    ENTRIES START/END         the changelog rows inside one section (clone per entry)
+-->
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>[SUBJECT]</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Merriweather:wght@300;400;700&display=swap">
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <!--
+    Progressive enhancement ONLY. Every layout style is also inline on its element,
+    so the design holds if a client strips this whole block. Keep only link colors
+    and the mobile @media tweaks here.
+  -->
+  <style>
+    a { color: #0063A6; text-decoration: none; }
+    a:hover { color: #004f86 !important; }
+    @media only screen and (max-width: 620px) {
+      .b6p-container { width: 100% !important; max-width: 100% !important; }
+      .b6p-pad { padding-left: 24px !important; padding-right: 24px !important; }
+      .b6p-entry-ver { display: block !important; width: auto !important; padding: 0 0 4px 0 !important; }
+      .b6p-entry-text { display: block !important; width: auto !important; }
+      .b6p-footer-id, .b6p-footer-meta { display: block !important; width: 100% !important; text-align: left !important; }
+      .b6p-footer-meta { padding-top: 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background:#eceef1; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; color:#231F20;">
+
+  <!-- Preheader (hidden inbox preview line). The skill may fill it; harmless if left. -->
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#FFFFFF; opacity:0;">
+    A short heads-up on the latest BlueStep tooling releases and how to update.
+  </div>
+
+  <!-- Full-width background table -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background:#eceef1;">
+    <tr>
+      <td align="center" style="padding:40px 12px 40px 12px;">
+
+        <!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+        <table class="b6p-container" role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background:#FFFFFF; border:1px solid #e2e6ea; border-radius:12px;">
+
+          <!-- ============ HEADER ============ -->
+          <tr>
+            <td class="b6p-pad" style="padding:36px 40px 0 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                <tr>
+                  <td valign="middle" style="padding-right:10px;">
+                    <img src="[LOGO_URL]" alt="BlueStep" width="34" height="34" style="display:block; width:34px; height:34px; border:0; outline:none; text-decoration:none;">
+                  </td>
+                  <td valign="middle" style="font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:24px; font-weight:700; letter-spacing:-0.01em; color:#0063A6; white-space:nowrap;">
+                    Blue<span style="font-weight:400;">Step</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- thin brand-blue rule + overline -->
+          <tr>
+            <td class="b6p-pad" style="padding:22px 40px 0 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr><td style="border-top:2px solid #0063A6; font-size:0; line-height:0;">&nbsp;</td></tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="b6p-pad" style="padding:16px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#0063A6;">
+              [OVERLINE]
+            </td>
+          </tr>
+
+          <!-- ============ GREETING / INTRO ============ -->
+          <!-- INTRO: the skill replaces the sample paragraphs below with the lead prose. -->
+          <tr>
+            <td class="b6p-pad" style="padding:32px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:17px; line-height:1.55; color:#231F20;">
+              <p style="margin:0 0 16px 0;">Hey!</p>
+              <p style="margin:0;">It&#39;s the BlueStep tooling team. We ship the
+                <span style="font-family:Consolas,Menlo,monospace; font-size:15px; color:#231F20; background:#f1f3f3; border-radius:3px; padding:1px 6px;">bluestep-tools</span>
+                plugin and the <span style="font-family:Consolas,Menlo,monospace; font-size:15px; color:#231F20; background:#f1f3f3; border-radius:3px; padding:1px 6px;">b6p</span>
+                CLI regularly, and here&#39;s a short heads-up on what changed in your workflow &mdash; and how to update.</p>
+            </td>
+          </tr>
+          <!-- /INTRO -->
+
+          <!-- ============ PER-PRODUCT SECTIONS ============ -->
+          <!--
+            PRODUCT_SECTION: the skill CLONES the whole block below once per product
+            that has changes (plugin, CLI, ...). Each clone gets its own [PRODUCT_NAME],
+            its own entry rows (the ENTRIES region), and its own [UPDATE_INSTRUCTION].
+            Delete the sample entries and any product that has no changes.
+          -->
+          <!-- PRODUCT_SECTION:START -->
+          <tr>
+            <td class="b6p-pad" style="padding:44px 40px 0 40px;">
+              <!-- product heading (Merriweather look, serif fallback) -->
+              <div style="font-family:'Merriweather',Georgia,'Times New Roman',serif; font-weight:400; font-size:26px; line-height:1.25; letter-spacing:-0.01em; color:#231F20;">
+                [PRODUCT_NAME]
+              </div>
+
+              <!-- changelog entries: one row per entry. ENTRIES region — clone the row. -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+                <!-- ENTRIES:START -->
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    0.0.0
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Short label for the change.</span> One or two plain-language sentences on what changed and why it matters to you.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    0.0.0
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Another change.</span> Keep entries short; link deeper detail to the full release notes at the end.
+                  </td>
+                </tr>
+                <!-- ENTRIES:END -->
+              </table>
+
+              <!-- this product's own update instruction -->
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px; background:#eef6fb; border-radius:8px;">
+                <tr>
+                  <td style="padding:18px 22px 18px 22px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    To update, run
+                    <span style="font-family:Consolas,Menlo,monospace; font-size:14px; color:#231F20; background:#FFFFFF; border:1px solid #d4e7f4; border-radius:3px; padding:2px 8px;">[UPDATE_INSTRUCTION]</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- PRODUCT_SECTION:END -->
+
+          <!-- ============ FULL RELEASE LINK ============ -->
+          <tr>
+            <td class="b6p-pad" style="padding:36px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:16px;">
+              <a href="[RELEASE_URL]" style="font-weight:700; color:#0063A6; text-decoration:none;">Full release notes &rarr;</a>
+            </td>
+          </tr>
+
+          <!-- ============ SIGN-OFF ============ -->
+          <tr>
+            <td class="b6p-pad" style="padding:48px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:17px; line-height:1.55; color:#231F20;">
+              <p style="margin:0 0 16px 0;">If something misbehaves,
+                <span style="font-family:Consolas,Menlo,monospace; font-size:15px; color:#231F20; background:#f1f3f3; border-radius:3px; padding:1px 6px;">/bspecs-feedback</span>
+                comes straight to us.</p>
+              <p style="margin:0;">Thanks for building on BlueStep,<br>The BlueStep tooling team</p>
+            </td>
+          </tr>
+
+          <!-- ============ FOOTER ============ -->
+          <tr>
+            <td class="b6p-pad" style="padding:56px 40px 48px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e6e9ea;">
+                <tr>
+                  <td class="b6p-footer-id" valign="top" style="padding:28px 20px 0 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td valign="middle" style="padding-right:8px;">
+                          <img src="[LOGO_URL]" alt="BlueStep" width="26" height="26" style="display:block; width:26px; height:26px; border:0; outline:none; text-decoration:none;">
+                        </td>
+                        <td valign="middle" style="font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:17px; font-weight:700; letter-spacing:-0.01em; color:#0063A6; white-space:nowrap;">
+                          Blue<span style="font-weight:400;">Step</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td class="b6p-footer-meta" valign="top" align="right" width="300" style="width:300px; padding:28px 0 0 0; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:13px; line-height:1.6; color:#767e80;">
+                    <p style="margin:0 0 10px 0;">&copy; BlueStep Systems, Inc.</p>
+                    <!--
+                      RECIPIENT / OPT_OUT are merged PER RECIPIENT on the endpoint.
+                      Never bake a real (or fabricated) address in here — keep the placeholders.
+                    -->
+                    <p style="margin:0;">This email was sent to [RECIPIENT]. To opt out of future emails,
+                      <a href="[OPT_OUT]" style="color:#0063A6; text-decoration:underline;">unsubscribe</a>.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+        <!--[if mso]></td></tr></table><![endif]-->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>
