@@ -50,8 +50,20 @@ if (res.stopReason === "ai_denied") { /* denialMessage explains why */ }
 `AiCallResult` carries `text`, `stopReason`, `inputTokens`, `outputTokens`, `iterations`, `exchanges`,
 a `toolCalls` array (`{name, arguments, result, isError}`), and optional `denialCode` / `denialMessage`.
 
-> Only `ai_denied` is a **confirmed** `stopReason` value, and no `denialCode` values are confirmed.
-> Branch on `ai_denied`; treat any other value as opaque rather than assuming a vocabulary.
+The `stopReason` vocabulary is fully documented in the generated `B.d.ts`:
+
+- **Provider-native** (the model itself stopped): Anthropic emits `end_turn` / `max_tokens` /
+  `tool_use`; OpenAI-compatible providers emit `stop` / `length` / `tool_calls`.
+- **Synthetic** (added by the BSJS orchestration layer): `ai_denied`, `budget_exceeded`,
+  `iteration_limit`, `max_iterations`, `on_turn_exchange_limit`, `on_turn_returned_invalid`.
+- **Realtime audio** (`streamingAgent()`): `completed` on a normal end of turn; `timeout`,
+  `incomplete`, or `cancelled` with partial output.
+
+To branch on a normal end of turn, match `end_turn`, `stop`, **and** `completed` — don't hard-code
+one provider's vocabulary. `denialCode` / `denialMessage` are populated only when
+`stopReason === "ai_denied"`. Provider/transport failures (rate limits, circuit breaker, etc.) are
+**thrown** to the script, not returned in this field — and the field can be `null` when the turn
+ended without a stop reason being set.
 
 ## Multi-turn: `B.ai.agent()`
 
@@ -110,13 +122,23 @@ B.ai.configure({
 `budgetSchedule`, and `utcOffsetMinutes` are optional. `maxSpendMicros` is **micros of USD**:
 1,000,000 = $1.00. `budgetSchedule` is `HOURLY | DAILY | WEEKLY | MONTHLY | LIFETIME`.
 
-**`configure()` is best-effort and can throw** — wrap it separately and carry on. A failed budget
-upsert is not fatal; the tenant-wide gate still applies. Treat the per-flag budget as an optimization,
-never as the only thing bounding spend.
+**`configure()` and `usageReporting()` are superuser-only.** A normal script identity calling either
+throws:
 
-`usageReporting(options?)` returns an `AiUsageReport`: `spendMicrosUsed`, `maxSpendMicros`,
-`maxIterations`, `budgetSchedule`, `windowStart` / `windowEnd`, and **`configured`** — the flag to read
-when you need to know whether the tenant has a budget set up at all.
+```text
+myassn.security.RemoteSecurityException: B.ai administration requires superuser privileges
+```
+
+The whole administration surface sits behind that privilege wall, and `configure()` is also
+**fail-closed** — any error throws; there is no soft "best-effort" upsert. The practical consequence:
+a script can call the model but can neither read nor set its own spend budget, so the per-flag
+`maxSpendMicros` cap cannot be established from code. Plan for a **superuser to configure the tenant
+budget out of band**, and wrap these calls in try/catch when a component might run as a normal
+identity.
+
+For superuser contexts, `usageReporting(options?)` returns an `AiUsageReport`: `spendMicrosUsed`,
+`maxSpendMicros`, `maxIterations`, `budgetSchedule`, `windowStart` / `windowEnd`, and `configured` —
+whether the tenant has a budget set up at all.
 
 ## Audio in: `B.ai.streamingAgent()`
 

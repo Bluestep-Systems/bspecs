@@ -6,6 +6,30 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.29.5] — 2026-08-27
+
+Two reference corrections, from [86bbhr90t](https://app.clickup.com/t/86bbhr90t) / [#125](https://github.com/Bluestep-Systems/bspecs/issues/125).
+
+> **No hook changes** — Codex users do not need to re-trust.
+
+### Changed — `ai-services.md`: real `stopReason` vocabulary; `configure()`/`usageReporting()` are superuser-only
+
+Two statements were contradicted by the platform's own generated `B.d.ts` (verified against a fresh
+pull, 2026-08-27) and a reporter's live probe:
+
+- The file claimed only `ai_denied` was a confirmed `stopReason` value and told readers to treat
+  everything else as opaque. `B.d.ts` enumerates the whole vocabulary — provider-native
+  (`end_turn`/`max_tokens`/`tool_use`, `stop`/`length`/`tool_calls`), synthetic (`ai_denied`,
+  `budget_exceeded`, `iteration_limit`, `max_iterations`, `on_turn_exchange_limit`,
+  `on_turn_returned_invalid`), and realtime (`completed`/`timeout`/`incomplete`/`cancelled`) — and
+  says to match `end_turn`, `stop`, and `completed` for a normal end of turn. The file now carries
+  that vocabulary and guidance.
+- The file framed `configure()` as "best-effort" and `usageReporting()` as freely callable. Both are
+  **superuser-only** (a normal script identity gets `RemoteSecurityException: B.ai administration
+  requires superuser privileges`), and `configure()` is fail-closed. The budgets section now states
+  the privilege wall, the exact exception, and the consequence: a script cannot read or set its own
+  spend budget — a superuser must configure the tenant budget out of band.
+
 ## [plugin 0.29.4] — 2026-08-25
 
 One reference change, from [86bbgjbef](https://app.clickup.com/t/86bbgjbef) / [#110](https://github.com/Bluestep-Systems/bspecs/issues/110).
