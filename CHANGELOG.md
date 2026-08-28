@@ -6,6 +6,34 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.31.1] — 2026-08-28
+
+One correction: the 0.30.0 singleselect-truncation gotcha documented a platform bug that turned
+out not to exist — reporter retraction on [86bbjcehm](https://app.clickup.com/t/86bbjcehm),
+2026-08-28.
+
+> **No hook changes** — Codex users do not need to re-trust.
+
+### Removed — `gotchas/singleselect-displayname-truncation.md` (phantom platform bug)
+
+The reporter traced the one-character-short labels to their own client code: the popover render
+lives in a TS template literal, where `\s` in an embedded regex cooks down to plain `s`, so
+`.replace(/\s+$/, '')` shipped to the browser as `/s+$/` — a regex that strips trailing "s"
+characters (`"1. Yes"` → `"1. Ye"`, `"0. No"` untouched). `OptionItem.displayName()`, storage,
+native rendering, and MCP reads were always clean. The runtime bug was never reported to the
+platform team (the handoff was still pending when the retraction landed), so nothing to walk
+back upstream.
+
+### Changed — `conventions/ts-in-template-literal.md`: the escape-consumption leak
+
+The real lesson joined the existing template-literal trap family: the literal cooks backslash
+escapes before the browser sees the string (`\s` → `s`, `\d` → `d`, `\.` → `.`, `\b` → a literal
+backspace), so every regex escape carried to a `<script>` block must be double-escaped (`\\s`).
+Includes the diagnostic tell (client-side data subtly wrong while every server-side read is
+clean → check the emitted JS before suspecting the platform) and a lint line for single-escaped
+sequences. Manifest trigger extended with the one-character-short symptom so the old gotcha's
+search path still lands here.
+
 ## [plugin 0.31.0] — 2026-08-28
 
 Wave 2 of the 2026-08 feedback triage: one new gotcha, one new connection-check branch, and a
