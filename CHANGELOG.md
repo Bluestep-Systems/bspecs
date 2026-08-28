@@ -6,6 +6,44 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.31.0] — 2026-08-28
+
+Wave 2 of the 2026-08 feedback triage: one new gotcha, one new connection-check branch, and a
+maintainer ruling on the sibling-porting rule.
+
+> **No hook changes** — Codex users do not need to re-trust.
+
+### Added — `gotchas/option-field-dom-value.md`
+
+Salvaged from [86bbmbm2u](https://app.clickup.com/t/86bbmbm2u) / [#141](https://github.com/Bluestep-Systems/bspecs/issues/141)
+and [86bbmuceh](https://app.clickup.com/t/86bbmuceh) / [#142](https://github.com/Bluestep-Systems/bspecs/issues/142).
+A platform-rendered option field's DOM `value` is not reliably the export value (observed live as
+the option's topId, corroborated by a years-old workaround comment in a validated component), so
+client code comparing DOM values against export codes silently never fires. The gotcha carries the
+read-the-live-DOM-first rule, defensive matching (export value / topId / label), and the
+verify-the-positive-case rule.
+
+### Declined — the always-on "port from sibling" rule (maintainer ruling)
+
+The rest of the same two reports asked for a standing rule: when a sibling component implements
+the behavior, read it first and port its mechanism. Declined as a standing rule: the agent cannot
+reliably identify which sibling is the validated reference — that is prompt/spec-author context —
+and a wrong-reference port is worse than a fresh write. The standing home for "component X is the
+validated reference" is the **project's own `AGENTS.md`** (and the spec's design phase); the
+platform-knowledge core of the reports shipped as the gotcha above.
+
+### Changed — `mcp-platform-authoring.md`: 401 "AI authentication failed" branch
+
+From [86bbkg072](https://app.clickup.com/t/86bbkg072) / [#133](https://github.com/Bluestep-Systems/bspecs/issues/133)
+(first half). New step-2 branch: `401` from **every** org means the token or its account lost
+authorization — the gateway still validates the token while orgs reject it, so the wrong readings
+look corroborated. Not an exposure gap: no org-enablement requests, no further probing; check the
+token's Expires/Scopes on the Access Tokens screen (unreachable = that's the answer). Explicit
+contrast with the one-org `404` and `403` cases, plus the never-paste-`b6pt_`-into-`b6p auth set`
+warning. The report's platform/CLI halves (gateway de-authorization UX, `b6p auth set` rejecting
+`b6pt_` values, the undocumented CLI-token source) were split to their own `[MCP]` task
+([86bbp800v](https://app.clickup.com/t/86bbp800v)).
+
 ## [plugin 0.30.0] — 2026-08-27
 
 Six `bluestep-reference` fixes from the 2026-08 feedback wave: two corrections, three new pages,

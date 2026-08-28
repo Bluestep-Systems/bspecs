@@ -77,6 +77,20 @@ specifically `mcp__plugin_bluestep-tools_bluestep-gateway__available_tenants` an
   2026-08). The `b6pt_` token is global across every org, so **never rotate or re-issue it over this
   error** — a "fresh token" fixes nothing here and breaks every session using the old one. Ask BlueStep to
   enable AI tools for that org; until then fall back to the human hand-back, same as the `404` case.
+- **Connected, but every org answers `401` ("AI authentication failed")** → the problem is the
+  token/account, not the orgs. The gateway only checks that the token is valid, so `available_tenants`
+  still works — but each org checks whether the **account behind the token** is still authorized, and
+  it no longer is (typical cause: the account's global super access was removed). Do **not** request
+  org enablement and do **not** try more orgs — a `401` from every org is never a per-org problem (a
+  `404` from one org is; see above). To confirm: open the screen the token was created on (Tools →
+  Organization Admin → Super tab → Global Users → your account → Access Tokens) and check the token's
+  Expires and Scopes. **If you can no longer reach that screen, that is itself the confirmation** —
+  the access the token depends on is gone. The fix is restoring the account's access or issuing a
+  token under an authorized account — not MCP enablement.
+- **Don't mix the two token systems.** The `b6pt_` gateway token never goes into `b6p auth set` —
+  that stores the b6p CLI's own, separate token. The gateway token stores cleanly there and then
+  fails with a `401` from `/gql`, which looks like more platform trouble but is just the wrong
+  credential in the wrong slot (see `/bluestep-init` for both tokens).
 
 ### 3 — Resolve the target org (to a U-number)
 
