@@ -6,6 +6,42 @@ All notable changes to `@bluestep-systems/bspecs` are documented here.
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [Unreleased]
+
+### Fixed
+
+- **The guardrail hooks never ran.** All three parsed stdin with `jq`. On a machine without `jq`
+  on PATH the command failed, the variable came back empty, no condition matched, and the script
+  fell through to `exit 0` — so the hook allowed everything, silently. Measured across 16,441 hook
+  invocations over 30 days on one machine: every single one carried
+  `jq: command not found`. Critical rules 1 and 3 were unenforced for at least that long.
+  Hooks now try `jq`, `python3`, `python` and `node` in turn, and **block** rather than allow when
+  none can parse the input.
+- **`block-generated-files.sh` never matched a Windows path.** It tested for `*/declarations/*`
+  with forward slashes, but 97% of the `file_path` values Claude Code sends on Windows use
+  backslashes (8,394 of 8,688 measured). Paths are now normalised in the parser. `${VAR//\//}`
+  is not used because it does not substitute reliably under MSYS/Git Bash.
+- **A missing `dirname` also failed open.** The hooks located their helper with
+  `$(dirname ...)`; with an empty PATH that produced an empty path, the `source` failed silently,
+  and the checks below matched nothing. Now uses `${BASH_SOURCE[0]%/*}` and treats a failed
+  `source` as fatal.
+
+### Removed
+
+- **`block-inline-frontend.sh`.** Over 77 days of transcripts it would have fired four times, and
+  all four were correct code: two `<style>` strings for email frames, where inline CSS is required
+  because mail clients cannot fetch `static/`, and two thin mount MergeReports loading the texting
+  SPA bundle by URL, which is the designed architecture. A true-positive rate of zero. The rule it
+  enforced is real but has exceptions a path-and-substring test cannot express, so it stays as
+  prose in the rules where the model can weigh the exception. A guardrail that fires only on
+  correct code teaches people to add the override by reflex, which is what destroys it for the
+  case it was written for.
+
+### Added
+
+- `tools/test-hooks.sh` (`npm run test:hooks`) — 17 cases covering both guardrails: forward and
+  backslash paths, UNC paths, the allow cases, unparseable input, and no parser on PATH.
+
 ## [plugin 0.31.1] — 2026-08-28
 
 One correction: the 0.30.0 singleselect-truncation gotcha documented a platform bug that turned

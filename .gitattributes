@@ -1,0 +1,7 @@
+# Shell scripts must keep LF endings everywhere. A .sh file checked out with CRLF fails on
+# Linux and macOS with: $'\r': command not found — and the plugin ships to those platforms.
+# core.autocrlf is true on at least one dev machine, so without this the hooks can ship broken.
+*.sh text eol=lf
+
+# Same reasoning for the hook manifest and other files bash or node read directly.
+*.json text eol=lf
