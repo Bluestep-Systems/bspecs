@@ -8,6 +8,13 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.32.0] — 2026-09-09
+
+> **This release changes hook definitions** (`hooks.json` drops `block-inline-frontend`; both
+> remaining hooks now source `hooks/lib/hook-input.sh` and fail closed without a JSON parser).
+> Codex and Claude Code users must **re-trust the plugin's hooks** after updating, or the
+> guardrails silently stop running.
+
 ### Fixed
 
 - **The guardrail hooks never ran.** All three parsed stdin with `jq`. On a machine without `jq`
