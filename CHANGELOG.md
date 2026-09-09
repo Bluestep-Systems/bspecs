@@ -12,8 +12,8 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 - **The guardrail hooks never ran.** All three parsed stdin with `jq`. On a machine without `jq`
   on PATH the command failed, the variable came back empty, no condition matched, and the script
-  fell through to `exit 0` — so the hook allowed everything, silently. Measured across 16,441 hook
-  invocations over 30 days on one machine: every single one carried
+  fell through to `exit 0` — so the hook allowed everything, silently. Measured across 16,925 hook
+  invocations over 77 days on one machine (9,897 in the last 30 days): every single one carried
   `jq: command not found`. Critical rules 1 and 3 were unenforced for at least that long.
   Hooks now try `jq`, `python3`, `python` and `node` in turn, and **block** rather than allow when
   none can parse the input.
