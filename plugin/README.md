@@ -21,7 +21,7 @@ Internal staff normally get it pre-enabled via managed settings (`extraKnownMark
   workflow, `quick-task`, `task-comment`, `bspecs-feedback`, and `bluestep-reference` (the on-demand
   platform reference).
 - `agents/` — BlueStep subagents (`b6p-task-implementer`, `b6p-commenter`, `b6p-code-review`).
-- `hooks/` — guardrail hooks (block-generated-files, block-tsc) and the session canary (canary.sh: warns once at start if no JSON parser is on PATH, or if the project still has the old long rules file).
+- `hooks/` — guardrail hooks (block-generated-files, block-tsc) and the session canary (canary.sh: warns once at start if no JSON parser is on PATH).
 - `.mcp.json` — bundles the `bluestep-gateway` MCP server for in-session `[PLATFORM]` authoring
   (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set).
 
