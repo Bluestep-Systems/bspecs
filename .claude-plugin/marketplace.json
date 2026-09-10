@@ -3,12 +3,20 @@
   "owner": {
     "name": "BlueStep Systems"
   },
-  "description": "BlueStep platform tooling for Claude Code — spec-driven development skills, b6p CLI integration, subagents, hooks, and an on-demand platform reference.",
+  "description": "BlueStep tooling for Claude Code — bluestep-tools for B6P component workspaces (spec-driven skills, b6p CLI integration, subagents, hooks, platform reference) and core-tools for every other repo (core rule set, /task, /plan, subagents).",
   "plugins": [
     {
       "name": "bluestep-tools",
       "source": "./plugin",
       "description": "Spec-driven BlueStep (B6P) development: /b6p-* platform CLI skills, the /spec-* workflow, BlueStep subagents, guardrail hooks, and an on-demand platform reference."
+    },
+    {
+      "name": "core-tools",
+      "source": {
+        "source": "github",
+        "repo": "Bluestep-Systems/bluestep-ai"
+      },
+      "description": "Base workflow tooling for repos that are not BlueStep components: the core rule set, /task and /plan, explorer and implementer subagents, and the session-cost measurement script."
     }
   ]
 }
