@@ -11,7 +11,7 @@ Writes:
   inbox.txt    full descriptions of the triage INPUT SET only
                (status == Open AND tag == ai-plugin)
 
-Needs $CLICKUP_TOKEN (see CLAUDE.md "ClickUp (AI.List) via the REST API").
+Needs $CLICKUP_TOKEN (see SKILL.md "ClickUp REST API").
 """
 import datetime
 import json

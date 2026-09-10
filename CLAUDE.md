@@ -1,104 +1,102 @@
 # bspecs — BlueStep tooling for spec-driven development
 
-This repo ships **`bluestep-tools`**, an **agent plugin (Claude Code, Cursor, Codex)** that sets up BlueStep projects with skills, subagents, hooks, an on-demand platform reference, and spec-driven conventions. `plugin/` is the single source of truth; a generator emits committed per-tool trees (`dist/cursor/`, `dist/codex/`), and the repo doubles as **three marketplaces** (a plain git repo — no npm, no binary). Machine setup is the plugin's own `/b6p-init` skill; project setup is `/project-init`; bringing an already-set-up project onto a newer release is `/b6p-update`. See `docs/decisions/plugin-distribution.md` and `docs/decisions/cross-tool-plugin-output.md`.
+This repo ships **`bluestep-tools`**, an agent plugin (Claude Code, Cursor, Codex) that sets up
+BlueStep projects with skills, subagents, hooks, an on-demand platform reference, and spec-driven
+conventions. It is a plain git repo — no npm, no binary — and doubles as **three marketplaces**.
+The old npm CLI (`cli.js`, `src/*`) is **dormant**: it loads but scaffolds nothing, and
+`templates/` is empty because all tooling moved into `plugin/`.
 
-The old npm CLI (`bspecs new`/`init`/`sync`, `cli.js`/`src/*`) is **dormant**: unpublished, unsupported, kept in the repo as a frozen fallback. It still loads (`node cli.js -v`/`-h`) but scaffolds nothing — `templates/` is now empty because all tooling moved into `plugin/`.
+**Every "why" below is an ADR.** `docs/decisions/` is the source of truth for the reasoning; this
+file carries only what a session needs before touching anything.
 
 ## Architecture
 
 ```text
-.claude-plugin/
-  marketplace.json        ← repo-root Claude Code marketplace ("bluestep"), lists the plugin (source: ./plugin)
-.cursor-plugin/
-  marketplace.json        ← GENERATED Cursor marketplace (source: ./dist/cursor/bluestep-tools)
-.agents/plugins/
-  marketplace.json        ← GENERATED Codex marketplace (source: ./dist/codex/bluestep-tools)
-plugin/                   ← the SOURCE OF TRUTH — author only here
-  .claude-plugin/
-    plugin.json           ← plugin manifest (name "bluestep-tools", the ONE shared version)
-  skills/                 ← /b6p-pull, /b6p-push, /b6p-audit, /spec-create, /spec-execute,
-                            /spec-status, /quick-task, /task-comment, /bspecs-feedback, /b6p-init, /project-init, /b6p-update,
-                            /bluestep-vite-report, and bluestep-reference (the on-demand platform reference)
-  agents/                 ← three subagents (b6p-task-implementer, b6p-commenter, b6p-code-review)
-  hooks/                  ← hooks.json + three scripts (block-generated-files, block-tsc, block-inline-frontend)
-  .mcp.json               ← bundles the bluestep-gateway MCP server (global URL, $B6PT_TOKEN)
-tools/gen-cross-tool/     ← the generator (index.mjs, lib.mjs, emit-cursor.mjs, emit-codex.mjs) — npm run gen / gen:check
-dist/cursor/, dist/codex/ ← GENERATED committed per-tool plugin trees — never hand-edit; regen + commit on plugin changes
-.github/workflows/        ← ci.yml (smoke checks, cross-tool-drift, plugin-version-bump), release-tag.yml
-                            (tag + Release on merge), publish.yml (manual-tag path)
-cli.js, src/              ← DORMANT npm CLI (frozen fallback; loads but scaffolds nothing)
-templates/                ← empty (all tooling migrated into plugin/)
+.claude-plugin/marketplace.json   ← Claude Code marketplace ("bluestep"), source: ./plugin
+.cursor-plugin/marketplace.json   ← GENERATED Cursor marketplace, serves dist/cursor/
+.agents/plugins/marketplace.json  ← GENERATED Codex marketplace, serves dist/codex/
+plugin/                           ← THE SOURCE OF TRUTH — author only here
+  .claude-plugin/plugin.json      ← manifest; its `version` is the ONE shared version stream
+  skills/                         ← one folder per skill, incl. bluestep-reference (the platform reference)
+  agents/                         ← three subagents
+  hooks/                          ← hooks.json + block-generated-files, block-tsc, canary
+  .mcp.json                       ← bundles the bluestep-gateway MCP server ($B6PT_TOKEN)
+tools/gen-cross-tool/             ← the generator — npm run gen / gen:check
+dist/cursor/, dist/codex/         ← GENERATED, committed, never hand-edited
+.github/workflows/                ← ci.yml, release-tag.yml, publish.yml (manual-tag path)
+cli.js, src/, templates/          ← DORMANT / empty
 ```
 
-Plugins serve content **verbatim** — there is no `{{VAR}}` templating in the plugin tree. The only per-project files that need value substitution (a project `AGENTS.md` + one-line `CLAUDE.md` bridge, `README.md`, `package.json`) are bundled with the `/project-init` skill and filled in conversationally by the agent. See `docs/decisions/plugin-distribution.md`.
+Plugins serve content **verbatim** — there is no `{{VAR}}` templating anywhere in `plugin/`. The
+per-project files that need substitution ship with `/project-init` and are filled in
+conversationally.
 
 ## Key behaviors
 
-**Cross-tool plugin output (one source, three generated surfaces)**: `plugin/**` is the only place content is authored; `tools/gen-cross-tool/` (dependency-free Node ESM, `npm run gen` / `npm run gen:check`) deterministically emits committed native trees — `dist/cursor/`, `dist/codex/`, plus the root `.cursor-plugin/` and `.agents/plugins/` marketplace manifests. Transforms: `${CLAUDE_PLUGIN_ROOT}` rewritten, `allowed-tools` stripped, agents → trimmed md (Cursor) / TOML with underscore names (Codex), hooks → thin per-tool wrappers exec-ing the shared scripts, MCP → `${env:B6PT_TOKEN}` (Cursor) / `bearer_token_env_var` (Codex). CI's `cross-tool-drift` job regenerates + diffs (stale or hand-edited `dist/` can't merge) and runs the `gen:check` structural self-test + Claude-ism denylist lint. **One shared version stream**: every generated manifest mirrors the Claude manifest's version; the `plugin-version-bump` gate fires on `plugin/**` *and* `tools/gen-cross-tool/**`. Known degradations: Cursor edit hooks are post-hoc advisories (warn, not block); Codex agents ship via manual copy at enablement (plugins can't register them) and Codex hooks need per-release re-trust. See `docs/decisions/cross-tool-plugin-output.md` and `docs/cross-tool-output-test-plan.md`.
-
-**`/b6p-init` (once per machine) and `/project-init` (once per project)** — split in 0.33.0 from the old `/bluestep-init`, whose deprecated stub was removed in 0.34.0. `/b6p-init` covers the machine: `b6p` binary + `b6p auth set`, marketplace registration / plugin install for the tool you are in (Claude Code, Cursor, Codex), Codex hook trust and telling the user to copy the agents into `~/.codex/agents/`, and `B6PT_TOKEN` (with the security section). `/project-init` writes the per-project files in-session — a **short** `AGENTS.md` (~40 lines: the platform rules, reading habits, spec routing, compaction; everything else is served on demand by `bluestep-reference`), a **one-line `CLAUDE.md` containing `@AGENTS.md`** (Claude Code doesn't read `AGENTS.md` natively), `README.md`, `package.json` (with **no** `@bluestep-systems/b6p-cli` devDependency), `.gitignore`, `.prettierrc` — then on Claude Code the project `.claude/settings.json` (permissions + `extraKnownMarketplaces` + `enabledPlugins`, **no** hooks block), guides `git init`, and ends by checking the once-only items and pointing at `/b6p-init` for any that are missing. Idempotent: an existing populated `CLAUDE.md` is never overwritten (migration to `AGENTS.md` offered, not forced), and an old long `AGENTS.md` is left untouched — since 0.34.0 that swap belongs to `/b6p-update`, which `/project-init` points at in one line. Templates live in `plugin/skills/project-init/templates/`. Skills: `plugin/skills/b6p-init/SKILL.md`, `plugin/skills/project-init/SKILL.md`.
-
-**`/b6p-update` (per release, added 0.34.0)** — brings **existing** projects onto the current release; `/project-init` only ever helped projects created after one. Two modes: `here` and `all`. **`all` works on all three tools** — each keeps a list of directories it has opened, and `plugin/skills/b6p-update/references/project-index.md` documents where and in what shape: Claude Code's `projects` map in `~/.claude.json`; Cursor's `history.recentlyOpenedPathsList` row in the Electron `state.vscdb` under its user-data `globalStorage/` (SQLite, opened **read-only**, percent-encoded `file://` URIs, folder and file entries mixed); Codex's `payload.cwd` in the first `session_meta` record of each `~/.codex/sessions/**/rollout-*.jsonl` (the sibling `session_index.jsonl` has no path). Reach differs — Claude Code's is every directory ever opened, Cursor's is a short recently-opened list, Codex's spans retained sessions — so the sweep unions the list with a scan of the session root, normalises the several spellings each holds for one directory (drive-letter case, `/` vs `\`, UNC vs `wsl:`, URI encoding, one entry per session), drops dead and worktree paths, keeps the B6P ones, and says which kind of list it read so the user knows what a sweep could not see. **The migrations are assets, not steps in the skill**: `plugin/skills/b6p-update/migrations/index.md` is a catalogue of `id | detect | asset | remove when`, the skill reads it every run and then reads only the assets whose detector matched, and a later release adds a row plus a file instead of editing the procedure. Detectors read the project (the `<!-- bluestep-tools rules-template N -->` marker, a pre-split heading, a missing settings key) rather than a release number, and the current template version is read from the shipped template's own marker — so nothing in the skill goes stale as versions move. **Decides what it can; asks only where the choice is genuinely the user's** (0.35.0, after the first real run asked 7 questions for 4 projects, 3 of which had nothing to decide): a step with one correct answer is performed, not offered — an all-template rules file is swapped and reported, absent non-conflicting settings keys are added and named. Still asks: a settings key already holding a different value, both `AGENTS.md` and the bridge file holding real rules, and — as **one** table plus **one** approval per project, never per chunk — a rules file that did grow its own lines. That table shows kept chunks as well as cut ones, since a skill built to shorten files leans toward cutting. Four guardrails hold for every migration: nothing written before the user has seen what would change, never drop a project line silently (it survives or is named in the table; unsure means keep), never commit or stage (edits outside the session root are left as reviewable diffs), and touch only what a matched migration names. **User-facing text carries the catalogue's plain sentence, never a migration id** — "rules file is out of date", not `rules-template`. Ships with `rules-file-bridge`, `rules-template`, `project-settings` and `codex-agents-payload`. **Adding one in a later release is a catalogue row plus a file — never an edit to the procedure**; a case the procedure cannot express is a gap to report, not a special case to add. Skill: `plugin/skills/b6p-update/SKILL.md`. See `docs/decisions/per-project-migrations.md` for why this shape (and why a `SessionStart` warning and a per-release checklist were both rejected).
-
-**b6p invocation (bare `b6p`)**: the `/b6p-pull`, `/b6p-push`, and `/b6p-audit` skills call a bare `b6p`. `b6p` reaches the machine as the standalone **b6p-cli** artifact (installed separately, on PATH independently of bspecs — the release binary or `npm i -g @bluestep-systems/b6p-cli`) — no `npx b6p`, no project-local devDependency. This is a tracked cross-repo dependency. See `docs/decisions/b6p-cli-distribution.md`.
-
-**Bundled gateway MCP (platform authoring connection)**: the platform exposes a **single global gateway** MCP server at `https://gateway.bluestep.net/mcp` (HTTP transport), a **relay facade** with three meta-tools — `available_tenants`, `list_org_tools(org)`, `invoke_org_tool(org, tool, arguments)` — where `org` is a **U-number** orgKey (e.g. `U142030`), not a subdomain. It is authed by a **single global `b6pt_` token** the user creates once in the UI and stores in the `B6PT_TOKEN` env var — a *separate* credential system from the b6p CLI's own access token in `~/.b6p/` (set by `b6p auth set`; also bearer since b6p-cli 0.6.0, so the two are easy to confuse and are configured independently). Because the URL is constant it ships bundled in the plugin's `plugin/.mcp.json` (`${B6PT_TOKEN}` runtime-expanded), so it **auto-registers when the `bluestep-tools` plugin is enabled** and the token is set — no per-org connect flow, no `bluestep-<subdomain>` entries. (A just-enabled plugin's MCP tools register only in a **fresh session** — restart / `/reload-plugins`.) `available_tenants` is a **curated directory, not the full reachable set**: orgs the token is authorized for are reachable by U-number even if unlisted, so an unknown org means "ask for/derive its U-number," not "unreachable." Token setup lives in `/b6p-init`. Coexistence unchanged: the `/b6p-*` component-sync operations stay on the b6p CLI permanently (per the ADR's 2026-07-08 addendum); MCP owns only `[PLATFORM]` authoring/wiring. See the next key-behaviors entry, the procedure page, and `docs/decisions/platform-mcp-integration.md`.
-
-**`[PLATFORM]` authoring via MCP (in-session, approval-gated)**: a `[PLATFORM]` authoring/wiring op (new query/form/field import via `add_queries`/`add_forms`/`add_field_access`, or creating a `form`/`field`/`option_list`/`view`/`record_type`) is now performed in-session over the bundled gateway MCP instead of being handed back for a UI round-trip. The flow is defined **once** as the `bluestep-reference` procedure page `plugin/skills/bluestep-reference/conventions/mcp-platform-authoring.md` (single source of truth / no-duplication) and driven from three entry points — `/spec-execute`'s `[PLATFORM]` branch, `/quick-task`, and the scaffolded project `CLAUDE.md`'s always-on conversational rule. Every platform mutation is echoed (tool + target + args) and waits for explicit approval in the main session; after a wiring op it reads declarations back via `get_script_declarations` so the dependent `[CODE]` task can code against the new import. Coexistence unchanged: sync stays on the b6p CLI. A human-runnable test plan lives at `docs/mcp-platform-authoring-test-plan.md`, and the flow was validated by a live prove-out on bkplayground (in-app tool registration + create/assert/teardown) that passed 2026-07-08. See `docs/decisions/platform-mcp-integration.md`.
-
-**`bluestep-reference` skill (on-demand platform reference)**: the former on-demand `instructions/` tree, re-homed as a plugin skill. Its `SKILL.md` is the former `index.md` manifest; the two Tier-2 overviews (`b6p-platform.md`, `bsjs-development.md`) and the atomic single-topic files under `reference/`, `conventions/`, `gotchas/` are bundled resources Claude resolves relatively and reads on demand. The on-demand-read pattern (no `@`-imports) of `docs/decisions/instruction-tree-and-claude-only.md` is preserved; only the entry point moved from `.claude/instructions/index.md` to a skill. Skills/agents reference the bundled paths rather than restating platform rules (no-duplication invariant).
-
-**Delegated `/spec-execute` (default)**: `/spec-execute` implements a `[CODE]` task by delegating to the `b6p-task-implementer` subagent, which reads declarations/source and the relevant `bluestep-reference` content in its own context and returns a summary — keeping that bulk out of the main session. The approval gate stays in the main session (review the diff, mark `[x]`, STOP). `--inline` implements in-session for trivial tasks. The `b6p-commenter` and `b6p-code-review` subagents are on-demand only (suggested at the STOP, never auto-fired). See `docs/decisions/subagents-and-delegated-execution.md`.
-
-**Hooks**: `plugin/hooks/hooks.json` wires two guardrails (block-generated-files, block-tsc — `PreToolUse`) plus `canary.sh` (`SessionStart`, `startup`; Claude Code only, skipped by both emitters), all referenced via `${CLAUDE_PLUGIN_ROOT}` and sourcing `hooks/lib/hook-input.sh` (parser fallback jq → python3 → python → node; guardrails **fail closed** if none can parse; the canary prints one stderr line and exits 1 so the person sees it at session start). `block-inline-frontend` was removed in the hooks fix (zero true positives over 77 days; rule 6 stays prose). They run in whatever shell hosts Claude Code — Git Bash on Windows, not WSL, when the session is started from the desktop app — so they must not assume `jq` or WSL tools; that assumption is why they silently allowed everything for 77 days. Run `npm run test:hooks` after touching them, and `npm run gen` so `dist/codex` and `dist/cursor` pick up the change. **Run the generator inside WSL (Linux), never from Windows over the `\wsl.localhost` path**: from Windows it emits a wrong relative path in `dist/*/skills/bspecs-feedback/SKILL.md` and cannot record the executable bit on generated `.sh` files, and the CI drift job (which regenerates on Ubuntu) fails. A new `hooks/*.sh` also needs its executable bit **in the index**: this checkout has `core.fileMode=false`, so `chmod +x` alone changes nothing — run `git update-index --chmod=+x <file>` on the script and its two `dist/*/hooks/shared/` copies, or the drift job fails on `old mode 100644 / new mode 100755`. Hooks ship with the plugin, so an enabled plugin gets them automatically — no per-project hooks block. Formatting is intentionally **not** a hook (see the plugin 0.9.0 CHANGELOG entry and `docs/decisions/npm-free-scaffolding-via-vscode-extension.md`); the scaffolded `.prettierrc` is left for each developer's editor to apply.
-
-**`/bspecs-feedback` (tooling-change intake)**: drafts a tooling-change request from session context, confirms it in chat, then **POSTs it to a public BlueHQ intake endpoint** (`https://bluehq.bluestep.net/b/bspecs-feedback`) that files a ClickUp task on AI.List (the #25 structured failure axes as custom fields) **and** a routed GitHub issue (`bspecs` / `b6p-cli` / `web`) via a GitHub App, links the two, and returns both URLs — so the submitter needs **no GitHub or ClickUp account**. The payload also carries a top-level **`environment`** string (the runtime tool/surface/version — the skill states it itself, asking only when unsure) which the endpoint pushes to the ClickUp `Environment` field and renders in the GitHub issue body. The **reporter email is required** (auto-filled from git config, editable, never skippable — the endpoint rejects email-less payloads): when the task is later **closed with a `resolution`** set, the same endpoint's `?hook=close` door (fed by an HMAC-verified ClickUp status webhook) **emails the reporter what actually happened** — body ladder: `resolution-note` field verbatim → `B.ai` draft (tenant default, spend-capped) → per-resolution generic wording — then posts a sent-marker comment quoting the email (dedupe + visibility); a resolution-less close gets a nudge comment, no email. No secret ships in the plugin (tokens live only in a BlueHQ office form, read server-side). See `docs/decisions/feedback-intake-bluehq-endpoint.md` (supersedes `bspecs-feedback-mechanism.md`, amended by `feedback-reporter-email.md`) and `docs/bluehq-feedback-endpoint-setup.md`.
+- **One source, three surfaces.** `plugin/**` is the only place content is authored; `npm run gen`
+  emits the committed `dist/` trees and the two generated marketplace manifests. CI's
+  `cross-tool-drift` job regenerates and diffs, so stale or hand-edited output cannot merge.
+  → `cross-tool-plugin-output.md`
+- **Hooks** are two guardrails (`block-generated-files`, `block-tsc`, `PreToolUse`) plus
+  `canary.sh` (`SessionStart`, Claude Code only). They run in **whatever shell hosts the agent —
+  Git Bash on Windows, not WSL** — so they must not assume `jq` or WSL tools; that assumption is
+  why they silently allowed everything for 77 days. Parser fallback is jq → python3 → python →
+  node, and the guardrails **fail closed**.
+- **Everything else: read the skill file for what it does, the ADR for why.** Gateway MCP and
+  `[PLATFORM]` authoring → `platform-mcp-integration.md` and the single-source procedure page
+  `plugin/skills/bluestep-reference/conventions/mcp-platform-authoring.md`. Bare `b6p` →
+  `b6p-cli-distribution.md`. `/b6p-init`, `/project-init`, `/b6p-update` (and why migrations are
+  catalogue assets, not steps in the skill) → `per-project-migrations.md`. On-demand reference, no
+  `@`-imports → `instruction-tree-and-claude-only.md`. Delegated `/spec-execute` →
+  `subagents-and-delegated-execution.md`. `/bspecs-feedback` intake and its close-email path →
+  `feedback-intake-bluehq-endpoint.md`.
 
 ## Editing the plugin
 
-- Skills live in `plugin/skills/<name>/SKILL.md` — verbatim markdown (no vars). A skill that bundles resources (e.g. `spec-create` bundles `spec-templates/`, `project-init` bundles root templates, `b6p-commenter`'s README template) references them via `${CLAUDE_PLUGIN_ROOT}`.
-- Subagents live in `plugin/agents/<name>.md` — plain markdown with `name`/`description`/`tools` frontmatter, plus an optional `model` (generic alias only, e.g. `haiku`; today only `b6p-commenter` carries one — the other two deliberately inherit, see the delegation ADR's model-selection amendment). They reference the `bluestep-reference` skill's bundled files on demand rather than restating platform rules. See `docs/decisions/subagents-and-delegated-execution.md`.
-- The platform reference lives in `plugin/skills/bluestep-reference/` — `SKILL.md` (the manifest), the two overviews, and the `reference/`/`conventions/`/`gotchas/` subfolders. When adding a topic file, add a matching one-line entry to `SKILL.md` (it links one hop to every file). **Every committed reference file is category-level only** — no literal customer names, org subdomains, file IDs, employee names, domain/sector terms, or business figures. See `docs/decisions/content-sanitization-for-public-tooling.md`.
-- Hook scripts are in `plugin/hooks/*.sh`.
-- The plugin manifest is `plugin/.claude-plugin/plugin.json`; the marketplace manifest is the repo-root `.claude-plugin/marketplace.json`.
-- After any `plugin/**` (or emitter) change, run `npm run gen` and commit the regenerated `dist/` + root `.cursor-plugin/` / `.agents/plugins/` manifests — never hand-edit them; the `cross-tool-drift` CI job fails stale output.
+- Skills are `plugin/skills/<name>/SKILL.md`, verbatim markdown, bundled resources referenced via
+  `${CLAUDE_PLUGIN_ROOT}`. Subagents are `plugin/agents/<name>.md` with `name`/`description`/
+  `tools` frontmatter and an optional generic `model` alias.
+- The platform reference is `plugin/skills/bluestep-reference/`. A new topic file needs a matching
+  one-line entry in its `SKILL.md`. **Every committed reference file is category-level only** — no
+  literal customer names, org subdomains, file IDs, employee names, domain/sector terms, or
+  business figures. → `content-sanitization-for-public-tooling.md`
+- Skills and agents point at the reference's bundled files rather than restating platform rules.
+- After any change under `plugin/**` or the emitter, **run `npm run gen` inside WSL** and commit
+  the regenerated output. From Windows over `\wsl.localhost` it emits a wrong relative path and
+  cannot record the executable bit, and the drift job fails.
+- A new `hooks/*.sh` needs its executable bit **in the index**: this checkout has
+  `core.fileMode=false`, so `chmod +x` alone does nothing — run `git update-index --chmod=+x` on
+  the script and on its two `dist/*/hooks/shared/` copies.
+- Run `npm run test:hooks` (WSL) after touching a hook.
 
 ## Running / testing
 
-No test suite. Manual testing of the plugin: add the in-repo marketplace and install the plugin into a scratch project, then confirm `/bluestep-tools:*` skills appear, the three hooks fire on Edit/Write/Bash, and the `bluestep-reference` skill serves reference files on demand. Bootstrap: in a scratch dir with the plugin enabled, run `/project-init` and verify it writes the root files + a plugin-enabling `.claude/settings.json` (no hooks block, no sync) and guides `git init`; the generated `package.json` has no `b6p-cli` devDependency.
-
-```bash
-node cli.js -v       # dormant CLI still loads (prints version)
-node cli.js -h       # dormant CLI still loads (prints help)
-```
-
-The dormant CLI no longer produces a complete project (its tooling now lives in the plugin) — expected.
+No automated suite. By hand: add the in-repo marketplace, install the plugin into a scratch
+project, and confirm the skills appear, the two guardrail hooks fire on Edit/Write/Bash, and
+`bluestep-reference` serves files on demand; then `/project-init` in a scratch dir writes the root
+files and a plugin-enabling `.claude/settings.json` with no hooks block.
 
 ## Working on tasks
 
-Before substantive changes (implement / add / fix / refactor), skim `TODO.md` (open `[ ]` items) and the latest 3 `## [x.y.z]` blocks of `CHANGELOG.md`. Report any match — already planned, already shipped, or covered by an ADR in `docs/decisions/` — before starting. Skip for questions, exploration, or trivial edits.
+Before substantive changes (implement / add / fix / refactor), skim `TODO.md` (open `[ ]` items)
+and the latest 3 `## [x.y.z]` blocks of `CHANGELOG.md`, and report any match — already planned,
+already shipped, or covered by an ADR — before starting. Skip for questions and trivial edits.
 
-When a task is done and the user confirms, propose a commit message (title + body) based on the diff. Do not run `git commit` unless the user says so.
+When a task is done and the user confirms, **propose** a commit message (title + body) from the
+diff. Do not run `git commit` unless the user says so.
 
-## ClickUp (AI.List) via the REST API
+## Releasing
 
-Feedback issues live on the **AI.List** list (id `901414350506`, space "AI"); the plugin-related ones carry the **`ai-plugin`** tag. For anything beyond a single task, use the REST API directly — the ClickUp MCP burns quota and context on multi-task reads (every read echoes full dropdown option lists), and browser scraping truncates long task bodies.
+A release **is** a `version` bump in `plugin/.claude-plugin/plugin.json` merged to `main` — CI
+tags it and cuts the GitHub Release, so never push a tag by hand, and a merge without a bump ships
+nothing to any tool. Full procedure: **Releasing** under "For maintainers" in `README.md`.
 
-- **Auth:** personal token in `$CLICKUP_TOKEN`, exported from `~/.profile` in WSL. Not `~/.bashrc` — Ubuntu's interactive guard returns before the export, so non-interactive `bash -lc` shells never see it. Never commit the token.
-- **Bulk read — the whole list in ~2 calls** (100 tasks/page; loop `page` until the response's `last_page` is true):
+## ClickUp
 
-  ```bash
-  curl -s -H "Authorization: $CLICKUP_TOKEN" "https://api.clickup.com/api/v2/list/901414350506/task?include_closed=true&subtasks=true&page=0"
-  ```
-
-  Each task comes with its full description and all custom-field values — no per-task fetches. Dump to JSON in a scratch dir, flatten to a digest, and analyze offline; go back to the API only for writes.
-- **Writes:** `POST /task/{id}/field/{field_id}` (custom fields — dropdowns take the option UUID), `POST /task/{id}/tag/{tag_name}`, `PUT /task/{id}` (status, assignees), `POST /task/{id}/comment`. Field and option UUIDs: `GET /list/901414350506/field`.
-- **Batch changes through a dry-run-able script** (write actions to a file, print them, then apply with `--apply`) so the plan is reviewable before anything mutates.
-- **Close-out order matters:** set `resolution` and `resolution-note` **before** flipping status to Closed — the close webhook emails the note verbatim to everyone on the `;`-separated `reporter` field (see `docs/decisions/feedback-intake-bluehq-endpoint.md`). Duplicate closes are silent: no note, add the dup's reporter to the surviving task's `reporter` field instead.
-- **An unattended triage bot runs on each new intake:** `.github/workflows/triage-intake.yml` triages each bot-filed issue at intake time (its rules live in `.claude/skills/bspecs-triage/SKILL.md`, "Unattended half"). Its ClickUp comments start `🤖 [intake-triage]`, and its lane moves (`Open` → `up next` / `blocked/waiting`) and `automation = candidate` values are **proposals** an interactive session may overturn; the `automation` dropdown runs *empty* (not assessed) → `candidate`/`not-candidate` (bot verdict, only when empty) → `approved`/`rejected` (human, on candidates), and the bot never closes anything. It runs on the repo secrets `ANTHROPIC_API_KEY` + `CLICKUP_API_TOKEN` (mapped to the `CLICKUP_TOKEN` env var in-run). See the 2026-08-19 addendum in `docs/decisions/feedback-intake-bluehq-endpoint.md`.
-
-## Distribution
-
-The plugin is distributed via the public `bluestep` marketplace — this repo doubles as **three** of them: `.claude-plugin/marketplace.json` (Claude Code, `source: ./plugin`), `.cursor-plugin/marketplace.json` (Cursor, serving `dist/cursor/`), `.agents/plugins/marketplace.json` (Codex, serving `dist/codex/`). Repo: `github.com/Bluestep-Systems/bspecs`. **There is no npm publish.** Claude Code installation is `/plugin marketplace add Bluestep-Systems/bspecs` → `/plugin install bluestep-tools@bluestep` → `/b6p-init` → `/project-init`; Cursor imports the same repo URL as a marketplace; Codex adds it via `codex plugin marketplace add`. Updates: `/plugin marketplace update` / `autoUpdate` (Claude Code), auto-refresh-on-push (Cursor), version-keyed update (Codex). Admin enforcement uses managed settings (`extraKnownMarketplaces` + `enabledPlugins` + `strictKnownMarketplaces`), which also defends against lookalike marketplaces.
-
-A **Release** is cut by bumping `version` in `plugin/.claude-plugin/plugin.json` (the **one shared stream** — all generated manifests mirror it; emitter-only changes bump it too) and merging to `main` — **existing installs on all three tools only update when that version changes**, so a merge alone ships nothing. On merge, `.github/workflows/release-tag.yml` pushes the `plugin-vX.Y.Z` tag **and creates the GitHub Release itself** (GITHUB_TOKEN-pushed tags can't trigger `publish.yml`, which stays serving the manual-tag path); the `plugin-` tag namespace avoids the frozen npm-package tags `v0.2.0`..`v0.15.0`. CI gates: `plugin-version-bump` fails any PR touching `plugin/**` or `tools/gen-cross-tool/**` without a bump; `cross-tool-drift` fails stale generated output; smoke checks run on every PR / push. No `npm publish`, no binary build. Hook-changing releases get a changelog callout (Codex re-trust). Full procedure: the **Releasing** section of `README.md`. See `docs/decisions/plugin-distribution.md` and `docs/decisions/cross-tool-plugin-output.md`.
+Feedback lives on AI.List (`901414350506`), plugin items tagged `ai-plugin`. Use the REST API, not
+the MCP, for anything beyond one task; the token is `$CLICKUP_TOKEN` from `~/.profile` in WSL.
+Calls, paging, write endpoints and the close-out order are in
+`.claude/skills/bspecs-triage/SKILL.md` → "ClickUp REST API"; that skill owns triage. An
+unattended bot triages each new intake — its `🤖 [intake-triage]` comments, lane moves and
+`automation = candidate` values are **proposals** an interactive session may overturn, and it never
+closes anything (skill → "Unattended half").
