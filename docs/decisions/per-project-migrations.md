@@ -92,6 +92,35 @@ per-release checklist, and the `SessionStart` hook stays free of a permanent war
   special case to `SKILL.md`. The rule is the opposite: a case the procedure cannot express is a gap
   in the procedure, reported with `/bspecs-feedback`.
 
+## Addendum, 2026-09-10 (plugin 0.35.0): asking is a cost, not a safety measure
+
+The first real run — a sweep that updated four projects — asked seven questions. For three of the
+four there was nothing to decide: the diff and the git history both showed the old rules file was
+unmodified template text, the skill said so, and then it asked "did I miss anything you added by
+hand?" anyway.
+
+That is the wrong instinct twice over. It spends the user's attention on a settled question, and
+attention spent on settled questions is not available for the unsettled ones — a run that asks seven
+times trains someone to approve without reading. The guardrail it was serving ("never drop a project
+line silently") is better served by a table shown before the write: the user sees every chunk at
+once, in context, with what happens to each, instead of judging chunk 3 blind and then chunk 4.
+
+So the rule is now **a step with one correct answer is performed, not offered**, and the test is
+whether the user can answer better than the skill can. Where the default is the safe one — keep the
+line, add the absent key, move the content verbatim — an unanswered question would resolve the same
+way, which is the tell that it should never have been asked.
+
+Two cases keep their question because both options are legitimate and nothing in the project decides
+between them: a settings key that already holds a different value, and both `AGENTS.md` and the
+bridge file holding real rules. One case keeps a single approval because it contains real judgement:
+a rules file that did grow project lines.
+
+This shifts weight onto the reasons in the table. When a user approved chunk by chunk, a shaky
+classification got caught by them; approving a batch means a confident wrong reason passes. Hence
+the added requirement to open a `docs/` page before claiming a chunk restates it, and to show kept
+chunks alongside cut ones — a skill built to shorten files leans toward cutting, and the kept rows
+are the counterweight.
+
 ## Related
 
 - `docs/decisions/plugin-context-delivery-model.md` — why always-on context is a scaffolded project

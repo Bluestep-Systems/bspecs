@@ -8,6 +8,48 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.35.0] — 2026-09-10
+
+> **`/b6p-update` stops asking questions it can answer itself.** The first real run asked seven
+> questions to update four projects — and for three of those four there was nothing to decide: the
+> old rules file was unmodified template text, so the skill proved there was nothing of the user's
+> to keep and then asked anyway. It now decides what it can, asks only where the choice is genuinely
+> the user's, and says everything in plain words instead of internal names.
+
+### Changed
+
+- **Decide, don't ask.** A question the user cannot answer better than the skill is a delay they have
+  to read, and it teaches people to click past the prompts that matter. New rule, applied throughout:
+  a step with one correct answer is performed, not offered. An old rules file that is entirely
+  template text is swapped and reported. Missing settings keys that conflict with nothing are added
+  and named. What still asks: a settings key that already holds a different value (theirs may be
+  deliberate), both `AGENTS.md` and the bridge file holding real rules (only they know which is
+  real), and the one case with real judgement in it — a project whose rules file **did** grow its own
+  lines. The default everywhere is the safe one, so an unanswered question would resolve the same way.
+- **One table, one approval, per project with decisions in it** — instead of one question per chunk.
+  Judging chunk 3 without knowing what chunks 4 to 6 are was worse for the user *and* worse for the
+  file. The table shows every chunk including the kept ones: a skill built to shorten files leans
+  toward cutting, and showing what it left alone is what makes the table reviewable.
+- **Plain words in everything the user reads.** The report used to print migration ids —
+  `rules-template`, `rules-file-bridge` — which say nothing about anyone's project. The catalogue now
+  carries the sentence to use instead ("rules file is out of date", "your rules are in the wrong
+  file", "settings are missing 2 keys"), and internal vocabulary — detector, catalogue, asset,
+  migration, template version — is out of user-facing text. Numbers over adjectives: "136 lines,
+  about 3 K tokens a turn", not "a large file".
+- **Cheap check before the expensive one.** The rules-file migration now diffs against the legacy
+  template first and reaches for `git log -p --follow` only when that leaves something ambiguous. The
+  diff settles the common case in one command; walking history per project multiplied the cost of a
+  sweep for an answer already in hand.
+- **Claims about a `docs/` page must be checked against it.** "This chunk restates
+  `docs/ARCHITECTURE.md`" is a claim about a file — open it. With the user approving a batch on the
+  strength of the stated reasons, a confident wrong reason is worse than no table.
+- **Sweeps say what they found, including the unexpected.** A real sweep turned up separate clones of
+  one project under different paths and projects the user had forgotten. Two clones of one project now
+  get their own line — whichever pushes last can silently overwrite the other.
+- **A settings file the plugin never wrote is not the skill's to modernise.** A project carrying local
+  hooks from before the plugin existed gets its missing keys and nothing else, with a note about what
+  was seen.
+
 ## [plugin 0.34.0] — 2026-09-10
 
 > **New: `/b6p-update`.** 0.33.0 shipped a short `AGENTS.md`, but only for projects set up after
