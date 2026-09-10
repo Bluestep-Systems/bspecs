@@ -227,6 +227,30 @@ release that changes one (the changelog calls those out). On every tool, an
 install only changes when the plugin's version changes — see
 [For maintainers](#for-maintainers).
 
+**Then run `/b6p-update`.** Updating the plugin is only half of it: the files
+`/project-init` wrote into your project stay exactly as they were, because that
+skill never overwrites an existing file. So a release that shortens the rules
+file, adds a settings key, or changes what belongs in `AGENTS.md` reaches new
+projects and leaves yours as it was — and your project's `AGENTS.md` is re-read
+on **every turn** of every session in it, so an outdated one keeps costing you
+all day.
+
+```
+/b6p-update
+```
+
+It reports first — a table of each project, what it's behind on, and what would
+change — and writes nothing until you pick. `here` does the current project;
+`all` sweeps the projects your tool has opened plus the subfolders of where
+you're sitting. When it swaps a rules file it shows you your own project-specific
+lines, carries every one over, and then offers cuts one at a time with a reason
+for each, so nothing of yours disappears into a migration. Edits in other repos
+are left as **uncommitted** changes for you to review with `git diff` — it never
+commits.
+
+Run it after any update. When there's nothing to do it says so, and it's safe to
+run again.
+
 ### Sharing it with your team
 
 On Claude Code, the same `/project-init` from step ③ also writes a project
@@ -271,7 +295,7 @@ Everything below is contributed by the `bluestep-tools` plugin once it's enabled
 
 - **Spec-driven workflow** — `/spec-create` → `/spec-execute` → `/spec-status`, plus `/quick-task` for small changes.
 - **Platform sync** — `/b6p-pull`, `/b6p-push`, `/b6p-audit` (the agent usually runs these for you).
-- **Setup** — `/b6p-init` (once per machine), `/project-init` (once per project) and `/bluestep-vite-report` (scaffold a Vite/Preact merge report).
+- **Setup** — `/b6p-init` (once per machine), `/project-init` (once per project), `/b6p-update` (after a plugin update, to bring existing projects onto the new release) and `/bluestep-vite-report` (scaffold a Vite/Preact merge report).
 - **Platform authoring** — the bundled `bluestep-gateway` MCP server (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set) lets the agent create/wire platform objects in-session.
 - **Subagents** — `b6p-task-implementer` (isolated task execution), `b6p-commenter` (component README), `b6p-code-review` (report-only review).
 - **Guardrail hooks** — block hand-editing platform-generated files, block local `tsc` (Claude Code blocks both; Cursor blocks `tsc` and warns after an edit; Codex runs them only once trusted).
