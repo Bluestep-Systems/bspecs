@@ -1,5 +1,7 @@
 # Migration `rules-file-bridge` — the rules move into `AGENTS.md`
 
+**Says to the user:** "your rules are in the wrong file".
+
 **Detect.** No `AGENTS.md`, but the tool-specific bridge file holds real rules. Or both files exist
 and both hold real rules.
 
@@ -7,18 +9,31 @@ and both hold real rules.
 it through a one-line bridge next to it. Rules kept in the bridge instead reach only Claude Code —
 a teammate on another tool sees none of them.
 
-**This is an offer, never automatic.** A project whose rules sit in the bridge file still works in
-Claude Code. Nothing is broken, so nothing is forced.
+## No `AGENTS.md` yet? Move the rules and say so.
 
-## Steps
+The content moves verbatim; nothing is cut, nothing is reworded, and the project keeps working
+exactly as before on every tool instead of one. That has one correct answer, so do it:
 
-1. **Show what is in each file.** Line counts, and enough of the content for the user to see what
-   would move.
-2. **When `AGENTS.md` does not exist:** offer to move the bridge file's content into it verbatim, then replace the bridge with the shipped one-liner at `../../project-init/templates/CLAUDE.md.template` (relative to this file), whose only job is to import `AGENTS.md`.
-3. **When both files exist and both hold rules:** do not merge and do not clobber. Show both and
-   let the user say what should happen. Two files of rules is a decision only they can make.
-4. **When the user declines:** leave both files exactly as they are, and say the consequence —
-   agents that read only `AGENTS.md` (Cursor, Codex) will not see those rules.
+> `riverside-forms` — moved your rules from `CLAUDE.md` into `AGENTS.md`, unchanged. `CLAUDE.md` is
+> now the one-line import. Cursor and Codex can read these rules now; before, only Claude Code
+> could.
 
-Content that has just moved into `AGENTS.md` is an un-migrated rules file, so re-run the
-`rules-template` detector on the result and continue there if it matches.
+Replace the bridge with the shipped one-liner at
+`../../project-init/templates/CLAUDE.md.template` (relative to this file), whose only job is to import `AGENTS.md`.
+
+The moved content is then an out-of-date rules file, so continue into `rules-template` on the result
+— including its cheap check, which usually finds the whole thing is template text.
+
+## Both files hold real rules? Ask.
+
+Do not merge and do not clobber. Two files of rules is a state someone created on purpose or by
+accident, and only they know which. Show what is in each — line counts, and enough content to tell
+them apart — and ask which should be the real one.
+
+Keep the question concrete: "Which of these is the one you maintain?", with the option to leave both
+alone.
+
+## If they decline
+
+Leave both files exactly as they are, and say the consequence in one line: agents that read only
+`AGENTS.md` — Cursor, Codex — will not see those rules.
