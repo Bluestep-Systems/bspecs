@@ -108,10 +108,11 @@ The scaffold above is the same everywhere. Getting the `bluestep-tools` plugin i
 
 ### Claude Code
 
-In the target directory, create `.claude/` if needed, then write `.claude/settings.json` with **exactly** this shape (skip if it already exists). No `hooks` block and no `SessionStart` sync — hooks come from the plugin.
+In the target directory, create `.claude/` if needed, then write `.claude/settings.json` with **exactly** this shape (skip if it already exists). No `hooks` block and no `SessionStart` sync — hooks come from the plugin. `autoCompactWindow` makes Claude Code compact at 400 K tokens instead of near the 1M limit on Fable / `opus[1m]` sessions; it is a no-op on 200 K models. Measured on real sessions it is the single largest quota saving available, and compaction keeps CLAUDE.md, the plan, and recently edited files.
 
 ```json
 {
+  "autoCompactWindow": 400000,
   "permissions": {
     "allow": [
       "Edit(**/*.md)",

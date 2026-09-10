@@ -15,6 +15,15 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 > Codex and Claude Code users must **re-trust the plugin's hooks** after updating, or the
 > guardrails silently stop running.
 
+### Added
+
+- **`bluestep-init` now writes `"autoCompactWindow": 400000` into the scaffolded `.claude/settings.json`.**
+  On Fable and `opus[1m]` sessions Claude Code otherwise compacts at ~967 K; measured over 30 days,
+  23% of interactive sessions passed 400 K and none ever compacted, and every request after that
+  point re-reads the whole history. A 400 K window is the largest single quota saving available
+  (~22% price-weighted in replay). No effect on 200 K models. Existing projects: add the key by
+  hand or run `/autocompact 400k`.
+
 ### Fixed
 
 - **The guardrail hooks never ran.** All three parsed stdin with `jq`. On a machine without `jq`
