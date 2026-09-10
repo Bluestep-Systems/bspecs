@@ -60,7 +60,7 @@ export function parseFrontmatter(text) {
 // and GitHub's renderer parse frontmatter with REAL YAML parsers — where an
 // unquoted plain scalar containing ": " (colon+space) or ending in ":" is a
 // parse error, and the whole skill is silently dropped (live finding,
-// 2026-08-12: bluestep-init was uninvocable on Cursor). Returns problem
+// 2026-08-12: the init skill was uninvocable on Cursor). Returns problem
 // strings for any frontmatter value that would break a strict parser.
 export function checkFrontmatterStrictYaml(rel, text) {
   const problems = [];
@@ -333,7 +333,10 @@ const DENYLIST = [
   ['CLAUDE.md', /CLAUDE\.md/],
 ];
 
-const INIT_SKILL = 'skills/bluestep-init/SKILL.md';
+// The two init skills own the Claude Code enablement / bridge-writing prose:
+// b6p-init (marketplace + plugin install, "### Claude Code" subsection) and
+// project-init (writes and migrates the CLAUDE.md bridge, project settings).
+const INIT_SKILLS = new Set(['skills/b6p-init/SKILL.md', 'skills/project-init/SKILL.md']);
 const PER_TOOL_LINE = /Claude Code|Cursor|Codex/;
 
 // Lint shipped prose — every .md under plugin/**, plus the plugin.json
@@ -343,13 +346,13 @@ const PER_TOOL_LINE = /Claude Code|Cursor|Codex/;
 //      descriptions that name the supported tools);
 //   b. the same line names a tool (Claude Code / Cursor / Codex) — explicitly
 //      per-tool prose, the parenthetical convention from the de-Claude-ing;
-//   c. it is inside the "### Claude Code" enablement subsection of the
-//      bluestep-init SKILL.md (per-tool by construction; tracked via section
-//      headers, code fences ignored);
+//   c. it is inside a "Claude Code" heading's section of one of the init
+//      skills (per-tool by construction; tracked via section headers, code
+//      fences ignored);
 //   d. for CLAUDE.md only: the line also mentions AGENTS.md (bridge-mechanism
-//      explanations), OR the file is the bluestep-init SKILL.md — writing and
-//      migrating the CLAUDE.md bridge file on every tool is that skill's job,
-//      so the filename there is subject matter, not a Claude-ism.
+//      explanations), OR the file is one of the init skills — writing and
+//      migrating the CLAUDE.md bridge file on every tool is project-init's
+//      job, so the filename there is subject matter, not a Claude-ism.
 // The plugin.json description gets NO allowances: it is the cross-tool
 // storefront text, so any denylisted term there is always a finding.
 export function lintClaudeIsms(tree) {
@@ -375,8 +378,8 @@ export function lintClaudeIsms(tree) {
         if (!re.test(line)) continue;
         if (lineNo <= fmEnd) continue; // (a)
         if (PER_TOOL_LINE.test(line)) continue; // (b)
-        if (f.rel === INIT_SKILL && ccSectionLevel) continue; // (c)
-        if (name === 'CLAUDE.md' && (line.includes('AGENTS.md') || f.rel === INIT_SKILL)) continue; // (d)
+        if (INIT_SKILLS.has(f.rel) && ccSectionLevel) continue; // (c)
+        if (name === 'CLAUDE.md' && (line.includes('AGENTS.md') || INIT_SKILLS.has(f.rel))) continue; // (d)
         findings.push(`${f.rel}:${lineNo}: denylisted "${name}" — ${line.trim().slice(0, 120)}`);
       }
     }

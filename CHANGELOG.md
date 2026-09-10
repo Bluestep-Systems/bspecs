@@ -8,6 +8,47 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.33.0] — 2026-09-10
+
+> **Breaking: `/bluestep-init` is split and renamed.** `/b6p-init` does the once-per-machine
+> setup; `/project-init` does the per-project files. `/bluestep-init` stays for one release as a
+> stub that points at the two and does nothing else; it is removed in the next minor.
+> **The shipped `AGENTS.md` is now ~40 lines instead of 142.** Existing projects keep working
+> with the old file; `/project-init` offers the swap and carries project-specific lines over.
+
+### Changed
+
+- **`/b6p-init` (new) — once per machine and tool.** `b6p` binary check + `b6p auth set`,
+  marketplace registration / plugin install for the tool you are in (Claude Code, Cursor, Codex —
+  the per-tool subsections moved here verbatim), Codex hook trust and the agents copy, and the
+  `B6PT_TOKEN` section with its security notes. Idempotent: every step checks first. On Claude
+  Code it now says plainly that the project `.claude/settings.json` is the preferred place to
+  enable the plugin, and user-scope enablement loads B6P tooling into every session.
+- **`/project-init` (new) — once per project.** Steps 1–4 and 6–7 of the old skill (location,
+  client, templates with skip-if-exists and the `CLAUDE.md` migration rule, `git init`, report,
+  new-subfolder note), the Claude Code project settings write, plus a final check of the three
+  once-only items (`b6p` on PATH, `$B6PT_TOKEN`, plugin enabled) that points at `/b6p-init`
+  instead of doing them. Templates moved to `plugin/skills/project-init/templates/`.
+- **Short `AGENTS.md.template`.** Sorted rule by rule (`docs/rule-map.md` in the workspace that
+  measured it): the two hook-enforced rules leave the file (the hook message carries them); rules
+  duplicated by a skill or by `bluestep-reference` become one-line pointers; the skill quick-reference
+  table, the soft-routing examples, the module tree and the `B` paragraph go (the harness lists the
+  skills, the reference serves the rest on demand). What stays: six platform rules, four reading
+  habits, the spec/quick-task routing rule, the `/bspecs-feedback` line, and the compaction rule.
+  About 1.3 K tokens per turn instead of ~4 K. The draft-vs-live "trap" paragraph moved to
+  `/b6p-push`'s verification step, the only place it applies.
+- **Denylist lint** (`tools/gen-cross-tool/lib.mjs`): the Claude Code-section and `CLAUDE.md`
+  allowances now cover both init skills.
+- Docs, README skill table (two rows), `plugin/README.md`, test plans, `mcp-platform-authoring.md`,
+  `bluestep-vite-report`, and the Codex emitter's agents note point at the new names.
+
+### Migration
+
+- Say `/project-init` where you used to say `/bluestep-init` for a project; `/b6p-init` for a new
+  machine. The old name still answers with a pointer this release.
+- To adopt the short rules in an existing project, run `/project-init` and accept the swap when it
+  offers it; it lists your project-specific lines first and keeps them.
+
 ## [plugin 0.32.2] — 2026-09-10
 
 > **This release changes hook definitions** (`hooks.json` gains a `SessionStart` entry). Codex

@@ -33,7 +33,7 @@
 // Agents are PAYLOAD, never a manifest field: plugin-bundled subagents are not
 // operational on Codex at all (prove-out X5 — the files land in the plugin
 // cache but nothing registers), so the emitted TOML files ship via the
-// /bluestep-init Codex enablement step, which copies them into the project's
+// /b6p-init Codex enablement step, which copies them into the project's
 // .codex/agents/ (or ~/.codex/agents/). Two consequences the emitter honors:
 // agent names lose their hyphens (Codex accepts lowercase letters, digits and
 // underscores only — X5), and a ${CLAUDE_PLUGIN_ROOT} reference in an agent
@@ -325,7 +325,7 @@ So these \`.toml\` files are **payload**: to use them, copy them into
 - the project's \`.codex/agents/\` (per project), or
 - \`~/.codex/agents/\` (all your projects).
 
-Copy them yourself for now — the \`/bluestep-init\` Codex enablement section
+Copy them yourself for now — the \`/b6p-init\` Codex enablement section
 tells you when. (Automated copying by the init skill is planned but not yet
 shipped; until then this folder is the source and the copy is manual.)
 

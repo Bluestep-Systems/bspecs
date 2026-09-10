@@ -52,7 +52,7 @@ and hooks depend on them.
   variable, so one token serves every tool on the machine. **Windows:**
   `setx B6PT_TOKEN "b6pt_…"` (User scope), then fully restart the app — a
   variable exported in a shell never reaches a GUI-launched app.
-  `/bluestep-init` checks for the token and walks you through creating it if it's
+  `/b6p-init` checks for the token and walks you through creating it if it's
   missing.
 
 ## Getting set up
@@ -164,7 +164,7 @@ Two Codex steps that are easy to miss:
 - **Subagents don't ship via the plugin on Codex.** Copy the three TOML agents
   from `dist/codex/bluestep-tools/agents/` in this repo into `~/.codex/agents/`
   or your project's `.codex/agents/` (they use underscore names, e.g.
-  `b6p_task_implementer`). Until `/bluestep-init` learns to write them, this is
+  `b6p_task_implementer`). Until `/b6p-init` learns to write them, this is
   a manual step — without it, the spec skills simply run in-session instead of
   delegating.
 - Also needed on this machine: the **`b6p` CLI** (installed separately — see
@@ -185,10 +185,17 @@ one-line `CLAUDE.md` containing `@AGENTS.md` for Claude Code (which doesn't read
 your project directory, run:
 
 ```
-/bluestep-init
+/project-init
 ```
 
-This works in a **new *or* existing** project — it's non-destructive and skips any
+(The once-per-machine part — `b6p` CLI, marketplace + plugin install, hook trust on
+Codex, `B6PT_TOKEN` — is `/b6p-init`; `/project-init` checks for it at the end and
+points you there if anything is missing.)
+
+The `AGENTS.md` it writes is **short** (about 40 lines): the platform rules no hook
+enforces, how to read the workspace, the spec routing rule, and the compaction rule.
+Everything else comes from the `bluestep-reference` skill on demand, so it no longer
+costs ~4 K tokens per turn. This works in a **new *or* existing** project — it's non-destructive and skips any
 file that already exists, so in an existing repo it just drops the missing
 `AGENTS.md` (plus the other tooling files) and leaves your code untouched. An
 existing populated `CLAUDE.md` is never overwritten — the skill offers the
@@ -209,14 +216,14 @@ install only changes when the plugin's version changes — see
 
 ### Sharing it with your team
 
-On Claude Code, the same `/bluestep-init` from step ② also writes a project
+On Claude Code, the same `/project-init` from step ② also writes a project
 `.claude/settings.json` that registers the `bluestep` marketplace and lists
 `enabledPlugins: ["bluestep-tools@bluestep"]`. Commit that file **and** the
 generated `AGENTS.md` + `CLAUDE.md` bridge, and the whole setup **travels with
 the repo**: a teammate who clones it gets step ② for free (the rules files are
 already there) and is offered the plugin for step ① via the committed settings —
 they just confirm the one-time install prompt on folder-trust. So after the
-first person runs `/bluestep-init`, everyone after them is essentially set up on
+first person runs `/project-init`, everyone after them is essentially set up on
 clone. (Cursor and Codex enablement is per-user — teammates on those tools do
 step ① themselves, but still get the committed `AGENTS.md` for free.)
 
@@ -249,7 +256,7 @@ Everything below is contributed by the `bluestep-tools` plugin once it's enabled
 
 - **Spec-driven workflow** — `/spec-create` → `/spec-execute` → `/spec-status`, plus `/quick-task` for small changes.
 - **Platform sync** — `/b6p-pull`, `/b6p-push`, `/b6p-audit` (the agent usually runs these for you).
-- **Project scaffolding** — `/bluestep-init` (bootstrap a project) and `/bluestep-vite-report` (scaffold a Vite/Preact merge report).
+- **Setup** — `/b6p-init` (once per machine), `/project-init` (once per project) and `/bluestep-vite-report` (scaffold a Vite/Preact merge report).
 - **Platform authoring** — the bundled `bluestep-gateway` MCP server (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set) lets the agent create/wire platform objects in-session.
 - **Subagents** — `b6p-task-implementer` (isolated task execution), `b6p-commenter` (component README), `b6p-code-review` (report-only review).
 - **Guardrail hooks** — auto-format on save, block hand-editing platform-generated files, block local `tsc`.
@@ -258,7 +265,7 @@ Everything below is contributed by the `bluestep-tools` plugin once it's enabled
 
 ## How the rules & reference reach the agent
 
-A plugin can't ship *always-on* context, which is why `/bluestep-init` writes
+A plugin can't ship *always-on* context, which is why `/project-init` writes
 the critical BlueStep rules into your project's own `AGENTS.md` (with a
 one-line `CLAUDE.md` bridge for Claude Code) — that's their only correct home.
 The deeper platform reference (`bluestep-reference`) works differently: the
@@ -271,7 +278,8 @@ actually calls for it — nothing is bulk-loaded into every session.
 
 | Command | Use it to | When |
 | --- | --- | --- |
-| `/bluestep-init` | Bootstrap a BlueStep project — writes `AGENTS.md` (the always-on rules), a one-line `CLAUDE.md` bridge, `README.md`, `package.json`, `.gitignore`, `.prettierrc`, then guides per-tool plugin enablement (on Claude Code that includes the project `.claude/settings.json`) and `git init`. | Starting a new project, or adding tooling to an empty/existing dir. Non-destructive; asks for project/client values conversationally. |
+| `/b6p-init` | Once-per-machine setup for the tool you are in — `b6p` CLI + `b6p auth set`, marketplace registration and plugin install, hook trust (Codex), `B6PT_TOKEN`. Checks each item, skips what is done. | First time on a machine, or when `/project-init` reports something missing. |
+| `/project-init` | Set up one project — writes the short `AGENTS.md` (the always-on rules), a one-line `CLAUDE.md` bridge, `README.md`, `package.json`, `.gitignore`, `.prettierrc`, the Claude Code project `.claude/settings.json`, and guides `git init`. | Starting a new project, or adding tooling to an empty/existing dir. Non-destructive; asks for project/client values conversationally. |
 | `/bluestep-vite-report` | Scaffold an **off-platform** Vite/Preact single-page-app merge report — a different approach from a platform-compiled report (a bundled `static/index.html` deployed via deploy-lib). | Starting a merge report that needs a real SPA build rather than the platform's `static/script.ts` path. |
 
 ### Spec-driven workflow
@@ -303,7 +311,7 @@ create/wire platform objects (forms, fields, queries) directly in-session
 instead of a manual UI round-trip. There's no per-org connect step: the gateway
 auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set — a
 **separate** credential from the `b6p` CLI (see [Prerequisites](#prerequisites),
-and `/bluestep-init` for token setup). The authoring flow itself lives in the
+and `/b6p-init` for token setup). The authoring flow itself lives in the
 `bluestep-reference` skill's `conventions/mcp-platform-authoring.md`.
 
 Component sync (`/b6p-*`) stays on the `b6p` CLI; MCP owns only the platform
