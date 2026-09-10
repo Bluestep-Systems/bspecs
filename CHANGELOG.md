@@ -36,7 +36,9 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   skills, the reference serves the rest on demand). What stays: six platform rules, four reading
   habits, the spec/quick-task routing rule, the `/bspecs-feedback` line, and the compaction rule.
   About 1.3 K tokens per turn instead of ~4 K. The draft-vs-live "trap" paragraph moved to
-  `/b6p-push`'s verification step, the only place it applies.
+  `/b6p-push`'s verification step, the only place it applies. The file carries a version marker
+  (`<!-- bluestep-tools rules-template 2 -->`; files without one are version 1) so a coming
+  `/b6p-update` skill can find projects that are behind without pattern-matching headings.
 - **Canary tells old projects about the swap.** `hooks/canary.sh` (SessionStart, Claude Code) now
   also looks for the pre-split rules file in the project (`AGENTS.md` or `CLAUDE.md` with the
   `## Critical rules (always apply)` heading) and prints one stderr line pointing at `/project-init`.

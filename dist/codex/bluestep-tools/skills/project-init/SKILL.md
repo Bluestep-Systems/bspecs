@@ -11,7 +11,7 @@ It is **per project**. Everything that is done **once per machine** — installi
 
 It is **non-destructive**: any file that already exists is left untouched and reported as skipped. That makes it just as much an **activation** step for an existing repo as a bootstrap step for a new one — a plugin can't ship always-on context, so the project `AGENTS.md` written here is what makes the always-on platform rules reach every session.
 
-**The shipped `AGENTS.md` is short on purpose** (about 40 lines). It carries only what must be true in every turn: the platform rules no hook enforces, how to read the workspace, the spec/quick-task routing rule, and the compaction rule. Everything else — the `B` API, the module tree, the per-component import model, the push modes — is in the `bluestep-reference` skill and the `/b6p-*` skills, which the agent reads when the task needs them. Do not pad the file back out.
+**The shipped `AGENTS.md` is short on purpose** (about 40 lines) and carries a version marker on its third line, `<!-- bluestep-tools rules-template 2 -->`, so a later update skill can tell which template a project has without pattern-matching headings. Never strip it; bump it in the template only for a change that warrants swapping existing files, not for wording fixes. It carries only what must be true in every turn: the platform rules no hook enforces, how to read the workspace, the spec/quick-task routing rule, and the compaction rule. Everything else — the `B` API, the module tree, the per-component import model, the push modes — is in the `bluestep-reference` skill and the `/b6p-*` skills, which the agent reads when the task needs them. Do not pad the file back out.
 
 ## Collecting answers — use the picker, not a written questionnaire
 
@@ -88,7 +88,7 @@ Ask the migration question one question at a time, with clickable options where 
 
 #### An existing long `AGENTS.md` from an earlier template
 
-Projects set up before plugin 0.33.0 carry the old 140-line `AGENTS.md` (recognisable by its `## Critical rules (always apply)` heading and the `## Skill quick reference` table). It still works, but it costs about 4 K tokens on every turn for content the plugin now serves on demand. Offer the swap once and perform it **only** if the user agrees:
+Projects set up before plugin 0.33.0 carry the old 140-line `AGENTS.md` (recognisable by its `## Critical rules (always apply)` heading and by having no `<!-- bluestep-tools rules-template N -->` marker; the shipped template carries version 2 on its third line). It still works, but it costs about 4 K tokens on every turn for content the plugin now serves on demand. Offer the swap once and perform it **only** if the user agrees:
 
 1. Diff the existing file against the old template shape: any line that is **not** template text is a project-specific rule. List those lines to the user.
 2. Write the new short `AGENTS.md` from the template, then append the project-specific lines under `## Platform rules` (or a `## Project rules` heading if they are not platform rules).

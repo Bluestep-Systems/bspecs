@@ -1,5 +1,7 @@
 # {{CLIENT_NAME}} — {{PROJECT_NAME}}
 
+<!-- bluestep-tools rules-template 2 -->
+
 > Always-on rules for AI coding agents in this project. Cursor, Codex and most agents read `AGENTS.md` natively; Claude Code reads it through the one-line `CLAUDE.md` bridge next to it. Project rules go here, never in `CLAUDE.md`. Everything longer lives in the `bluestep-reference` skill and is read on demand.
 
 ## Platform rules
