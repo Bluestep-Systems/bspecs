@@ -68,6 +68,20 @@ else
   echo "  FAIL  no parser gave exit $rc with $lines stderr line(s) (want 1 and 1)"; echo "        ${out:0:120}"; fail=$((fail+1))
 fi
 rmdir "$TMPD" 2>/dev/null
+TMPD=$(mktemp -d)
+printf '# X\n\n## Critical rules (always apply)\n\n1. old\n' > "$TMPD/AGENTS.md"
+out=$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | CLAUDE_PROJECT_DIR="$TMPD" bash "$H/canary.sh" 2>&1 >/dev/null); rc=$?
+lines=$(printf '%s' "$out" | grep -c .)
+if [ "$rc" = 1 ] && [ "$lines" = 1 ] && printf '%s' "$out" | grep -q '/project-init'; then
+  echo "  PASS  old long AGENTS.md in project: one stderr line naming /project-init, exit 1"; pass=$((pass+1))
+else
+  echo "  FAIL  old AGENTS.md gave exit $rc with $lines stderr line(s)"; echo "        ${out:0:120}"; fail=$((fail+1))
+fi
+printf '# X\n\n## Platform rules\n' > "$TMPD/AGENTS.md"
+out=$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | CLAUDE_PROJECT_DIR="$TMPD" bash "$H/canary.sh" 2>&1); rc=$?
+if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "  PASS  short AGENTS.md in project: silent, exit 0"; pass=$((pass+1));
+else echo "  FAIL  short AGENTS.md gave exit $rc, output '${out:0:80}'"; fail=$((fail+1)); fi
+rm -rf "$TMPD"
 
 echo
 echo "passed=$pass failed=$fail"

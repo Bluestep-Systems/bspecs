@@ -37,6 +37,11 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   habits, the spec/quick-task routing rule, the `/bspecs-feedback` line, and the compaction rule.
   About 1.3 K tokens per turn instead of ~4 K. The draft-vs-live "trap" paragraph moved to
   `/b6p-push`'s verification step, the only place it applies.
+- **Canary tells old projects about the swap.** `hooks/canary.sh` (SessionStart, Claude Code) now
+  also looks for the pre-split rules file in the project (`AGENTS.md` or `CLAUDE.md` with the
+  `## Critical rules (always apply)` heading) and prints one stderr line pointing at `/project-init`.
+  Silent once the file is swapped; nothing added to the model's context. `hooks.json` is unchanged,
+  so no Codex re-trust. Two new cases in `tools/test-hooks.sh`.
 - **Denylist lint** (`tools/gen-cross-tool/lib.mjs`): the Claude Code-section and `CLAUDE.md`
   allowances now cover both init skills.
 - Docs, README skill table (two rows), `plugin/README.md`, test plans, `mcp-platform-authoring.md`,
