@@ -1,4 +1,4 @@
-# {{CLIENT_NAME}} — {{PROJECT_NAME}}
+# {{PROJECT_NAME}}
 
 <!-- bluestep-tools rules-template 2 -->
 
@@ -14,7 +14,6 @@ This workspace is a local copy of components that live on the BlueStep platform.
 4. On any `b6p push`, recommend publishing but **never** publish or save a draft without the user's explicit choice for that push. `/b6p-push` owns this; a hand-run push owes the user the same choice.
 5. MergeReport frontend (HTML, CSS, client JS) lives in `static/`, never in template literals in `scripts/app.ts` (`bluestep-reference` → `conventions/separate-files.md` lists the real exceptions).
 6. Platform authoring and wiring (imports, forms, fields, views, record types) goes through the gateway MCP, approval-gated, following `bluestep-reference` → `conventions/mcp-platform-authoring.md`. The MCP never pushes or pulls source; the `b6p` CLI does that.
-
 7. **Never** edit platform-generated files (`declarations/`, `B.d.ts`, `scriptlibrary.d.ts`, `Globals.d.ts`); the next pull replaces them. Fix a wrong or missing declaration on the platform, then pull.
 8. **Never** run `tsc` locally. The b6p CLI runs the only build, during a publish push; a hand-run `tsc` has no declarations wired up and leaves stray `.js` files and misleading errors.
 

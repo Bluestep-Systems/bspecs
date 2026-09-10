@@ -16,7 +16,14 @@ Every step below is a **check first, then act only if missing**. Nothing here is
 - Check: `command -v b6p`. Present → say so, move on.
 - Missing → tell the user to install it from the b6p-cli release (`https://github.com/Bluestep-Systems/b6p-cli/releases`: `b6p-windows-x64.exe`, `b6p-macos-x64`, `b6p-macos-arm64`; or `npm i -g @bluestep-systems/b6p-cli` on a machine that has Node). Do not install it yourself.
 
-Then the credentials: `b6p` needs a BlueStep **access token** stored in `~/.b6p/` (once per machine). The first command on a machine without one stops at an interactive prompt the agent cannot answer and exits `1`, so the user runs this once, in their own terminal:
+Then the credentials: `b6p` needs a BlueStep **access token** stored in `~/.b6p/` (once per machine). Check first:
+
+```
+test -f ~/.b6p/secrets.enc && echo OK
+```
+
+- Prints `OK` → say so and move on. (A machine that authenticated before b6p-cli 0.6.0 can have the file without a token in it; if a later pull still stops at `Enter your access token`, the same command below fixes it.)
+- Prints nothing → the first `b6p` command would stop at an interactive prompt the agent cannot answer and exit `1`, so the user runs this once, in their own terminal:
 
 ```
 b6p auth set
@@ -32,8 +39,8 @@ Each tool has its own marketplace and install flow. **Do the subsection for the 
 
 Two scopes:
 
-- **Once per machine (this skill):** the plugin is installed at **user scope** — `claude plugin marketplace add Bluestep-Systems/bspecs`, then `claude plugin install bluestep-tools@bluestep` (the README's step 1; internal staff usually get both through managed settings). If this skill is running, that part is already done on this tool; confirm the marketplace is registered with `claude plugin marketplace list` so updates arrive. A user-scope install loads the B6P skills, hooks and gateway MCP in every session on the machine, B6P project or not. That is by design: the skills are what run `/project-init` in a new, empty folder. The cost elsewhere is a few slash-menu entries, the MCP connection, and two hooks that act only on platform-generated declaration files and on `tsc`.
-- **Per project (`/project-init`):** writes the project's `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`) so the setup travels with the repo: a teammate who clones is offered the plugin on folder trust, and CI sees the dependency. It does not replace the install above.
+- **Once per machine (this skill):** the plugin is installed at **user scope** — `claude plugin marketplace add Bluestep-Systems/bspecs`, then `claude plugin install bluestep-tools@bluestep` (the README's step 1; internal staff usually get both through managed settings). If this skill is running, that part is already done on this tool; confirm the marketplace is registered with `claude plugin marketplace list` so updates arrive. A user-scope install loads the B6P skills, hooks and gateway MCP in **every** session on the machine, B6P project or not. That is what lets `/project-init` run in a new, empty folder, but say the cost out loud: the two guardrail hooks fire in every repo, so a hand-run `tsc` or `npx tsc` is **blocked in any TypeScript project on the machine**, and so is an edit to any path containing `declarations/`. Give the off switch with it: in a non-BlueStep repo, add `"enabledPlugins": { "bluestep-tools@bluestep": false }` to that project's `.claude/settings.json` — project settings override the user-scope entry, and the plugin stays installed for everything else.
+- **Per project (`/project-init`):** writes the project's `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`) so the setup travels with the repo: when a teammate clones and trusts the folder, Claude Code registers the marketplace and shows the `claude plugin install bluestep-tools@bluestep` command if the plugin is not installed yet (there is no automatic install prompt), and CI sees the dependency. It does not replace the install above.
 
 Plugin-bundled surfaces (MCP servers, hooks) load at session start: after enabling, use a fresh session or `/reload-plugins`.
 
@@ -41,12 +48,12 @@ Plugin-bundled surfaces (MCP servers, hooks) load at session start: after enabli
 
 ### Cursor
 
-Enablement is UI-driven; there is no settings file to write. Tell the user:
+If this skill is running in Cursor, the marketplace is imported and the plugin is installed — there is nothing left to click for enablement, and no settings file to write. Say so. For a teammate who has not installed yet, the two steps are:
 
 1. **Add the marketplace:** Cursor → plugins → **Add Marketplace → Import from Repo**, with the bspecs repo URL `https://github.com/Bluestep-Systems/bspecs`. A marketplace source must be a **committed git repo** (this one is — a plain local folder does not resolve unless it is a git repo with a commit).
 2. **Install `bluestep-tools`** from that marketplace, and enable it on the Manage screen if it is not on by default.
 
-Worth saying out loud:
+Worth saying out loud to the user in front of you:
 
 - **Skills and hooks are workspace-coupled.** Open the project folder before installing/using them — an empty window shows only user-global surfaces (the MCP server), and a project-scoped install needs an open workspace.
 - **Updates** arrive by themselves: an imported marketplace refreshes from the repo, so a new plugin version shows up without re-importing.
@@ -54,13 +61,12 @@ Worth saying out loud:
 
 ### Codex
 
-1. **Add the marketplace:** `codex plugin marketplace add Bluestep-Systems/bspecs` (CLI), or add the same repo from the plugins screen in the desktop app.
-2. **Install `bluestep-tools`** from it.
+If this skill is running in Codex, the marketplace and the plugin are already installed. (For a teammate who has not installed yet: `codex plugin marketplace add Bluestep-Systems/bspecs` — CLI, or the same repo from the plugins screen in the desktop app — then install `bluestep-tools` from it.)
 
-Then two steps that are easy to miss and that the tooling genuinely depends on:
+What remains are two steps that are easy to miss and that the tooling genuinely depends on:
 
-- **Trust the hooks — they silently do nothing until you do.** Open the plugin's page and use **Review → trust** on its hooks (`/hooks` in the CLI). An untrusted hook produces no error and no log; the guardrails simply never run. **Re-trust is required after any release that changes a hook definition**, so re-check this after a plugin update.
-- **Subagents do not come from the plugin on Codex.** A plugin cannot register them there, so the three BlueStep subagents (TOML, underscore names — `b6p_task_implementer`, `b6p_commenter`, `b6p_code_review`; hyphens are not valid agent names on Codex) have to be copied by hand from the installed plugin's `agents/` folder into `~/.codex/agents/` — once per machine, covers every project. (A project's own `.codex/agents/` also works, but then it is a per-project step.) This skill tells the user to do that; it does not copy the files yet. Until the copy is done, say plainly that delegation is unavailable on Codex and the spec skills run in-session instead of handing work to a subagent. Do not pretend a subagent exists.
+- **Trust the hooks — they silently do nothing until you do.** Open the plugin's page and use **Review → trust** on its hooks (`/hooks` in the CLI). An untrusted hook produces no error and no log; the guardrails simply never run. **Re-trust is required after any release that changes a hook definition**, so re-check this after a plugin update. Check `ls ~/.codex/agents/` while you are here (next bullet).
+- **Subagents do not come from the plugin on Codex.** A plugin cannot register them there, so the three BlueStep subagents have to be copied by hand into `~/.codex/agents/` — once per machine, covers every project. (A project's own `.codex/agents/` also works, but then it is a per-project step.) The three files are `b6p_task_implementer.toml`, `b6p_commenter.toml` and `b6p_code_review.toml` (TOML, underscore names — hyphens are not valid agent names on Codex). They sit in the installed plugin's `agents/` folder, next to its `skills/` folder, and in the bspecs repo at `dist/codex/bluestep-tools/agents/` (`https://github.com/Bluestep-Systems/bspecs/tree/main/dist/codex/bluestep-tools/agents`). If you can find the installed plugin's `agents/` folder, offer to run the copy for the user; otherwise give them the three filenames and the repo path. Until the copy is done, say plainly that delegation is unavailable on Codex and the spec skills run in-session instead of handing work to a subagent. Do not pretend a subagent exists.
 
 The gateway MCP server ships with the plugin and comes up once the token below is set — note that GUI apps only see the environment they were launched with, so a token set in a shell session does not reach them.
 

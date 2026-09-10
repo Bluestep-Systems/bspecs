@@ -1,4 +1,4 @@
-# {{CLIENT_NAME}} — {{PROJECT_NAME}}
+# {{PROJECT_NAME}}
 
 ## Layout
 
@@ -8,21 +8,23 @@ A project is a collection of B6P components, organised by Unit. `b6p pull "<DAV 
 
 The skills, subagents, hooks, and BlueStep reference for this project come from the **`bluestep-tools` agent plugin**, not from files in this repo. How you enable it depends on your tool:
 
-- **Claude Code** — `.claude/settings.json` registers the `bluestep` marketplace and enables the plugin; Claude Code prompts to install it the first time you open the project (or run `claude plugin install bluestep-tools@bluestep`).
+- **Claude Code** — `.claude/settings.json` registers the `bluestep` marketplace and enables the plugin. When you trust the folder, Claude Code registers the marketplace and, if the plugin is not installed yet, shows the command to run: `claude plugin install bluestep-tools@bluestep` (desktop app: install it from the Plugins screen on claude.ai). There is no automatic install.
 - **Cursor** — add the marketplace once via **Add Marketplace → Import from Repo** with the bspecs repo URL, then install `bluestep-tools`. Open this project folder first: skills and hooks are workspace-scoped.
 - **Codex** — `codex plugin marketplace add Bluestep-Systems/bspecs`, install `bluestep-tools`, then open the plugin's page and **Review → trust** its hooks (untrusted hooks silently never run, and a release that changes a hook needs re-trusting).
 
 The `b6p` CLI is a **standalone binary** installed separately on the machine — not an npm dependency of this project. The b6p skills (`/b6p-pull`, `/b6p-push`, `/b6p-audit`) invoke it as bare `b6p`. If `b6p` is not on PATH, install the b6p-cli binary from its release.
 
-### Configure your platform access token (one-time)
+### Authenticate the b6p CLI (one-time)
 
-Store your BlueStep platform access token once per machine:
+Store the CLI's BlueStep access token once per machine:
 
 ```bash
 b6p auth set
 ```
 
-Without it, the first `b6p pull` prompts for the token interactively, which Claude Code cannot answer — the call fails with exit `1`. Run `auth set` before invoking `/b6p-pull`. If you used `b6p` before version 0.6.0 you will be asked once more even though you set it up already: bearer auth replaced the old username + password and a token cannot be derived from them.
+Without it, the first `b6p pull` prompts for the token interactively, which the agent cannot answer — the call fails with exit `1`. Run `auth set` before invoking `/b6p-pull`. If you used `b6p` before version 0.6.0 you will be asked once more even though you set it up already: bearer auth replaced the old username + password and a token cannot be derived from them.
+
+The once-per-machine setup as a whole — this CLI, its token, the plugin install, and the **optional** `B6PT_TOKEN` that the platform gateway MCP needs for in-session platform authoring — is the `/b6p-init` skill. Run it once on a new machine; it checks each item and skips what is done. `B6PT_TOKEN` is a separate credential from the CLI's token above.
 
 The DAV URL passed to `b6p pull` is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
 

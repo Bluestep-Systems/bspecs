@@ -163,7 +163,7 @@ Three reusable probes referenced below:
       non-empty tenant list returns (it's a curated directory, not the full reachable
       set — non-empty is the pass bar).
 - [ ] **`/project-init` scaffold:** in a fresh empty scratch dir, run `/project-init`
-      (choose "Current directory", "Set later", skip the token step) → it writes
+      (it asks nothing on a fresh folder; the project name is the folder name) → it writes
       `AGENTS.md` (the rules), a **one-line `CLAUDE.md` bridge** (`@AGENTS.md` plus a
       comment, nothing else), `README.md`, `package.json` (with **no** `b6p-cli`
       devDependency), `.gitignore`, `.prettierrc`, and `.claude/settings.json` with the

@@ -1,6 +1,6 @@
 ---
 name: bluestep-init
-description: Deprecated alias, removed in a later release. Use /b6p-init for the once-per-machine setup (b6p CLI, plugin install, platform token) and /project-init for each project's files (AGENTS.md, CLAUDE.md bridge, README, settings).
+description: Deprecated alias, removed in 0.34.0. Use /b6p-init for the once-per-machine setup (b6p CLI, plugin install, platform token) and /project-init for each project's files (AGENTS.md, CLAUDE.md bridge, README, settings).
 ---
 
 # /bluestep-init — deprecated
