@@ -1,0 +1,46 @@
+# {{PROJECT_NAME}}
+
+<!-- bluestep-tools rules-template 2 -->
+
+> Always-on rules for AI coding agents in this project. Cursor, Codex and most agents read `AGENTS.md` natively; Claude Code reads it through the one-line `CLAUDE.md` bridge next to it. Project rules go here, never in `CLAUDE.md`. Everything longer lives in the `bluestep-reference` skill and is read on demand.
+
+## Platform rules
+
+This workspace is a local copy of components that live on the BlueStep platform. The platform is the source of truth. Unit folders (`U######/`) and new components come from the platform via `b6p pull`, never by hand.
+
+1. **Never** use `.writable()`. Field writability is configured on the platform, not requested in code.
+2. **Never** create B6P components locally. Create them on the platform first, then pull.
+3. **Never** fabricate query, form or field references. They must exist in that component's `declarations/index.d.ts` before use, and imports are per component (`bluestep-reference` → `reference/import-scope.md`).
+4. On any `b6p push`, recommend publishing but **never** publish or save a draft without the user's explicit choice for that push. `/b6p-push` owns this; a hand-run push owes the user the same choice.
+5. MergeReport frontend (HTML, CSS, client JS) lives in `static/`, never in template literals in `scripts/app.ts` (`bluestep-reference` → `conventions/separate-files.md` lists the real exceptions).
+6. Platform authoring and wiring (imports, forms, fields, views, record types) goes through the gateway MCP, approval-gated, following `bluestep-reference` → `conventions/mcp-platform-authoring.md`. The MCP never pushes or pulls source; the `b6p` CLI does that.
+7. **Never** edit platform-generated files (`declarations/`, `B.d.ts`, `scriptlibrary.d.ts`, `Globals.d.ts`); the next pull replaces them. Fix a wrong or missing declaration on the platform, then pull.
+8. **Never** run `tsc` locally. The b6p CLI runs the only build, during a publish push; a hand-run `tsc` has no declarations wired up and leaves stray `.js` files and misleading errors.
+
+On Claude Code, hooks also block rules 7 and 8. On Cursor the edit hook only warns after the fact, and on Codex hooks run only once trusted, so the rules stand on their own.
+
+## Reading
+
+- The platform API is the global `B`. Read `bluestep-reference`'s `bsjs-development.md` before writing component code, and `b6p-platform.md` when a task hinges on platform behaviour or the folder layout.
+- For any other platform or BsJs detail, open the `bluestep-reference` skill's `SKILL.md` first and read only the single-topic file it points at.
+- A component's type is in `draft/info/metadata.json` when that folder exists (older components); otherwise read `draft/scripts/app.ts` and the folder shape (`draft/static/` means MergeReport). Never infer the type from folder names.
+- Read `draft/README.md` only for the component(s) the task touches, never all of them. To list components, list `U######/*/`. If the target component is ambiguous, ask.
+
+## Routing
+
+Before editing any TypeScript or static file under `U######/<Component>/draft/` (`scripts/`, `static/`; `draft/README.md` and the writes a `/b6p-*` skill or subagent makes are not gated):
+
+- A **feature** (new behaviour, anything that needs design) → `/spec-create`, or `/spec-execute` when `.claude/specs/<feature>/tasks.md` already exists.
+- A **bug** or small, clearly scoped change → `/quick-task`.
+- The user says it is **trivial** → say what you will do and wait for "ok".
+
+Ask once if a request is ambiguous; never edit directly.
+
+A platform rule or BsJs pattern the reference lacks, or a broken or missing skill, hook or reference file, goes upstream with `/bspecs-feedback`. A rule specific to this project goes in this file.
+
+## Compaction
+
+When compacting, always preserve: the full list of files modified in this session (paths), the
+exact commands used to check or sync work (`b6p pull`/`b6p push` targets, test or build commands),
+every open decision with its reason, the current task's done-when check, and which spec or
+quick-task document is being followed. Drop verbatim tool output and superseded attempts.

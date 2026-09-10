@@ -90,7 +90,7 @@ specifically `mcp__plugin_bluestep-tools_bluestep-gateway__available_tenants` an
 - **Don't mix the two token systems.** The `b6pt_` gateway token never goes into `b6p auth set` —
   that stores the b6p CLI's own, separate token. The gateway token stores cleanly there and then
   fails with a `401` from `/gql`, which looks like more platform trouble but is just the wrong
-  credential in the wrong slot (see `/bluestep-init` for both tokens).
+  credential in the wrong slot (see `/b6p-init` for both tokens).
 
 ### 3 — Resolve the target org (to a U-number)
 
@@ -467,6 +467,6 @@ requires for declarations.
 - **Connection** — the `bluestep-gateway` server is **bundled** in the plugin's `.mcp.json` and
   auto-registers once the `bluestep-tools` plugin is enabled and `$B6PT_TOKEN` is set (the global `b6pt_`
   token). There is no per-org connect step. Token creation / `$B6PT_TOKEN` setup is covered by
-  [/bluestep-init](../../bluestep-init/SKILL.md); the fresh-session caveat is in step 2 above.
+  [/b6p-init](../../b6p-init/SKILL.md); the fresh-session caveat is in step 2 above.
 - [../../../../docs/decisions/platform-mcp-integration.md](../../../../docs/decisions/platform-mcp-integration.md) —
   the governing ADR: coexistence (CLI owns sync, MCP owns authoring) and the Manual→MCP mapping.

@@ -17,7 +17,7 @@ So these `.toml` files are **payload**: to use them, copy them into
 - the project's `.codex/agents/` (per project), or
 - `~/.codex/agents/` (all your projects).
 
-Copy them yourself for now — the `/bluestep-init` Codex enablement section
+Copy them yourself for now — the `/b6p-init` Codex enablement section
 tells you when. (Automated copying by the init skill is planned but not yet
 shipped; until then this folder is the source and the copy is manual.)
 

@@ -17,7 +17,7 @@ Internal staff normally get it pre-enabled via managed settings (`extraKnownMark
 
 ## Contents
 
-- `skills/` — `/bluestep-init` (project bootstrap), the `/b6p-*` platform CLI skills, the `/spec-*`
+- `skills/` — `/b6p-init` (once-per-machine setup), `/project-init` (per-project files), the `/b6p-*` platform CLI skills, the `/spec-*`
   workflow, `quick-task`, `task-comment`, `bspecs-feedback`, and `bluestep-reference` (the on-demand
   platform reference).
 - `agents/` — BlueStep subagents (`b6p-task-implementer`, `b6p-commenter`, `b6p-code-review`).
@@ -25,7 +25,7 @@ Internal staff normally get it pre-enabled via managed settings (`extraKnownMark
 - `.mcp.json` — bundles the `bluestep-gateway` MCP server for in-session `[PLATFORM]` authoring
   (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set).
 
-Usage, project bootstrapping (`/bluestep-init`), and the release process are documented in the
+Usage, setup (`/b6p-init`, `/project-init`), and the release process are documented in the
 [repo README](../README.md).
 
 ## Requirements

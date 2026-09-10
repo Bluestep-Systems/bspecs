@@ -26,7 +26,7 @@ notes are `dist/cursor/bluestep-tools/hooks/README.md` and
 That one released plugin version actually works on all three tools — skills discoverable
 and invocable, the `bluestep-reference` tree readable on demand, the three guardrail hooks
 doing what each tool allows them to do (block where the tool supports blocking, advise
-where it doesn't), the gateway MCP server connecting, and `/bluestep-init` scaffolding the
+where it doesn't), the gateway MCP server connecting, and `/project-init` scaffolding the
 `AGENTS.md` + `CLAUDE.md` bridge — plus that nothing regressed for existing Claude Code
 users.
 
@@ -56,7 +56,7 @@ Fill in per run (copy the row):
       version is what `plugin/.claude-plugin/plugin.json` on `main` says.
 - [ ] **`B6PT_TOKEN` is set** in the environment the tool launches from (needed for the
       MCP steps only; everything else works without it). Creation + placement steps live in
-      the `/bluestep-init` skill's "Platform token" section — the short version:
+      the `/b6p-init` skill's "Platform token" section — the short version:
   - Linux / WSL / macOS terminal: `export B6PT_TOKEN="b6pt_…"` in your shell profile, new
     terminal.
   - **Windows: `setx B6PT_TOKEN "b6pt_…"` (User scope), then FULLY restart the app** —
@@ -128,10 +128,10 @@ serves a Claude Code marketplace (`.claude-plugin/marketplace.json`), a Cursor m
 
 ## 4. Per-tool checklists
 
-Each step: **Do** → **SUCCESS looks like**. Run inside the scratch project folder. The 12
-skills that must exist everywhere: `b6p-pull`, `b6p-push`, `b6p-audit`, `spec-create`,
+Each step: **Do** → **SUCCESS looks like**. Run inside the scratch project folder. The 13
+skills that must exist everywhere (the deprecated `bluestep-init` stub may appear as a 14th this release): `b6p-pull`, `b6p-push`, `b6p-audit`, `spec-create`,
 `spec-execute`, `spec-status`, `quick-task`, `task-comment`, `bspecs-feedback`,
-`bluestep-init`, `bluestep-vite-report`, `bluestep-reference`.
+`b6p-init`, `project-init`, `bluestep-vite-report`, `bluestep-reference`.
 
 Three reusable probes referenced below:
 
@@ -148,7 +148,7 @@ Three reusable probes referenced below:
 
 ### 4.1 Claude Code (regression — existing behavior must not change)
 
-- [ ] **Skills discoverable:** type `/` in the composer → all 12 skills above appear
+- [ ] **Skills discoverable:** type `/` in the composer → all 13 skills above appear
       (namespaced `bluestep-tools:` or plain, per your setup).
 - [ ] **One skill end-to-end:** run `/spec-status` in the scratch folder → it reports that
       no specs exist (or lists them), with no error.
@@ -162,15 +162,15 @@ Three reusable probes referenced below:
 - [ ] **MCP:** ask the agent to call `available_tenants` on the bluestep gateway → a
       non-empty tenant list returns (it's a curated directory, not the full reachable
       set — non-empty is the pass bar).
-- [ ] **`/bluestep-init` scaffold:** in a fresh empty scratch dir, run `/bluestep-init`
-      (choose "Current directory", "Set later", skip the token step) → it writes
+- [ ] **`/project-init` scaffold:** in a fresh empty scratch dir, run `/project-init`
+      (it asks nothing on a fresh folder; the project name is the folder name) → it writes
       `AGENTS.md` (the rules), a **one-line `CLAUDE.md` bridge** (`@AGENTS.md` plus a
       comment, nothing else), `README.md`, `package.json` (with **no** `b6p-cli`
       devDependency), `.gitignore`, `.prettierrc`, and `.claude/settings.json` with the
       marketplace + `enabledPlugins` block; it guides `git init` and reports written vs.
       skipped.
 - [ ] **Existing-project regression:** in a dir that already has a **populated**
-      `CLAUDE.md` (fake one with a few real-looking rules), run `/bluestep-init` → the
+      `CLAUDE.md` (fake one with a few real-looking rules), run `/project-init` → the
       file is **not overwritten**; the migration to `AGENTS.md` is **offered**, and
       declining leaves both files exactly as they were.
 
@@ -181,7 +181,7 @@ Expected hook behavior differs here by design — see
 carries content, so the two edit guardrails are **post-hoc advisory**: the edit lands, and
 the guardrail message goes to Cursor's hook logs. Only the shell guardrail blocks.
 
-- [ ] **Skills discoverable:** all 12 skills autocomplete in the composer's slash menu.
+- [ ] **Skills discoverable:** all 13 skills autocomplete in the composer's slash menu.
 - [ ] **One skill end-to-end:** `/spec-status` → reports no specs (or lists them), no
       error. *(First run: this also closes prove-out C2 — skill body execution + bundled
       resource reads on Cursor.)*
@@ -200,9 +200,9 @@ the guardrail message goes to Cursor's hook logs. Only the shell guardrail block
       agent to call `available_tenants` → non-empty
       list. (`${env:B6PT_TOKEN}` interpolation was proven live in the prove-out; a
       connect failure here points at the token env, §2.)
-- [ ] **`/bluestep-init` scaffold:** in a fresh scratch dir → writes `AGENTS.md` +
-      one-line `CLAUDE.md` bridge + `README.md`/`package.json`/`.gitignore`/`.prettierrc`,
-      guides `git init`, and walks the **Cursor** enablement subsection (marketplace
+- [ ] **`/project-init` + `/b6p-init`:** in a fresh scratch dir `/project-init` writes `AGENTS.md` +
+      one-line `CLAUDE.md` bridge + `README.md`/`package.json`/`.gitignore`/`.prettierrc` and
+      guides `git init`; `/b6p-init` walks the **Cursor** enablement subsection (marketplace
       import steps — it must NOT write `.claude/settings.json` as if this were Claude
       Code).
 
@@ -213,7 +213,7 @@ indistinguishable from a broken one. Full failure ladder if a hook seems dead:
 `dist/codex/bluestep-tools/hooks/README.md`.
 
 - [ ] **Skill catalog complete (description budget watch):** the skills list shows all
-      **12** entries (plugin-prefixed, e.g. `bluestep-tools:spec-status`), none missing
+      **13** entries (plugin-prefixed, e.g. `bluestep-tools:spec-status`), none missing
       and none with a truncated description. Codex caps startup skill discovery at
       8k chars / 2% of context; the generator warns near the cap, this step is the
       runtime check.
@@ -235,8 +235,8 @@ indistinguishable from a broken one. Full failure ladder if a hook seems dead:
       Codex-native `bearer_token_env_var: "B6PT_TOKEN"`; on Windows remember the `setx` +
       full-app-restart rule (§2) — an `AUTHORIZATION_REQUIRED`-style error means the
       process never saw the token.
-- [ ] **`/bluestep-init` scaffold:** in a fresh scratch dir → writes `AGENTS.md` +
-      one-line `CLAUDE.md` bridge + the root files, guides `git init`, and walks the
+- [ ] **`/project-init` + `/b6p-init`:** in a fresh scratch dir `/project-init` writes `AGENTS.md` +
+      one-line `CLAUDE.md` bridge + the root files and guides `git init`; `/b6p-init` walks the
       **Codex** enablement subsection — including telling you (a) to trust the hooks and
       (b) that **subagents do not come from the plugin on Codex**: the three agent TOML
       files (underscore names, e.g. `b6p_task_implementer`) sit in the installed plugin's
@@ -298,7 +298,7 @@ tooling.
       endpoint component, the agent runs the read-only `b6p audit` (or `/b6p-audit`) to
       surface drift first. If the first-run experience confirms the need, file the rule
       change as a fix task (candidate homes:
-      `plugin/skills/bluestep-init/templates/AGENTS.md.template` and/or
+      `plugin/skills/project-init/templates/AGENTS.md.template` and/or
       `plugin/skills/b6p-push/SKILL.md`) — note this deliberately softens the `/b6p-audit`
       skill's current "on demand, not a pre-flight" stance for the endpoint-component case
       only, so it needs a deliberate decision, not a drive-by edit.
@@ -346,5 +346,5 @@ tooling.
   single version stream, tag-on-merge).
 - `dist/cursor/bluestep-tools/hooks/README.md` / `dist/codex/bluestep-tools/hooks/README.md`
   — per-tool hook wiring and documented degradations the §4 expectations come from.
-- `plugin/skills/bluestep-init/SKILL.md` — the scaffold + per-tool enablement steps §3/§4
-  exercise, including full `B6PT_TOKEN` setup.
+- `plugin/skills/project-init/SKILL.md` and `plugin/skills/b6p-init/SKILL.md` — the scaffold and
+  the per-tool enablement steps §3/§4 exercise, including full `B6PT_TOKEN` setup.
