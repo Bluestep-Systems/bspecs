@@ -5,10 +5,6 @@
       {
         "type": "command",
         "command": "./hooks/block-generated-files-cursor.sh"
-      },
-      {
-        "type": "command",
-        "command": "./hooks/block-inline-frontend-cursor.sh"
       }
     ],
     "beforeShellExecution": [
