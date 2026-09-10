@@ -8,6 +8,58 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.34.0] — 2026-09-10
+
+> **New: `/b6p-update`.** 0.33.0 shipped a short `AGENTS.md`, but only for projects set up after
+> it. A project that already existed kept the long one — re-read on **every turn** of every
+> session — and nothing in a session said a shorter one exists. `/b6p-update` is what swaps it:
+> it reports first, applies only what you pick, and keeps every project rule or leaves it one
+> pointer away. Fixes to the shared rules then reach you on a plugin update instead of drifting
+> in each copy. **No hook definition changed**, so Codex users do not need to re-trust.
+
+### Added
+
+- **`/b6p-update` — bring existing projects up to the current release.** Two modes: `here` for the
+  current project, and `all` to sweep the machine. **`all` works on all three tools** — each keeps
+  a list of the directories it has opened, in three unrelated places and shapes, and
+  `references/project-index.md` documents each: Claude Code's `projects` map, Cursor's
+  `history.recentlyOpenedPathsList` row in its Electron `state.vscdb` (read-only, percent-encoded
+  `file://` URIs, folders mixed with files), and Codex's per-session `cwd` in the first record of each
+  rollout file under `~/.codex/sessions/`. They differ in reach — Claude Code's is every directory ever
+  opened, Cursor's is a short recently-opened list, Codex's goes back as far as retained sessions — so
+  the sweep unions them with a scan of the session root, normalises the several spellings each holds
+  for one directory, and says which kind of list it read. It **reports first** — a table of project, what it is behind on,
+  and what would change — and writes nothing until you pick. Four guardrails hold for every
+  migration: report before writing, never drop a line silently, never commit or stage, and touch
+  only what a matched migration names. Numbers it quotes about your files — size, cost per turn,
+  lines before and after — are measured from the files, never taken from the skill.
+- **Migrations are data the skill reads, not steps written into it.** `migrations/index.md`
+  catalogues each one with a detector, an asset file and a "remove when" condition; the skill reads
+  the catalogue every run and then reads only the assets whose detector matched. Detectors read the
+  project — a marker, a heading, a missing key — rather than a release number, so they stay true as
+  versions move, and the current template version is read from the shipped template's own marker.
+  A later release adds an asset and a catalogue row; the procedure file does not change.
+  Ships with four: the rules-template swap, rules sitting in the Claude Code bridge file instead of
+  `AGENTS.md`, project-settings drift, and the Codex subagents/hook-trust reminder.
+- **The rules-template swap proposes cuts, chunk by chunk, with a reason each** — a chunk that
+  restates a `docs/` page becomes one pointer; a table only one skill uses moves verbatim into
+  `docs/` with a two-line pointer left behind; a dated rule or one naming a ticket is kept; a
+  description of the system becomes one paragraph. You accept or keep each chunk. Carrying every
+  line over verbatim is the failure mode it exists to prevent: done that way a swap keeps several
+  times the lines a proper sort leaves, and the project pays for them on every turn.
+
+### Changed
+
+- **`/project-init` no longer offers the long-`AGENTS.md` swap.** It reports the old file and points
+  at `/b6p-update`, which owns that migration and can do every project in one pass. Its only
+  remaining question for an older setup is the `CLAUDE.md` migration. Setting up a fresh project is
+  unchanged and still asks nothing.
+
+### Removed
+
+- **`/bluestep-init`**, the deprecated alias kept for one release in 0.33.0. Use `/b6p-init` for the
+  once-per-machine setup and `/project-init` per project.
+
 ## [plugin 0.33.0] — 2026-09-10
 
 > **Breaking: `/bluestep-init` is split and renamed.** `/b6p-init` does the once-per-machine
