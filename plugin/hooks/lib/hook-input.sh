@@ -16,7 +16,11 @@
 #   FILE=$(hook_field file_path path)
 #   CMD=$(hook_field command)
 
-HOOK_INPUT=$(cat)
+# HOOK_DETECT_ONLY=1 (set by hooks/canary.sh before sourcing) runs the parser detection and
+# nothing else: no stdin read, no block. The canary reports the result instead of enforcing it.
+if [ -z "${HOOK_DETECT_ONLY:-}" ]; then
+  HOOK_INPUT=$(cat)
+fi
 
 _hook_parser=""
 for _c in jq python3 python node; do
@@ -24,7 +28,7 @@ for _c in jq python3 python node; do
 done
 
 # No parser at all: block, loudly, once, with the fix.
-if [ -z "$_hook_parser" ]; then
+if [ -z "$_hook_parser" ] && [ -z "${HOOK_DETECT_ONLY:-}" ]; then
   echo "BLOCKED: the ${HOOK_NAME:-BlueStep} guardrail hook cannot read its input — none of jq, python3, python or node is on PATH, so it cannot tell whether this call is safe. It blocks rather than allow an unchecked call. Install any one of them (jq is smallest) and retry, or disable the bluestep-tools hooks if you accept losing the guardrails." >&2
   exit 2
 fi

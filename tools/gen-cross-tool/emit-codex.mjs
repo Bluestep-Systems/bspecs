@@ -440,6 +440,10 @@ function readHookWiring(tree) {
   const config = JSON.parse(src.text);
   const groups = [];
   for (const [event, sourceGroups] of Object.entries(config.hooks ?? {})) {
+    // SessionStart carries only hooks/canary.sh, a Claude Code-only environment check (it
+    // reports a missing JSON parser once per session). Not wired here on purpose: Codex hooks
+    // are a different surface, and the canary's report path is Claude Code's stderr handling.
+    if (event === 'SessionStart') continue;
     if (event !== 'PreToolUse') {
       throw new Error(`emit-codex: hooks/hooks.json: unmapped source hook event "${event}" — give it a Codex wiring`);
     }
@@ -612,7 +616,7 @@ silently.
 |---|---|---|
 | block-tsc | \`Bash\` | Proven live — \`Bash\` is the tool name Codex sends, and the deny was verified falsifiably (the blocked command never ran) |
 | block-generated-files | *(none)* | Fires on every PreToolUse; the wrapper filters |
-| block-inline-frontend | *(none)* | Fires on every PreToolUse; the wrapper filters |
+| canary | *(not wired)* | Claude Code-only SessionStart check; \`shared/canary.sh\` ships but nothing runs it on Codex |
 
 The two edit guardrails are matcher-less on purpose. Codex intercepts file
 edits through **\`apply_patch\`** (documented), but its \`tool_input\` shape has

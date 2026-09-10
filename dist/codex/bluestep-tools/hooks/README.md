@@ -49,7 +49,7 @@ silently.
 |---|---|---|
 | block-tsc | `Bash` | Proven live — `Bash` is the tool name Codex sends, and the deny was verified falsifiably (the blocked command never ran) |
 | block-generated-files | *(none)* | Fires on every PreToolUse; the wrapper filters |
-| block-inline-frontend | *(none)* | Fires on every PreToolUse; the wrapper filters |
+| canary | *(not wired)* | Claude Code-only SessionStart check; `shared/canary.sh` ships but nothing runs it on Codex |
 
 The two edit guardrails are matcher-less on purpose. Codex intercepts file
 edits through **`apply_patch`** (documented), but its `tool_input` shape has

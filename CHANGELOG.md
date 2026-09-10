@@ -8,6 +8,29 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.32.2] — 2026-09-10
+
+> **This release changes hook definitions** (`hooks.json` gains a `SessionStart` entry). Codex
+> users must **re-trust the plugin's hooks** after updating (the canary itself is not wired on
+> Codex or Cursor, but the trust gate covers the whole definition file).
+
+### Added
+
+- **Hook canary.** `hooks/canary.sh` runs at session start (Claude Code, `SessionStart` /
+  `startup`) and repeats the parser detection the guardrail hooks depend on. If none of `jq`,
+  `python3`, `python` or `node` is on PATH it prints one line to stderr saying the hooks will block
+  every Edit/Write/Bash call until one is installed, exit 1 (non-blocking). Otherwise it is silent
+  and adds nothing to the model's context. Closes the loop on 0.32.0: fail-closed made a missing
+  parser safe, this makes it visible on day one instead of on the first blocked call.
+  `hooks/lib/hook-input.sh` accepts `HOOK_DETECT_ONLY=1` for this. Two new cases in
+  `tools/test-hooks.sh`.
+
+### Fixed
+
+- **`tools/test-hooks.sh` now runs on Linux/WSL.** It built its payloads with `python`, which does
+  not exist on Ubuntu (only `python3`), so the six "allows" cases failed there for the wrong reason.
+  It picks `python3` or `python`, whichever exists; 19/19 pass on WSL and on Windows Git Bash.
+
 ## [plugin 0.32.1] — 2026-09-10
 
 ### Added
