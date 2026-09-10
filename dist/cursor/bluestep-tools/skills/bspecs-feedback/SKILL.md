@@ -34,7 +34,7 @@ Only when there is nothing to infer from (e.g. the user just types `/bspecs-feed
 
 The kind set drives what you collect (pull from the conversation first; read the tree to fill gaps):
 
-- **change rule / remove rule** → the affected **file path** + the **current rule text quoted verbatim** (`currentText`). Read it from wherever the artifact actually lives: a plugin file under `../../../../../../../..//wsl.localhost/ubuntu/home/fchazarreta/b6p/bspecs/` (relative to this file) (`skills/`, `agents/`, `hooks/`, or `skills/bluestep-reference/` for a platform rule), or this project's own `AGENTS.md` for a project rule. In the payload, quote the plugin-relative path (e.g. `skills/b6p-push/SKILL.md`), not the absolute plugin-root path. Keep the excerpt focused — do not paste a whole file.
+- **change rule / remove rule** → the affected **file path** + the **current rule text quoted verbatim** (`currentText`). Read it from wherever the artifact actually lives: a plugin file under `../../` (relative to this file) (`skills/`, `agents/`, `hooks/`, or `skills/bluestep-reference/` for a platform rule), or this project's own `AGENTS.md` for a project rule. In the payload, quote the plugin-relative path (e.g. `skills/b6p-push/SKILL.md`), not the absolute plugin-root path. Keep the excerpt focused — do not paste a whole file.
 - **report error/bug** → a repro: what was run, what happened, what was expected.
 - **request capability** → the use case: what the user is trying to do that no skill/hook/CLI feature supports.
 - **add rule** → where the guidance should live + the proposed text.
