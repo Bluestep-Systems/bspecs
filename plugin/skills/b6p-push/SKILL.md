@@ -36,6 +36,8 @@ test -f ~/.b6p/secrets.enc && echo OK
   > `b6p` has no BlueStep platform access token on this machine yet, so the push would stop at an interactive prompt I can't answer. Run `b6p auth set` once (it stores the token globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-push <component>`.
 - If it prints `OK` → continue, but treat this as a **negative check only**. `secrets.enc` holds every secret under its own key, so a machine that authenticated before 0.6.0 has the file *without* an access token in it — the preflight passes and the push still stops at `Enter your access token` and exits `1`. That failure is self-describing: surface it verbatim and give the user the same `b6p auth set` instruction rather than retrying.
 
+**Project setup check.** If the working directory has no `AGENTS.md` (and no populated `CLAUDE.md`), this project has not been set up and the always-on platform rules are missing. Say so and offer to run `/project-init` first; it is non-destructive and takes a minute. If the user would rather go on, continue and repeat the offer in the report.
+
 ### 1. Identify the component
 
 If `$ARGUMENTS` contains a component path (relative to the project root), use it. Otherwise ask the user which component to push.

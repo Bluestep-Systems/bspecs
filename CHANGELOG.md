@@ -22,8 +22,9 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   marketplace registration / plugin install for the tool you are in (Claude Code, Cursor, Codex —
   the per-tool subsections moved here verbatim), Codex hook trust and where to copy the agents, and the
   `B6PT_TOKEN` section with its security notes. Idempotent: every step checks first. On Claude
-  Code it now says plainly that the project `.claude/settings.json` is the preferred place to
-  enable the plugin, and user-scope enablement loads B6P tooling into every session.
+  Code it says plainly that the user-scope install is the once-per-machine step (the skills are
+  what run `/project-init` in a new folder) and that the project `.claude/settings.json` is what
+  makes the setup travel with the repo.
 - **`/project-init` (new) — once per project.** Steps 1–4 and 6–7 of the old skill (location,
   client, templates with skip-if-exists and the `CLAUDE.md` migration rule, `git init`, report,
   new-subfolder note), the Claude Code project settings write, plus a final check of the two
@@ -41,6 +42,10 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   `/b6p-update` skill can find projects that are behind without pattern-matching headings. The last
   pre-split template ships as `templates/legacy/AGENTS.md.v1.template` so the swap in `/project-init`
   has something to diff against when the project's git history does not show it.
+- **Setup preflight** in `/b6p-pull`, `/b6p-push`, `/spec-create` and `/quick-task`: a working
+  directory with no `AGENTS.md` (and no populated `CLAUDE.md`) gets an offer to run `/project-init`
+  first, on every tool. Nothing else tells a person who installed the plugin and started pulling
+  that the always-on rules are missing.
 - **Denylist lint** (`tools/gen-cross-tool/lib.mjs`): the Claude Code-section and `CLAUDE.md`
   allowances now cover both init skills (the section match accepts a numbered heading such as
   `### 5. Claude Code only — …`).

@@ -7,6 +7,8 @@ description: Short workflow for small tasks and bug fixes that don't warrant a f
 
 The lightweight counterpart to `/spec-create`. Instead of three files (requirements / design / tasks), a quick task keeps **one** living markdown document you can review while it's being implemented. Use it for a clearly-scoped change or bug that doesn't need real design. If the work turns out to be larger than expected (touches many components, needs design decisions), **STOP and suggest `/spec-create` instead.**
 
+**Project setup check.** If the working directory has no `AGENTS.md` (and no populated `CLAUDE.md`), this project has not been set up and the always-on platform rules are missing. Say so and offer to run `/project-init` first; it is non-destructive and takes a minute. If the user would rather go on, continue and repeat the offer in the report.
+
 ## Steps
 
 1. **Gather context.** Ask for (or extract from `$ARGUMENTS`):

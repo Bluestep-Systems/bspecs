@@ -31,10 +31,10 @@ Each tool has its own marketplace and install flow. **Do the subsection for the 
 
 ### Claude Code
 
-Two scopes, and the split matters:
+Two scopes:
 
-- **Once per machine (this skill):** register the marketplace so the plugin can be installed: `claude plugin marketplace add Bluestep-Systems/bspecs`. Check first with `claude plugin marketplace list`.
-- **Per project (`/project-init`):** the project's `.claude/settings.json` lists `enabledPlugins: ["bluestep-tools@bluestep"]`, so the plugin loads only in B6P projects and travels with the repo. Enabling it at **user scope** instead (`claude plugin install bluestep-tools@bluestep` without a project) works but loads the B6P skills, hooks and gateway MCP into every session on the machine, including non-B6P work — prefer the project file.
+- **Once per machine (this skill):** the plugin is installed at **user scope** — `claude plugin marketplace add Bluestep-Systems/bspecs`, then `claude plugin install bluestep-tools@bluestep` (the README's step 1; internal staff usually get both through managed settings). If this skill is running, that part is already done on this tool; confirm the marketplace is registered with `claude plugin marketplace list` so updates arrive. A user-scope install loads the B6P skills, hooks and gateway MCP in every session on the machine, B6P project or not. That is by design: the skills are what run `/project-init` in a new, empty folder. The cost elsewhere is a few slash-menu entries, the MCP connection, and two hooks that act only on platform-generated declaration files and on `tsc`.
+- **Per project (`/project-init`):** writes the project's `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`) so the setup travels with the repo: a teammate who clones is offered the plugin on folder trust, and CI sees the dependency. It does not replace the install above.
 
 Plugin-bundled surfaces (MCP servers, hooks) load at session start: after enabling, use a fresh session or `/reload-plugins`.
 

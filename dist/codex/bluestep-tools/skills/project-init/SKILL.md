@@ -129,7 +129,7 @@ In the target directory, create `.claude/` if needed, then write `.claude/settin
 ```
 
 - **If it was skipped**, call that out: an existing `settings.json` may not register the marketplace / enable the plugin, so the marketplace + `enabledPlugins` block may need to be merged in by hand.
-- This file is what enables the plugin **for this project**. Enabling it at user scope instead is possible but loads the B6P skills, hooks and gateway MCP into every non-B6P session on the machine, so prefer the project file. On a fresh clone Claude Code offers the one-time install on the folder-trust prompt, or the user runs `claude plugin install bluestep-tools@bluestep`.
+- This file is what makes the setup **travel with the repo**: on a fresh clone Claude Code offers the one-time install on the folder-trust prompt (or the teammate runs `claude plugin install bluestep-tools@bluestep`), and CI sees the dependency. It does not replace the user-scope install from `/b6p-init`, which is what loads the plugin for the person running this skill.
 - Plugin-bundled surfaces (MCP servers, hooks) load at session start: after enabling, Claude Code needs a fresh session or `/reload-plugins`.
 
 ### 6. Check the once-only setup
