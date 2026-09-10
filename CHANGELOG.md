@@ -8,6 +8,16 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.32.1] — 2026-09-10
+
+### Added
+
+- **`AGENTS.md.template` gains a `## Compaction` section** steering what auto-compaction keeps:
+  modified file paths, the exact sync/test commands, open decisions with reasons, the current
+  done-when check and the spec/quick-task being followed. Pairs with the `autoCompactWindow`
+  scaffolded in 0.32.0: compacting at 400 K is only safe if the summary keeps the working state.
+  Existing projects: paste the section into your `AGENTS.md`/`CLAUDE.md`.
+
 ## [plugin 0.32.0] — 2026-09-09
 
 > **This release changes hook definitions** (`hooks.json` drops `block-inline-frontend`; both

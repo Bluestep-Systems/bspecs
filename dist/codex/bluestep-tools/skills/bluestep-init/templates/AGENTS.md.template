@@ -133,3 +133,10 @@ The two overviews bundled with the skill come first for high-frequency material:
 - `b6p-platform.md` — platform architecture and concepts (Relate/Connect/Manage, component types, sync model, declarations). Read when a task hinges on platform behavior.
 
 Reach past the overviews into the indexed atomic files when you need a specific topic the overview only summarizes. The Critical rules above are the must-always-apply subset — honor them without needing the deep files.
+
+## Compaction
+
+When compacting, always preserve: the full list of files modified in this session (paths), the
+exact commands used to check or sync work (`b6p pull`/`b6p push` targets, test or build commands),
+every open decision with its reason, the current task's done-when check, and which spec or
+quick-task document is being followed. Drop verbatim tool output and superseded attempts.
