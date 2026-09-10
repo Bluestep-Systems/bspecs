@@ -128,8 +128,8 @@ serves a Claude Code marketplace (`.claude-plugin/marketplace.json`), a Cursor m
 
 ## 4. Per-tool checklists
 
-Each step: **Do** → **SUCCESS looks like**. Run inside the scratch project folder. The 12
-skills that must exist everywhere: `b6p-pull`, `b6p-push`, `b6p-audit`, `spec-create`,
+Each step: **Do** → **SUCCESS looks like**. Run inside the scratch project folder. The 13
+skills that must exist everywhere (the deprecated `bluestep-init` stub may appear as a 14th this release): `b6p-pull`, `b6p-push`, `b6p-audit`, `spec-create`,
 `spec-execute`, `spec-status`, `quick-task`, `task-comment`, `bspecs-feedback`,
 `b6p-init`, `project-init`, `bluestep-vite-report`, `bluestep-reference`.
 
@@ -148,7 +148,7 @@ Three reusable probes referenced below:
 
 ### 4.1 Claude Code (regression — existing behavior must not change)
 
-- [ ] **Skills discoverable:** type `/` in the composer → all 12 skills above appear
+- [ ] **Skills discoverable:** type `/` in the composer → all 13 skills above appear
       (namespaced `bluestep-tools:` or plain, per your setup).
 - [ ] **One skill end-to-end:** run `/spec-status` in the scratch folder → it reports that
       no specs exist (or lists them), with no error.
@@ -181,7 +181,7 @@ Expected hook behavior differs here by design — see
 carries content, so the two edit guardrails are **post-hoc advisory**: the edit lands, and
 the guardrail message goes to Cursor's hook logs. Only the shell guardrail blocks.
 
-- [ ] **Skills discoverable:** all 12 skills autocomplete in the composer's slash menu.
+- [ ] **Skills discoverable:** all 13 skills autocomplete in the composer's slash menu.
 - [ ] **One skill end-to-end:** `/spec-status` → reports no specs (or lists them), no
       error. *(First run: this also closes prove-out C2 — skill body execution + bundled
       resource reads on Cursor.)*
@@ -213,7 +213,7 @@ indistinguishable from a broken one. Full failure ladder if a hook seems dead:
 `dist/codex/bluestep-tools/hooks/README.md`.
 
 - [ ] **Skill catalog complete (description budget watch):** the skills list shows all
-      **12** entries (plugin-prefixed, e.g. `bluestep-tools:spec-status`), none missing
+      **13** entries (plugin-prefixed, e.g. `bluestep-tools:spec-status`), none missing
       and none with a truncated description. Codex caps startup skill discovery at
       8k chars / 2% of context; the generator warns near the cap, this step is the
       runtime check.

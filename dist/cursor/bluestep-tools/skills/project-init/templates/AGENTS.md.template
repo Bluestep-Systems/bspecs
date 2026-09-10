@@ -15,7 +15,10 @@ This workspace is a local copy of components that live on the BlueStep platform.
 5. MergeReport frontend (HTML, CSS, client JS) lives in `static/`, never in template literals in `scripts/app.ts` (`bluestep-reference` → `conventions/separate-files.md` lists the real exceptions).
 6. Platform authoring and wiring (imports, forms, fields, views, record types) goes through the gateway MCP, approval-gated, following `bluestep-reference` → `conventions/mcp-platform-authoring.md`. The MCP never pushes or pulls source; the `b6p` CLI does that.
 
-Editing platform-generated files (`declarations/`, `B.d.ts`, `scriptlibrary.d.ts`, `Globals.d.ts`) and running `tsc` locally are blocked by hooks; the hook message says what to do instead.
+7. **Never** edit platform-generated files (`declarations/`, `B.d.ts`, `scriptlibrary.d.ts`, `Globals.d.ts`); the next pull replaces them. Fix a wrong or missing declaration on the platform, then pull.
+8. **Never** run `tsc` locally. The b6p CLI runs the only build, during a publish push; a hand-run `tsc` has no declarations wired up and leaves stray `.js` files and misleading errors.
+
+On Claude Code, hooks also block rules 7 and 8. On Cursor the edit hook only warns after the fact, and on Codex hooks run only once trusted, so the rules stand on their own.
 
 ## Reading
 
@@ -26,7 +29,7 @@ Editing platform-generated files (`declarations/`, `B.d.ts`, `scriptlibrary.d.ts
 
 ## Routing
 
-Before editing any file under `U######/<Component>/draft/`:
+Before editing any TypeScript or static file under `U######/<Component>/draft/` (`scripts/`, `static/`; `draft/README.md` and the writes a `/b6p-*` skill or subagent makes are not gated):
 
 - A **feature** (new behaviour, anything that needs design) → `/spec-create`, or `/spec-execute` when `.claude/specs/<feature>/tasks.md` already exists.
 - A **bug** or small, clearly scoped change → `/quick-task`.
@@ -34,7 +37,7 @@ Before editing any file under `U######/<Component>/draft/`:
 
 Ask once if a request is ambiguous; never edit directly.
 
-A platform rule or BsJs pattern you discover that the reference lacks goes upstream with `/bspecs-feedback`. A rule specific to this project goes in this file.
+A platform rule or BsJs pattern the reference lacks, or a broken or missing skill, hook or reference file, goes upstream with `/bspecs-feedback`. A rule specific to this project goes in this file.
 
 ## Compaction
 

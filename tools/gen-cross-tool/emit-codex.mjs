@@ -32,9 +32,9 @@
 //
 // Agents are PAYLOAD, never a manifest field: plugin-bundled subagents are not
 // operational on Codex at all (prove-out X5 — the files land in the plugin
-// cache but nothing registers), so the emitted TOML files ship via the
-// /b6p-init Codex enablement step, which copies them into the project's
-// .codex/agents/ (or ~/.codex/agents/). Two consequences the emitter honors:
+// cache but nothing registers), so the emitted TOML files ship as payload
+// the /b6p-init Codex enablement step tells the user to copy into
+// ~/.codex/agents/ (or the project's .codex/agents/). Two consequences the emitter honors:
 // agent names lose their hyphens (Codex accepts lowercase letters, digits and
 // underscores only — X5), and a ${CLAUDE_PLUGIN_ROOT} reference in an agent
 // body cannot become a relative path (the installed file no longer sits inside
@@ -213,8 +213,8 @@ function parseSimpleToml(text) {
 const AGENT_REF = /(`?)\$\{CLAUDE_PLUGIN_ROOT\}(\\?")?((?:\/[A-Za-z0-9_.{},-]+)*\/?)(`?)/g;
 
 // Rewrite ${CLAUDE_PLUGIN_ROOT} references in an AGENT BODY. Unlike skills,
-// agents do not stay inside the plugin on Codex: the enablement step copies
-// them into the project's .codex/agents/ (prove-out X5), so a path relative to
+// agents do not stay inside the plugin on Codex: the user copies them into
+// ~/.codex/agents/ or the project's .codex/agents/ (prove-out X5), so a path relative to
 // the emitted file would point nowhere at runtime. Documented degradation: the
 // reference becomes prose that names the plugin-relative path and says where
 // that path lives. Anything unmappable still fails the run loudly — the

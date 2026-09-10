@@ -44,7 +44,7 @@ Use Claude skills for spec-driven development:
 
 ## Configuration
 
-- `AGENTS.md` — the always-on agent context (critical rules, workspace model, API summary). Read natively by Cursor, Codex, and most other agents.
+- `AGENTS.md` — the always-on agent context (about 40 lines: the platform rules, reading habits, the routing rule, the compaction rule). Read natively by Cursor, Codex, and most other agents.
 - `CLAUDE.md` — a one-line bridge that imports `AGENTS.md`, since Claude Code does not read `AGENTS.md` on its own. Project rules go in `AGENTS.md`, not here.
 - `.claude/settings.json` — permissions + the `bluestep-tools` plugin enablement (Claude Code only; Cursor and Codex enable the plugin through their own UI/CLI — see Tooling above).
 - Deep platform/BsJs reference, skills, subagents, and hooks all come from the `bluestep-tools` plugin (see Tooling above).

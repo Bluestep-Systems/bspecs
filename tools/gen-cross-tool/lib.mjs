@@ -346,9 +346,10 @@ const PER_TOOL_LINE = /Claude Code|Cursor|Codex/;
 //      descriptions that name the supported tools);
 //   b. the same line names a tool (Claude Code / Cursor / Codex) — explicitly
 //      per-tool prose, the parenthetical convention from the de-Claude-ing;
-//   c. it is inside a "Claude Code" heading's section of one of the init
-//      skills (per-tool by construction; tracked via section headers, code
-//      fences ignored);
+//   c. it is inside a section of one of the init skills whose heading starts
+//      with "Claude Code", an optional step number allowed ("### Claude Code",
+//      "### 5. Claude Code only — …"); per-tool by construction, tracked via
+//      section headers, code fences ignored;
 //   d. for CLAUDE.md only: the line also mentions AGENTS.md (bridge-mechanism
 //      explanations), OR the file is one of the init skills — writing and
 //      migrating the CLAUDE.md bridge file on every tool is project-init's
@@ -372,7 +373,7 @@ export function lintClaudeIsms(tree) {
       if (heading) {
         const level = heading[1].length;
         if (ccSectionLevel && level <= ccSectionLevel) ccSectionLevel = 0;
-        if (heading[2].trim() === 'Claude Code') ccSectionLevel = level;
+        if (/^(?:\d+\.\s+)?Claude Code\b/.test(heading[2].trim())) ccSectionLevel = level;
       }
       for (const [name, re] of DENYLIST) {
         if (!re.test(line)) continue;

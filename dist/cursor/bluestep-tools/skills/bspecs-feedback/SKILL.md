@@ -13,7 +13,7 @@ The skill POSTs to this endpoint (a concrete, live URL — not a placeholder). A
 FEEDBACK_ENDPOINT_URL="https://bluehq.bluestep.net/b/bspecs-feedback"
 ```
 
-**Scope check first.** This skill is for the **bluestep-tools plugin** (a skill is wrong, a hook misfires, a `bluestep-reference` file is misleading, a shipped `AGENTS.md` rule is stale, a missing capability), or for a B6P rule general enough to belong in **every** project. For project-local B6P domain knowledge that only matters here, capture it locally instead (see the Self-improvement section of this project's `AGENTS.md`).
+**Scope check first.** This skill is for the **bluestep-tools plugin** (a skill is wrong, a hook misfires, a `bluestep-reference` file is misleading, a shipped `AGENTS.md` rule is stale, a missing capability), or for a B6P rule general enough to belong in **every** project. For project-local B6P domain knowledge that only matters here, capture it locally instead (this project's `AGENTS.md` says, under Routing, that a rule specific to the project goes in that file).
 
 ## Steps
 

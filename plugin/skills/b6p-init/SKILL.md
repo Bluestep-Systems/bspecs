@@ -1,7 +1,7 @@
 ---
 name: b6p-init
 description: One-time BlueStep (B6P) tooling setup for this machine and the agent tool you are running in — install the b6p CLI binary and authenticate it, register the bluestep marketplace and install the bluestep-tools plugin (Claude Code, Cursor, Codex), trust the hooks on Codex, and set the B6PT_TOKEN that the platform gateway MCP needs. Idempotent — checks each item and skips what is already done. Run it once per machine; the per-project files are /project-init.
-allowed-tools: Read AskUserQuestion Bash(b6p:*) Bash(command:*) Bash(test:*) Bash(ls:*)
+allowed-tools: Read AskUserQuestion Bash(b6p:*) Bash(claude:*) Bash(command:*) Bash(test:*) Bash(ls:*)
 ---
 
 # /b6p-init — Once-per-machine BlueStep setup
@@ -61,7 +61,7 @@ Worth saying out loud:
 Then two steps that are easy to miss and that the tooling genuinely depends on:
 
 - **Trust the hooks — they silently do nothing until you do.** Open the plugin's page and use **Review → trust** on its hooks (`/hooks` in the CLI). An untrusted hook produces no error and no log; the guardrails simply never run. **Re-trust is required after any release that changes a hook definition**, so re-check this after a plugin update.
-- **Subagents do not come from the plugin on Codex.** A plugin cannot register them there, so the three BlueStep subagents have to live in the project's `.codex/agents/` instead (as TOML, with underscore names — `b6p_task_implementer`, `b6p_commenter`, `b6p_code_review`; hyphens are not valid agent names on Codex). Writing them is **not** part of this skill yet — until it is, tell the user that delegation is unavailable on Codex and the spec skills run in-session instead of handing work to a subagent. Do not pretend a subagent exists.
+- **Subagents do not come from the plugin on Codex.** A plugin cannot register them there, so the three BlueStep subagents (TOML, underscore names — `b6p_task_implementer`, `b6p_commenter`, `b6p_code_review`; hyphens are not valid agent names on Codex) have to be copied by hand from the installed plugin's `agents/` folder into `~/.codex/agents/` — once per machine, covers every project. (A project's own `.codex/agents/` also works, but then it is a per-project step.) This skill tells the user to do that; it does not copy the files yet. Until the copy is done, say plainly that delegation is unavailable on Codex and the spec skills run in-session instead of handing work to a subagent. Do not pretend a subagent exists.
 
 The gateway MCP server ships with the plugin and comes up once the token below is set — note that GUI apps only see the environment they were launched with, so a token set in a shell session does not reach them.
 

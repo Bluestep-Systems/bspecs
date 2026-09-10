@@ -192,8 +192,8 @@ your project directory, run:
 Codex, `B6PT_TOKEN` — is `/b6p-init`; `/project-init` checks for it at the end and
 points you there if anything is missing.)
 
-The `AGENTS.md` it writes is **short** (about 40 lines): the platform rules no hook
-enforces, how to read the workspace, the spec routing rule, and the compaction rule.
+The `AGENTS.md` it writes is **short** (about 40 lines): the platform rules, how to
+read the workspace, the spec routing rule, and the compaction rule.
 Everything else comes from the `bluestep-reference` skill on demand, so it no longer
 costs ~4 K tokens per turn. This works in a **new *or* existing** project — it's non-destructive and skips any
 file that already exists, so in an existing repo it just drops the missing

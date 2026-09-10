@@ -11,7 +11,7 @@ It is **per project**. Everything that is done **once per machine** — installi
 
 It is **non-destructive**: any file that already exists is left untouched and reported as skipped. That makes it just as much an **activation** step for an existing repo as a bootstrap step for a new one — a plugin can't ship always-on context, so the project `AGENTS.md` written here is what makes the always-on platform rules reach every session.
 
-**The shipped `AGENTS.md` is short on purpose** (about 40 lines) and carries a version marker on its third line, `<!-- bluestep-tools rules-template 2 -->`, so a later update skill can tell which template a project has without pattern-matching headings. Never strip it; bump it in the template only for a change that warrants swapping existing files, not for wording fixes. It carries only what must be true in every turn: the platform rules no hook enforces, how to read the workspace, the spec/quick-task routing rule, and the compaction rule. Everything else — the `B` API, the module tree, the per-component import model, the push modes — is in the `bluestep-reference` skill and the `/b6p-*` skills, which the agent reads when the task needs them. Do not pad the file back out.
+**The shipped `AGENTS.md` is short on purpose** (about 40 lines) and carries a version marker on its third line, `<!-- bluestep-tools rules-template 2 -->`, so a later update skill can tell which template a project has without pattern-matching headings. Never strip it; bump it in the template only for a change that warrants swapping existing files, not for wording fixes. It carries only what must be true in every turn: the platform rules, how to read the workspace, the spec/quick-task routing rule, and the compaction rule. Everything else — the `B` API, the module tree, the per-component import model, the push modes — is in the `bluestep-reference` skill and the `/b6p-*` skills, which the agent reads when the task needs them. Do not pad the file back out.
 
 ## Collecting answers — use the picker, not a written questionnaire
 
@@ -35,8 +35,6 @@ Resolve the target:
 - **Current directory** → target dir is `.`; `PROJECT_NAME` = `<basename>`.
 - **New subfolder** → ask the user for the folder name (this is the one free-text value — ask directly, since a new name has no presets). Then `mkdir -p "<name>"`. Target dir is `<name>`; `PROJECT_NAME` = `<name>`.
 
-Record **`SCAFFOLD_DATE`** = today's date (`date +%Y-%m-%d`) — do not ask.
-
 ### 2. Client / organization
 
 Ask (structured question, clickable options — per the picker rule above):
@@ -53,7 +51,7 @@ Set `CLIENT_NAME` from the choice (`BlueStep Client` for "Set later").
 
 ### 3. Write the per-project files into the target directory
 
-For each template under `templates/` (relative to this file), write into the **target directory** chosen in step 1:
+For each template directly under `templates/` (relative to this file) (not the `legacy/` folder, which is a reference for the swap below and is never written), write into the **target directory** chosen in step 1:
 
 | Template | Written to (relative to target dir) |
 |---|---|
@@ -69,7 +67,7 @@ For each template under `templates/` (relative to this file), write into the **t
 For each one:
 
 1. **Read** the template.
-2. **Substitute** the `{{VAR}}` placeholders: `{{PROJECT_NAME}}`, `{{CLIENT_NAME}}`, `{{SCAFFOLD_DATE}}`. (Only `AGENTS.md`/`README.md`/`package.json` carry placeholders; the other three copy verbatim. There is no `{{PROJECT_DESCRIPTION}}`.)
+2. **Substitute** the `{{VAR}}` placeholders: `{{PROJECT_NAME}}`, `{{CLIENT_NAME}}`. (Only `AGENTS.md`/`README.md`/`package.json` carry placeholders; the other three copy verbatim. There is no `{{PROJECT_DESCRIPTION}}`.)
 3. **Skip if it already exists.** Before writing, check whether the destination file is already present. If it is, **do not overwrite it** — report it as skipped and move on. This includes `AGENTS.md`: an existing one is left exactly as it is.
 4. **Write** the result, stripping the trailing `.template` from the name.
 
@@ -90,9 +88,9 @@ Ask the migration question one question at a time, with clickable options where 
 
 Projects set up before plugin 0.33.0 carry the old 140-line `AGENTS.md` (recognisable by its `## Critical rules (always apply)` heading and by having no `<!-- bluestep-tools rules-template N -->` marker; the shipped template carries version 2 on its third line). It still works, but it costs about 4 K tokens on every turn for content the plugin now serves on demand. Offer the swap once and perform it **only** if the user agrees:
 
-1. Diff the existing file against the old template shape: any line that is **not** template text is a project-specific rule. List those lines to the user.
+1. Find the project-specific lines. If `AGENTS.md` is tracked in git, `git log -p --follow -- AGENTS.md` shows the scaffolded version as its first commit and every line added since. Otherwise diff the file against `templates/legacy/AGENTS.md.v1.template`, the last pre-split template (earlier versions differ by a few lines, so treat a near match as template text). The title line and the `**Scaffolded:**` line are per-project header, not rules. List the lines you take to be project-specific and let the user correct the list.
 2. Write the new short `AGENTS.md` from the template, then append the project-specific lines under `## Platform rules` (or a `## Project rules` heading if they are not platform rules).
-3. Show the result before saving. Never drop a project-specific line silently.
+3. Show the result before saving. Never drop a project-specific line silently; when unsure whether a line is template text, keep it and say so.
 
 If the user declines, leave the file exactly as it is and say so.
 
@@ -140,9 +138,8 @@ Run these checks and report, but **do not perform the setup here** — it is `/b
 
 - `command -v b6p` → if missing, the `b6p` CLI binary is not installed (or not on PATH).
 - `test -n "$B6PT_TOKEN"` → if empty, the platform gateway MCP will not come up.
-- Whether the `bluestep-tools` plugin is enabled in the tool you are running in (the `/b6p-*` skills being invocable is the tell).
 
-If any of the three is missing, end the report with: "Run `/b6p-init` once on this machine to finish the setup." Do not block on it — the files written here are useful regardless.
+If either is missing, end the report with: "Run `/b6p-init` once on this machine to finish the setup." Do not block on it — the files written here are useful regardless.
 
 ### 7. Report written vs. skipped
 
