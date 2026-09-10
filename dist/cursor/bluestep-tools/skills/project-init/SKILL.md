@@ -15,7 +15,7 @@ It is **non-destructive**: any file that already exists is left untouched and re
 
 ## Questions — only when a decision is needed
 
-On a fresh directory this skill asks **nothing**: the project name is the folder name, and there is no client, organization or description prompt (they were removed because nobody used them — a heading is not where anyone learns the client). The only questions are the two offers in step 2 for files from an older setup: the `CLAUDE.md` migration and the long-`AGENTS.md` swap. Ask each as a **structured question with clickable options** where the tool supports them (`AskUserQuestion` in Claude Code), one at a time; never a written questionnaire.
+On a fresh directory this skill asks **nothing**: the project name is the folder name, and there is no client, organization or description prompt (they were removed because nobody used them — a heading is not where anyone learns the client). The only question is the one offer in step 2 for a file from an older setup, the `CLAUDE.md` migration; the long-`AGENTS.md` swap moved to `/b6p-update`. Ask each as a **structured question with clickable options** where the tool supports them (`AskUserQuestion` in Claude Code), one at a time; never a written questionnaire.
 
 ## Steps
 
@@ -60,13 +60,9 @@ Projects bootstrapped before the `AGENTS.md` split keep their rules in `CLAUDE.m
 
 #### An existing long `AGENTS.md` from an earlier template
 
-Projects set up before plugin 0.33.0 carry the old 142-line `AGENTS.md` (recognisable by its `## Critical rules (always apply)` heading and by having no `<!-- bluestep-tools rules-template N -->` marker; the shipped template carries version 2 on its third line). It still works, but it costs about 4 K tokens on every turn for content the plugin now serves on demand. Offer the swap and perform it **only** if the user agrees:
+Projects set up before plugin 0.33.0 carry the old 142-line `AGENTS.md` — recognisable by its `## Critical rules (always apply)` heading and by having no `<!-- bluestep-tools rules-template N -->` marker. It still works, and this skill leaves it exactly as it is: step 2 skips any file that already exists.
 
-1. Find the project-specific lines. If `AGENTS.md` is tracked in git, `git log -p --follow -- AGENTS.md` shows the scaffolded version as its first commit and every line added since. Otherwise diff the file against `templates/legacy/AGENTS.md.v1.template`, the last pre-split template (earlier versions differ by a few lines, so treat a near match as template text). The title line and the `**Scaffolded:**` line are per-project header, not rules. List the lines you take to be project-specific and let the user correct the list.
-2. Write the new short `AGENTS.md` from the template, **keeping the existing file's title line** as line 1 (it may carry a client name the template no longer asks for), then append the project-specific lines under `## Platform rules` (or a `## Project rules` heading if they are not platform rules).
-3. Show the result before saving. Never drop a project-specific line silently; when unsure whether a line is template text, keep it and say so.
-
-If the user declines, leave the file exactly as it is and say so. Nothing records the decline, so the offer comes back the next time this skill runs here; a user who wants to keep the long file just declines again.
+**Do not swap it here.** Report it, then point the user at **`/b6p-update`**, which owns that migration: it measures what the file costs per turn, lists the project-specific lines, proposes reasoned cuts chunk by chunk, and can sweep every project on the machine in one pass instead of one `/project-init` run per repo. Say it in one line — "this project has the old long rules file; `/b6p-update` swaps it and keeps your project rules" — and move on.
 
 ### 3. Guide `git init`
 
@@ -120,7 +116,7 @@ If `b6p` or its credentials are missing, end the report with: "Run `/b6p-init` o
 
 ### 6. Report written vs. skipped
 
-List which files were written and which were skipped because they already existed. If anything was skipped, tell the user that those files were left untouched — to adopt the pristine tooling version, rename/move the local copy and re-run `/project-init`. If a populated `CLAUDE.md` or an old long `AGENTS.md` was found, state what happened to it (migrated or swapped with the user's agreement, or left as-is).
+List which files were written and which were skipped because they already existed. If anything was skipped, tell the user that those files were left untouched — to adopt the pristine tooling version, rename/move the local copy and re-run `/project-init`. If a populated `CLAUDE.md` was found, state what happened to it (migrated with the user's agreement, or left as-is). If an old long `AGENTS.md` was found, say it was left untouched and name `/b6p-update`.
 
 ### 7. If a new subfolder — point the user at it
 
@@ -130,4 +126,4 @@ When the project was set up in a **new subfolder**, the current session is still
 
 ## Done
 
-Summarize: the files written vs. skipped (and, if a populated `CLAUDE.md` or an old long `AGENTS.md` was found, what happened to it), that `git init` ran, whether the Claude Code project settings were written, and which once-only items `/b6p-init` still has to cover on this machine. If a new subfolder was created, repeat the "open a session in `./<name>`" instruction. Point the user at `/b6p-pull <DAV URL>` to bring down their first component.
+Summarize: the files written vs. skipped (and, if a populated `CLAUDE.md` was found, what happened to it; if an old long `AGENTS.md` was found, that it was left for `/b6p-update`), that `git init` ran, whether the Claude Code project settings were written, and which once-only items `/b6p-init` still has to cover on this machine. If a new subfolder was created, repeat the "open a session in `./<name>`" instruction. Point the user at `/b6p-pull <DAV URL>` to bring down their first component.
