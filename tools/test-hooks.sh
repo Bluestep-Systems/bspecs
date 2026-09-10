@@ -4,7 +4,9 @@
 H="$(cd "$(dirname "${BASH_SOURCE[0]}")/../plugin/hooks" && pwd)"
 pass=0; fail=0
 
-j() { python -c 'import json,sys; print(json.dumps({"tool_input":{sys.argv[1]:sys.argv[2]}}))' "$1" "$2"; }
+# python3 on Linux/WSL, python on Windows Git Bash — the harness must run in both.
+PY=$(command -v python3 || command -v python) || { echo "test-hooks: need python3 or python to build test payloads" >&2; exit 1; }
+j() { "$PY" -c 'import json,sys; print(json.dumps({"tool_input":{sys.argv[1]:sys.argv[2]}}))' "$1" "$2"; }
 
 t() { # name script key value expected_exit
   local out rc
@@ -49,6 +51,21 @@ if [ "$rc" = 2 ]; then
   echo "        ${out:0:95}..."
 else
   echo "  FAIL  no parser gave exit $rc (want 2)"; echo "        ${out:0:120}"; fail=$((fail+1))
+fi
+rmdir "$TMPD" 2>/dev/null
+
+echo "=== canary.sh (SessionStart) ==="
+out=$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | bash "$H/canary.sh" 2>&1); rc=$?
+if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "  PASS  parser present: silent, exit 0"; pass=$((pass+1));
+else echo "  FAIL  parser present gave exit $rc, output '${out:0:80}'"; fail=$((fail+1)); fi
+TMPD=$(mktemp -d)
+out=$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | env -i PATH="$TMPD" "$BASH_BIN" "$H/canary.sh" 2>&1 >/dev/null); rc=$?
+lines=$(printf '%s' "$out" | grep -c .)
+if [ "$rc" = 1 ] && [ "$lines" = 1 ]; then
+  echo "  PASS  no parser on PATH: one stderr line, exit 1 (non-blocking)"; pass=$((pass+1))
+  echo "        ${out:0:95}..."
+else
+  echo "  FAIL  no parser gave exit $rc with $lines stderr line(s) (want 1 and 1)"; echo "        ${out:0:120}"; fail=$((fail+1))
 fi
 rmdir "$TMPD" 2>/dev/null
 
