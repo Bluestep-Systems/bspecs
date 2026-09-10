@@ -3,8 +3,5 @@
     "allow": [
       "Edit(**/*.md)"
     ]
-  },
-  "enabledPlugins": {
-    "bluestep-tools@bluestep": false
   }
 }
