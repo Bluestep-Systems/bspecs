@@ -78,8 +78,8 @@ files and a plugin-enabling `.claude/settings.json` with no hooks block.
 
 ## Working on tasks
 
-Before substantive changes (implement / add / fix / refactor), skim `TODO.md` (open `[ ]` items)
-and the latest 3 `## [x.y.z]` blocks of `CHANGELOG.md`, and report any match — already planned,
+Before substantive changes (implement / add / fix / refactor), skim the latest 3 `## [x.y.z]`
+blocks of `CHANGELOG.md`, and report any match — already planned,
 already shipped, or covered by an ADR — before starting. Skip for questions and trivial edits.
 
 When a task is done and the user confirms, **propose** a commit message (title + body) from the
