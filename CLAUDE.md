@@ -24,7 +24,7 @@ plugin/                           ← THE SOURCE OF TRUTH — author only here
 tools/gen-cross-tool/             ← the generator — npm run gen / gen:check
 dist/cursor/, dist/codex/         ← GENERATED, committed, never hand-edited
 .github/workflows/                ← ci.yml, release-tag.yml, publish.yml (manual-tag path)
-cli.js, src/, templates/          ← DORMANT / empty
+cli.js, src/                      ← DORMANT npm CLI (templates/ was deleted outright)
 ```
 
 Plugins serve content **verbatim** — there is no `{{VAR}}` templating anywhere in `plugin/`. The
