@@ -18,12 +18,20 @@ Every task starts with one of two prefixes that says **where** the work happens:
 
 If the design says "no platform-side changes needed," every task is `[CODE]` and the prefix is still required (no implicit type).
 
+## Task markers
+
+Every task also carries one of three markers, right after the prefix. `/spec-execute` picks the implementer's model tier from it, so the marker is part of what you approve:
+
+- `[mechanical]` — repeats a pattern an earlier task in this spec already proved; no decision left. Cheapest tier.
+- `[routine]` — known shape, new content. Mid tier.
+- `[judgment]` — a design choice, UI behaviour, or a pattern's first instance. Session model. An unmarked task runs as `[judgment]`.
+
 ## Tasks
 
-- [ ] **1. [PLATFORM]** [Short description, e.g. "Create field `appointment_end_time` on form `Appointment`"] [optional `op:` hint, e.g. `op: add_queries(script=…, query=allStaff)`]
-- [ ] **2. [CODE]** [Short description] — files: `U######/Component/draft/scripts/foo.ts`
-- [ ] **3. [CODE]** [Short description] — files: `U######/Component/draft/scripts/bar.ts`, `U######/Component/draft/README.md`
-- [ ] **4. [CODE] [mechanical]** [Repeat of a pattern a task above already proved, e.g. "Wire component #2 the same way as task 3" — `[mechanical]` only on `[CODE]` tasks, never on a pattern's first instance] — files: `U######/Component2/draft/scripts/bar.ts`
+- [ ] **1. [PLATFORM] [routine]** [Short description, e.g. "Create field `appointment_end_time` on form `Appointment`"] [optional `op:` hint, e.g. `op: add_queries(script=…, query=allStaff)`]
+- [ ] **2. [CODE] [judgment]** [Short description — a pattern's first instance, or a task with a design choice left open] — files: `U######/Component/draft/scripts/foo.ts`
+- [ ] **3. [CODE] [routine]** [Short description — a known shape, new content] — files: `U######/Component/draft/scripts/bar.ts`, `U######/Component/draft/README.md`
+- [ ] **4. [CODE] [mechanical]** [Repeat of a pattern a task above already proved, e.g. "Wire component #2 the same way as task 3" — never on a pattern's first instance] — files: `U######/Component2/draft/scripts/bar.ts`
 
 (Repeat as needed. Keep tasks small enough that one `/spec-execute` invocation covers exactly one.)
 
