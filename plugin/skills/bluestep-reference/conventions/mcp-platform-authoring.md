@@ -176,6 +176,10 @@ edited, previously synced file and lists it at the end of the pull; older CLIs o
   run the
   [create-time rules and completeness read-back](#create-time-rules-and-completeness-read-back-queries-and-views)
   before reporting the task complete.
+- **If the op created a script** (`create_script`), read its permissions back with `list_permissions`. A new
+  script lands with **no** permissions — `create_script` has no permissions parameter — so a create that
+  returned success is not a testable component until `set_permissions` has run and the read-back shows the
+  intended subjects. See the `create_script` bullet under [Known authoring quirks](#known-authoring-quirks).
 - **`get_script_declarations` may be absent from a given org's toolset** (confirm via `list_org_tools`).
   When it is, the declaration read-back step is impossible — fall back to a `b6p pull` to refresh the
   script's `declarations/`. Treat `b6p pull` as the **norm** for declaration refresh wherever this tool is
@@ -226,10 +230,11 @@ tools, not a fixed inventory.
 **Wiring / imports**
 - `add_queries`, `add_forms`, `add_field_access`, `add_record_types`
 - destructive siblings: `remove_queries`, `remove_forms`, `remove_field_access`, `remove_record_types`
-- **Writability is two independent flags** — the form-level `writable` on `add_forms` and the
-  per-field `writable` on `add_field_access`, stamped at grant time and never recalculated. Pass
-  the intended value explicitly on both, and verify with `list_field_access`, never the UI
-  checkboxes: [gotchas/field-access-writability.md](../gotchas/field-access-writability.md).
+- **Field access is independent grant rows** — read and write are separate rows on the same field
+  (`add_field_access writable:true` grants write only; a read+write field needs both), on top of the
+  form-level `writable` on `add_forms`. Change a level by adding the new row **before** removing the old
+  one, and verify with `list_field_access`, never the UI checkboxes:
+  [gotchas/field-access-writability.md](../gotchas/field-access-writability.md).
 - **Against a BSJS endpoint these are privilege-gated, not unsupported.** `add_field_access` (and the
   `add_queries` / `add_forms` siblings) on an END_POINT script requires the **ENGINEER ENDPOINT** custom
   privilege on the token's subject; without it the call fails cleanly and applies nothing. That privilege
@@ -296,6 +301,12 @@ tools, not a fixed inventory.
   `get_form`, `get_view`, `get_option_list`, `get_record_type`, `lookup_script_by_name`,
   `list_script_scope`
 
+**Permissions**
+- `list_permissions`, `set_permissions`, `grant_permission`, `revoke_permission` (plus `form_permission` for
+  forms). A script's permission set is separate from its wiring, and `create_script` sets none — so for a
+  script the path is `create_script` → `set_permissions` → `list_permissions` read-back (step 6). Served on
+  the reference org as of 2026-09; confirm with `list_org_tools` on yours.
+
 **Declaration read-back**
 - `get_script_declarations`
 
@@ -360,6 +371,17 @@ verified — the dating key at the top of this page says how to read the markers
     platform UI for that session.
 
   (A pre-flight error is being added server-side as of 2026-07; the invariants hold either way.)
+- **`create_script` creates an unpermissioned script — and says nothing about it.** The tool has no
+  permissions parameter (schema checked 2026-09: `scriptType`, `name`, `path`, `formulaType`, `unitId`,
+  `includeSubUnits`, `recordTypes`, `primaryFormId`, `onDemandIdentifier`, `schedule`, `altIds`), so every
+  MergeReport, EndPoint and Formula it creates lands with no permission set, and the response reads as a
+  clean success. The failure shows up later as a code bug — a MergeReport embedded in a form renders nothing,
+  an EndPoint answers with errors — and costs a debugging round each time (seen twice on one project,
+  2026-09). Forms do not have this gap: `form` create is followed by `form_permission` / `grant_permission`
+  as a matter of course. Treat a script create the same way: `create_script`, then `set_permissions` for the
+  intended subjects (Reader has been the right ceiling for a script in every case so far), then the
+  `list_permissions` read-back in step 6 **before** anyone tests the component. A permissions parameter or a
+  Reader default on `create_script` is a platform-side ask, not something this page can promise.
 - **`lookup_script_by_name` misses are name mismatches far more often than missing scripts.** The
   exact-name lane is **case-sensitive** and matches the script's **display name literally** — trailing
   spaces, casing, and punctuation all count — and BSJS endpoints *are* searched, so a miss is not
