@@ -24,7 +24,7 @@ b6p auth set
 
 Without it, the first `b6p pull` prompts for the token interactively, which the agent cannot answer — the call fails with exit `1`. Run `auth set` before invoking `/b6p-pull`. If you used `b6p` before version 0.6.0 you will be asked once more even though you set it up already: bearer auth replaced the old username + password and a token cannot be derived from them.
 
-The once-per-machine setup as a whole — this CLI, its token, the plugin install, and the **optional** `B6PT_TOKEN` that the platform gateway MCP needs for in-session platform authoring — is the `/b6p-init` skill. Run it once on a new machine; it checks each item and skips what is done. `B6PT_TOKEN` is a separate credential from the CLI's token above.
+The once-per-machine setup as a whole — this CLI, its token, the plugin install, and the **optional** `B6PT_TOKEN` that the platform gateway MCP needs for in-session platform authoring — is the `/b6p-setup` skill. Run it once on a new machine; it checks each item and skips what is done. `B6PT_TOKEN` is a separate credential from the CLI's token above.
 
 The DAV URL passed to `b6p pull` is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
 

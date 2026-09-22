@@ -6,7 +6,7 @@ allowed-tools: Read Write Edit AskUserQuestion Bash(node:*) Bash(npm:*) Bash(git
 
 # /bluestep-vite-report — Scaffold a Vite/Preact SPA merge report
 
-This skill scaffolds an **off-platform Vite/Preact SPA merge report** in-session: it checks Node 20, drives `create-vite` (the `preact-ts` template) live, sets the load-bearing `base: './'`, wires the deploy-lib `config` block + `repository` field into `package.json`, and then **prints** — does not run — the `[PLATFORM]` report-creation and GitHub-repo steps for the human to execute. It **guides** the outward steps (create the platform report, create the GitHub repo, deploy) the same way `/project-init` guides `git init`.
+This skill scaffolds an **off-platform Vite/Preact SPA merge report** in-session: it checks Node 20, drives `create-vite` (the `preact-ts` template) live, sets the load-bearing `base: './'`, wires the deploy-lib `config` block + `repository` field into `package.json`, and then **prints** — does not run — the `[PLATFORM]` report-creation and GitHub-repo steps for the human to execute. It **guides** the outward steps (create the platform report, create the GitHub repo, deploy) the same way `/b6p-setup` guides `git init`.
 
 For the pattern itself — what this build model is, when to pick it over the CLI-compiled `static/script.ts` path, the two data models — this skill **points at** the `bluestep-reference` files rather than restating them (see [Point at the reference](#5-point-at-the-reference)).
 
