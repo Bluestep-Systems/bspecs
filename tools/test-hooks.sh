@@ -29,14 +29,6 @@ t "allows app.ts (backslashes)" block-generated-files.sh file_path 'C:\x\U129161
 t "allows README" block-generated-files.sh file_path '/x/draft/README.md' 0
 t "allows a path with 'declarations' as a filename part" block-generated-files.sh file_path '/x/draft/scripts/declarations-helper.ts' 0
 
-echo "=== block-tsc.sh ==="
-t "blocks bare tsc" block-tsc.sh command 'tsc -p tsconfig.json' 2
-t "blocks npx tsc" block-tsc.sh command 'cd /x && npx tsc --noEmit' 2
-t "blocks tsc mid-command" block-tsc.sh command 'cd /x && tsc && echo done' 2
-t "allows b6p push" block-tsc.sh command 'b6p push --file app.ts' 0
-t "allows git status" block-tsc.sh command 'git status' 0
-t "allows npm test" block-tsc.sh command 'npm test' 0
-
 echo "=== fail closed ==="
 out=$(printf '%s' 'not json at all' | bash "$H/block-generated-files.sh" 2>&1); rc=$?
 if [ "$rc" = 2 ]; then echo "  PASS  unparseable input blocks"; pass=$((pass+1));
@@ -55,6 +47,20 @@ fi
 rmdir "$TMPD" 2>/dev/null
 
 echo "=== canary.sh (SessionStart) ==="
+NUDGE=$(mktemp -d); mkdir -p "$NUDGE/U123456"
+out=$(cd "$NUDGE" && printf '{"hook_event_name":"SessionStart","source":"startup"}' | bash "$H/canary.sh" 2>/dev/null); rc=$?
+if [ "$rc" = 0 ] && [[ "$out" == *"/b6p-setup"* ]]; then echo "  PASS  nudge: U######/ and no AGENTS.md → one stdout line, exit 0"; pass=$((pass+1)); else echo "  FAIL  nudge: expected the /b6p-setup line, exit 0 — got rc=$rc: ${out:0:80}"; fail=$((fail+1)); fi
+printf '# rules\n\n- keep it short\n' > "$NUDGE/CLAUDE.md"
+out=$(cd "$NUDGE" && printf '{"hook_event_name":"SessionStart","source":"startup"}' | bash "$H/canary.sh" 2>/dev/null); rc=$?
+if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "  PASS  nudge: U######/ with a populated CLAUDE.md and no AGENTS.md → silent"; pass=$((pass+1)); else echo "  FAIL  nudge: expected silence with CLAUDE.md — got rc=$rc: ${out:0:80}"; fail=$((fail+1)); fi
+rm -f "$NUDGE/CLAUDE.md"; touch "$NUDGE/AGENTS.md"
+out=$(cd "$NUDGE" && printf '{"hook_event_name":"SessionStart","source":"startup"}' | bash "$H/canary.sh" 2>/dev/null); rc=$?
+if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "  PASS  nudge: U######/ with AGENTS.md → silent"; pass=$((pass+1)); else echo "  FAIL  nudge: expected silence — got rc=$rc: ${out:0:80}"; fail=$((fail+1)); fi
+rm -rf "$NUDGE"
+PLAIN=$(mktemp -d); mkdir -p "$PLAIN/src"; : > "$PLAIN/package.json"
+out=$(cd "$PLAIN" && printf '{"hook_event_name":"SessionStart","source":"startup"}' | bash "$H/canary.sh" 2>/dev/null); rc=$?
+if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "  PASS  nudge: non-B6P folder (no U######/) → silent"; pass=$((pass+1)); else echo "  FAIL  nudge: expected silence in a non-B6P folder — got rc=$rc: ${out:0:80}"; fail=$((fail+1)); fi
+rm -rf "$PLAIN"
 out=$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | bash "$H/canary.sh" 2>&1); rc=$?
 if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "  PASS  parser present: silent, exit 0"; pass=$((pass+1));
 else echo "  FAIL  parser present gave exit $rc, output '${out:0:80}'"; fail=$((fail+1)); fi

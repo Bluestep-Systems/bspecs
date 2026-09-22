@@ -26,7 +26,7 @@ notes are `dist/cursor/bluestep-tools/hooks/README.md` and
 That one released plugin version actually works on all three tools — skills discoverable
 and invocable, the `bluestep-reference` tree readable on demand, the three guardrail hooks
 doing what each tool allows them to do (block where the tool supports blocking, advise
-where it doesn't), the gateway MCP server connecting, and `/project-init` scaffolding the
+where it doesn't), the gateway MCP server connecting, and `/b6p-setup` scaffolding the
 `AGENTS.md` + `CLAUDE.md` bridge — plus that nothing regressed for existing Claude Code
 users.
 
@@ -56,7 +56,7 @@ Fill in per run (copy the row):
       version is what `plugin/.claude-plugin/plugin.json` on `main` says.
 - [ ] **`B6PT_TOKEN` is set** in the environment the tool launches from (needed for the
       MCP steps only; everything else works without it). Creation + placement steps live in
-      the `/b6p-init` skill's "Platform token" section — the short version:
+      `/b6p-setup`'s `references/platform-token.md` — the short version:
   - Linux / WSL / macOS terminal: `export B6PT_TOKEN="b6pt_…"` in your shell profile, new
     terminal.
   - **Windows: `setx B6PT_TOKEN "b6pt_…"` (User scope), then FULLY restart the app** —
@@ -68,9 +68,10 @@ Fill in per run (copy the row):
       any empty folder works). Cursor needs an **open workspace** for skills/hooks — an
       empty window shows only user-global surfaces — so open this folder in each tool
       before testing.
-- [ ] `tsc` does **not** need to be installed. The block-tsc test below uses
-      `tsc --version > tsc-ran.txt`: the shell creates the file the moment the command
-      runs at all, so "file absent" proves the block even on a machine without tsc.
+- [ ] *(Historical — `block-tsc` was removed in 0.37.0; its P1 probe below is kept as the
+      record of how the Bash-hook path was proven on each tool, and is skipped on a
+      current build.)* `tsc` did **not** need to be installed: `tsc --version > tsc-ran.txt`
+      creates the file the moment the command runs at all, so "file absent" proved the block.
 - [ ] The `b6p` CLI is **not** needed for this checklist. (The `/b6p-*` skills need it at
       runtime, but this plan only checks they are discoverable, not that they sync.)
 
@@ -131,7 +132,7 @@ serves a Claude Code marketplace (`.claude-plugin/marketplace.json`), a Cursor m
 Each step: **Do** → **SUCCESS looks like**. Run inside the scratch project folder. The 13
 skills that must exist everywhere (the deprecated `bluestep-init` stub may appear as a 14th this release): `b6p-pull`, `b6p-push`, `b6p-audit`, `spec-create`,
 `spec-execute`, `spec-status`, `quick-task`, `task-comment`, `bspecs-feedback`,
-`b6p-init`, `project-init`, `bluestep-vite-report`, `bluestep-reference`.
+`b6p-setup`, `bluestep-vite-report`, `bluestep-reference`.
 
 Three reusable probes referenced below:
 
@@ -156,13 +157,13 @@ Three reusable probes referenced below:
       common-gotchas file and quote its first heading." → the agent reads the bundled file
       and quotes a heading that matches
       `plugin/skills/bluestep-reference/gotchas/common-gotchas.md` in this repo.
-- [ ] **Hook — block-tsc:** P1 → command denied, `tsc-ran.txt` absent, `echo ok` passes.
+- [ ] ~~**Hook — block-tsc:** P1 → command denied, `tsc-ran.txt` absent, `echo ok` passes.~~ *(removed 0.37.0)*
 - [ ] **Hook — block-generated-files:** P2 → edit denied, file byte-identical.
 - [ ] **Hook — block-inline-frontend:** P3 → edit denied.
 - [ ] **MCP:** ask the agent to call `available_tenants` on the bluestep gateway → a
       non-empty tenant list returns (it's a curated directory, not the full reachable
       set — non-empty is the pass bar).
-- [ ] **`/project-init` scaffold:** in a fresh empty scratch dir, run `/project-init`
+- [ ] **`/b6p-setup` scaffold:** in a fresh empty scratch dir, run `/b6p-setup`
       (it asks nothing on a fresh folder; the project name is the folder name) → it writes
       `AGENTS.md` (the rules), a **one-line `CLAUDE.md` bridge** (`@AGENTS.md` plus a
       comment, nothing else), `README.md`, `package.json` (with **no** `b6p-cli`
@@ -170,7 +171,7 @@ Three reusable probes referenced below:
       marketplace + `enabledPlugins` block; it guides `git init` and reports written vs.
       skipped.
 - [ ] **Existing-project regression:** in a dir that already has a **populated**
-      `CLAUDE.md` (fake one with a few real-looking rules), run `/project-init` → the
+      `CLAUDE.md` (fake one with a few real-looking rules), run `/b6p-setup` → the
       file is **not overwritten**; the migration to `AGENTS.md` is **offered**, and
       declining leaves both files exactly as they were.
 
@@ -186,9 +187,9 @@ the guardrail message goes to Cursor's hook logs. Only the shell guardrail block
       error. *(First run: this also closes prove-out C2 — skill body execution + bundled
       resource reads on Cursor.)*
 - [ ] **Reference on-demand:** same probe as 4.1 → correct heading quoted.
-- [ ] **Hook — block-tsc (BLOCKING):** P1 → denied via `beforeShellExecution`,
-      `tsc-ran.txt` absent, `echo ok` passes. *(First run: this also closes §5.1 — see
-      there before moving on.)*
+- [ ] ~~**Hook — block-tsc (BLOCKING):** P1 → denied via `beforeShellExecution`,
+      `tsc-ran.txt` absent, `echo ok` passes.~~ *(removed 0.37.0; §5.1 was closed by it
+      while it existed)*
 - [ ] **Hook — block-generated-files (ADVISORY — the edit is EXPECTED to land):** P2 →
       the file **is** modified (that is the pass condition on Cursor, not a failure), and
       the `BLOCKED: … platform-generated` message appears in Cursor's hook logs/output.
@@ -200,9 +201,9 @@ the guardrail message goes to Cursor's hook logs. Only the shell guardrail block
       agent to call `available_tenants` → non-empty
       list. (`${env:B6PT_TOKEN}` interpolation was proven live in the prove-out; a
       connect failure here points at the token env, §2.)
-- [ ] **`/project-init` + `/b6p-init`:** in a fresh scratch dir `/project-init` writes `AGENTS.md` +
+- [ ] **`/b6p-setup`:** in a fresh scratch dir `/b6p-setup` writes `AGENTS.md` +
       one-line `CLAUDE.md` bridge + `README.md`/`package.json`/`.gitignore`/`.prettierrc` and
-      guides `git init`; `/b6p-init` walks the **Cursor** enablement subsection (marketplace
+      guides `git init`; `/b6p-setup` step 1 walks the **Cursor** enablement subsection (marketplace
       import steps — it must NOT write `.claude/settings.json` as if this were Claude
       Code).
 
@@ -221,10 +222,11 @@ indistinguishable from a broken one. Full failure ladder if a hook seems dead:
       may be `$`-prefixed — note which you used) → reports no specs (or lists them), no
       error.
 - [ ] **Reference on-demand:** same probe as 4.1 → correct heading quoted.
-- [ ] **Hook — block-tsc (BLOCKING via JSON deny):** P1 → denied, **`tsc-ran.txt`
-      absent**, `echo ok` passes. On Codex the deny is a `hookSpecificOutput` JSON with
-      exit 0 (exit-2 is unreachable on the Windows harness); the plugin page's hook "runs"
-      counter incrementing confirms the hook actually executed.
+- [ ] ~~**Hook — block-tsc (BLOCKING via JSON deny):** P1 → denied, `tsc-ran.txt`
+      absent, `echo ok` passes.~~ *(removed 0.37.0. What it established still holds: on
+      Codex a deny is a `hookSpecificOutput` JSON with exit 0 — exit-2 is unreachable on
+      the Windows harness — and the plugin page's hook "runs" counter is the proof a hook
+      executed.)*
 - [ ] **Hook — edit guardrails:** P2 and P3. Two acceptable outcomes, record which:
       - Edit goes through a Claude-compatible tool (`Edit`/`Write`/…) → **blocked**, file
         untouched.
@@ -235,8 +237,8 @@ indistinguishable from a broken one. Full failure ladder if a hook seems dead:
       Codex-native `bearer_token_env_var: "B6PT_TOKEN"`; on Windows remember the `setx` +
       full-app-restart rule (§2) — an `AUTHORIZATION_REQUIRED`-style error means the
       process never saw the token.
-- [ ] **`/project-init` + `/b6p-init`:** in a fresh scratch dir `/project-init` writes `AGENTS.md` +
-      one-line `CLAUDE.md` bridge + the root files and guides `git init`; `/b6p-init` walks the
+- [ ] **`/b6p-setup`:** in a fresh scratch dir `/b6p-setup` writes `AGENTS.md` +
+      one-line `CLAUDE.md` bridge + the root files and guides `git init`; `/b6p-setup` step 1 walks the
       **Codex** enablement subsection — including telling you (a) to trust the hooks and
       (b) that **subagents do not come from the plugin on Codex**: the three agent TOML
       files (underscore names, e.g. `b6p_task_implementer`) sit in the installed plugin's
@@ -260,7 +262,7 @@ tooling.
 - [ ] **5.1 Cursor hook runtime path resolution (prove-out C4).** The generated Cursor
       `hooks.json` uses relative commands (`./hooks/*-cursor.sh`); whether Cursor resolves
       those against the **installed plugin location** at runtime was only proven at
-      registration level. The 4.2 block-tsc pass **is** the proof. If it never fires:
+      registration level. The 4.2 block-tsc pass **was** the proof (closed while that hook existed; a fresh run uses the advisory edit hook's log line instead). If it never fires:
       likely the relative path resolved against the workspace instead → fix task on
       `tools/gen-cross-tool/emit-cursor.mjs` (anchor the command differently), and record
       the finding in the dist README.
@@ -298,7 +300,7 @@ tooling.
       endpoint component, the agent runs the read-only `b6p audit` (or `/b6p-audit`) to
       surface drift first. If the first-run experience confirms the need, file the rule
       change as a fix task (candidate homes:
-      `plugin/skills/project-init/templates/AGENTS.md.template` and/or
+      `plugin/skills/b6p-setup/templates/AGENTS.md.template` and/or
       `plugin/skills/b6p-push/SKILL.md`) — note this deliberately softens the `/b6p-audit`
       skill's current "on demand, not a pre-flight" stance for the endpoint-component case
       only, so it needs a deliberate decision, not a drive-by edit.
@@ -346,5 +348,5 @@ tooling.
   single version stream, tag-on-merge).
 - `dist/cursor/bluestep-tools/hooks/README.md` / `dist/codex/bluestep-tools/hooks/README.md`
   — per-tool hook wiring and documented degradations the §4 expectations come from.
-- `plugin/skills/project-init/SKILL.md` and `plugin/skills/b6p-init/SKILL.md` — the scaffold and
+- `plugin/skills/b6p-setup/SKILL.md` — the scaffold and
   the per-tool enablement steps §3/§4 exercise, including full `B6PT_TOKEN` setup.

@@ -429,7 +429,7 @@ Each project root has a `tsconfig.json`. BlueStep projects run with **`strict: f
 }
 ```
 
-Do not run `tsc` locally (a hook blocks it). Compilation happens only in the b6p CLI at **publish/snapshot** (`b6p push --snapshot`) — a **plain push skips the TypeScript build entirely**, so pushing without a snapshot means the code has been compiled nowhere.
+Do not run `tsc` locally. Compilation happens only in the b6p CLI at **publish/snapshot** (`b6p push --snapshot`) — a **plain push skips the TypeScript build entirely**, so pushing without a snapshot means the code has been compiled nowhere.
 
 ### Graal compatibility (server-side)
 

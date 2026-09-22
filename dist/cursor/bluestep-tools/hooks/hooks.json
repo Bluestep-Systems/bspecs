@@ -6,12 +6,6 @@
         "type": "command",
         "command": "./hooks/block-generated-files-cursor.sh"
       }
-    ],
-    "beforeShellExecution": [
-      {
-        "type": "command",
-        "command": "./hooks/block-tsc-cursor.sh"
-      }
     ]
   }
 }

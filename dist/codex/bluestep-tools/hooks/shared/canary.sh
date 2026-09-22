@@ -9,17 +9,29 @@
 # SessionStart hook is added to the model's context, and this must cost nothing), exit 0.
 #
 # Exit 1, not 2: a SessionStart exit 2 is a blocking error. The canary only reports.
+#
+# Second job (0.37.0): one line on stdout — which a SessionStart hook adds to the model's context —
+# when the folder holds BlueStep components (a U######/ unit folder) but no rules file at all — no
+# AGENTS.md and no CLAUDE.md with content — so the model offers /b6p-setup before the person asks.
+# Finite per project: it stops the moment setup runs, and a populated CLAUDE.md the user chose to
+# keep also silences it (the rules load through it on Claude Code, the only tool that runs this hook).
+# Silent for folders without a unit folder and for an old-template AGENTS.md (that case is the daily
+# skills' preflight, at the moment the old file costs something).
 
 HOOK_NAME="canary"
 HOOK_DETECT_ONLY=1
 source "${BASH_SOURCE[0]%/*}/lib/hook-input.sh" || {
-  echo "bluestep-tools: the guardrail hooks cannot load hooks/lib/hook-input.sh — every Edit, Write and Bash call in this session will be blocked until the plugin is reinstalled or updated." >&2
+  echo "bluestep-tools: the guardrail hooks cannot load hooks/lib/hook-input.sh — every Edit and Write call in this session will be blocked until the plugin is reinstalled or updated." >&2
   exit 1
 }
 
 if [ -z "$_hook_parser" ]; then
-  echo "bluestep-tools: no JSON parser on PATH (looked for jq, python3, python, node). The guardrail hooks will BLOCK every Edit, Write and Bash call in this session until one is installed — jq is the smallest." >&2
+  echo "bluestep-tools: no JSON parser on PATH (looked for jq, python3, python, node). The guardrail hooks will BLOCK every Edit and Write call in this session until one is installed — jq is the smallest." >&2
   exit 1
+fi
+
+if ls -d U[0-9][0-9][0-9][0-9][0-9][0-9]/ >/dev/null 2>&1 && [ ! -f AGENTS.md ] && [ ! -s CLAUDE.md ]; then
+  echo "bluestep-tools: this folder holds BlueStep components (a U######/ unit folder) but no AGENTS.md or CLAUDE.md rules file, so the always-on platform rules are not loaded. Before anything else, tell the user in one line and offer to run /b6p-setup; wait for their answer."
 fi
 
 exit 0

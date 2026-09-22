@@ -1,6 +1,8 @@
 # ADR: Per-project migrations live in `/b6p-update` as data assets
 
-**Status:** Accepted (2026-09-10)
+**Status:** Accepted (2026-09-10) — amended 2026-09-22: the procedure lives in `/b6p-setup` since
+0.37.0 (`/b6p-update`, `/b6p-init` and `/project-init` were folded into it); the migrations stay data
+assets exactly as decided here. See `setup-consolidation.md`.
 
 **Date:** 2026-09-10
 

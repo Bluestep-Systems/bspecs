@@ -28,7 +28,7 @@ cli.js, src/                      ← DORMANT npm CLI (templates/ was deleted ou
 ```
 
 Plugins serve content **verbatim** — there is no `{{VAR}}` templating anywhere in `plugin/`. The
-per-project files that need substitution ship with `/project-init` and are filled in
+per-project files that need substitution ship with `/b6p-setup` and are filled in
 conversationally.
 
 ## Key behaviors
@@ -45,7 +45,7 @@ conversationally.
 - **Everything else: read the skill file for what it does, the ADR for why.** Gateway MCP and
   `[PLATFORM]` authoring → `platform-mcp-integration.md` and the single-source procedure page
   `plugin/skills/bluestep-reference/conventions/mcp-platform-authoring.md`. Bare `b6p` →
-  `b6p-cli-distribution.md`. `/b6p-init`, `/project-init`, `/b6p-update` (and why migrations are
+  `b6p-cli-distribution.md`. `/b6p-setup` (one skill for machine, project and update since 0.37.0; why migrations are
   catalogue assets, not steps in the skill) → `per-project-migrations.md`. On-demand reference, no
   `@`-imports → `instruction-tree-and-claude-only.md`. Delegated `/spec-execute` →
   `subagents-and-delegated-execution.md`. `/bspecs-feedback` intake and its close-email path →
@@ -73,7 +73,7 @@ conversationally.
 
 No automated suite. By hand: add the in-repo marketplace, install the plugin into a scratch
 project, and confirm the skills appear, the two guardrail hooks fire on Edit/Write/Bash, and
-`bluestep-reference` serves files on demand; then `/project-init` in a scratch dir writes the root
+`bluestep-reference` serves files on demand; then `/b6p-setup` in a scratch dir writes the root
 files and a plugin-enabling `.claude/settings.json` with no hooks block.
 
 ## Working on tasks

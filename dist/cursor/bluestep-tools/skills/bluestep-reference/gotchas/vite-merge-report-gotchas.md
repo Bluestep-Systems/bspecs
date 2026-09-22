@@ -1,5 +1,5 @@
 ---
-description: "Sharp edges of the off-platform Vite/Preact SPA merge report. base: './' is mandatory (Vite defaults to '/', baking site-root /assets/... URLs that 404 on-platform → the app silently doesn't render); the <head> is stripped but the body <script>/<link>/mount-<div> survive; the mount id must match the built index.html; Node 20+ is required (crypto is not defined on 18); deploy-lib's deployUrl config key is camelCase (issue #30); BlueStep site CSS / global Swal are absent in local dev; and the default tsc -b && vite build script does NOT trip the block-tsc hook — don't 'fix' it. Load when debugging a blank/unstyled Vite merge report or a failed deploy."
+description: "Sharp edges of the off-platform Vite/Preact SPA merge report. base: './' is mandatory (Vite defaults to '/', baking site-root /assets/... URLs that 404 on-platform → the app silently doesn't render); the <head> is stripped but the body <script>/<link>/mount-<div> survive; the mount id must match the built index.html; Node 20+ is required (crypto is not defined on 18); deploy-lib's deployUrl config key is camelCase (issue #30); BlueStep site CSS / global Swal are absent in local dev; and the default tsc -b && vite build script is not a breach of the never-run-tsc rule (that rule is about component drafts) — don't 'fix' it. Load when debugging a blank/unstyled Vite merge report or a failed deploy."
 ---
 
 Failure modes of the off-platform Vite/Preact SPA merge report. For the pattern itself see
@@ -79,11 +79,11 @@ declare const Swal: any;
 
 ## Don't "fix" the `build` script
 
-- **Symptom:** the `preact-ts` scaffold's `build: "tsc -b && vite build"` looks like it should trip the
-  repo's block-tsc hook, tempting a "fix."
-- **Cause:** the block-tsc hook only matches a **literal top-level `tsc`** in a Bash command string.
-  `npm run build` is a wrapper, and deploy-lib / npm spawn `tsc` as a **child process** — neither is a
-  top-level `tsc`, so the hook never fires.
+- **Symptom:** the `preact-ts` scaffold's `build: "tsc -b && vite build"` looks like it breaks the
+  always-on rule "never run `tsc` locally", tempting a "fix."
+- **Cause:** that rule is about **component drafts** under `U######/<Component>/draft/`, which have no
+  declarations wired up locally and are built by the b6p CLI at publish. An off-platform Vite bundle
+  is an ordinary Node project with its own `tsconfig` — type-checking it is what its build is for.
 - **Fix:** leave the `build` script alone. Keep the scaffold default (type-check + build); do not strip the
   `tsc -b`.
 

@@ -9,15 +9,6 @@
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/block-generated-files.sh"
           }
         ]
-      },
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/block-tsc.sh"
-          }
-        ]
       }
     ],
     "SessionStart": [
