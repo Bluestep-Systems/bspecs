@@ -8,6 +8,67 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.37.0] — 2026-09-22
+
+> **One setup command, and you will rarely type it.** `/b6p-init`, `/project-init` and `/b6p-update`
+> are gone — no aliases, nobody had learned the names — and `/b6p-setup` does all three in one run:
+> the machine, the folder, and the update a project set up by an older release still needs. The
+> skills you use every day run it as their first step when a folder is not ready. **This release
+> changes hook definitions** (`block-tsc` is removed): **Codex users must re-trust the plugin's
+> hooks** after updating.
+
+### Changed
+
+- **`/b6p-setup` replaces `/b6p-init`, `/project-init` and `/b6p-update`.** Step 1 is the machine:
+  `b6p` binary, `b6p auth set`, the plugin for the tool you are in (per-tool text now lives in
+  reference files read only for that tool), the optional platform token — check first, act only on
+  what is missing. Step 2 is the folder: what it is, the six project files that are missing, then the
+  migration catalogue (unchanged; the migrations stay data assets — `per-project-migrations` ADR).
+  `--all` sweeps every B6P project on the machine, as `/b6p-update all` did. Every guardrail sentence
+  carried over: report before writing, never drop a line silently, never commit, touch only what a
+  matched migration names, never ask for a credential in chat.
+- **Setup is a step the daily skills take.** `/b6p-pull`, `/b6p-push`, `/spec-create` and
+  `/quick-task` now run `/b6p-setup` when the folder has no rules file **or an old template**, or when
+  the machine half is missing, and then continue with your request. The session canary prints one
+  line when a folder holds `U######/` but no `AGENTS.md`, so the offer comes before you ask —
+  finite per project, silent everywhere else.
+- **Two new layouts handled.** A parent folder whose subfolders hold `U######/` gets a rules file per
+  subfolder, never platform rules at the root. A non-empty folder with no BlueStep signal gets one
+  question — set it up, opt the plugin out, or "not a BlueStep repo" (→ `core-tools`' `/repo-setup`).
+- **The README opens with two prompts.** One for a machine without the plugin — paste it into any
+  agent session and it installs what it can (Claude Code CLI, Codex) or hands you the exact clicks
+  (desktop app, Cursor), checks `b6p`, and tells you to run `b6p auth set` and open a new session.
+  One for the project folder — `/b6p-setup` without stopping except for credentials. Install details
+  per tool moved below them; maintainers' content unchanged.
+- **Always-on cost.** Skill descriptions: 5009 → 3764 bytes (12 skills instead
+  of 14). The fused `SKILL.md` is 78 lines against 422 across the three it replaces.
+
+### Removed
+
+- **The `block-tsc` hook.** Measured over every transcript on the maintainer's machine since the
+  hooks started working (2026-09-09 → 09-22): 15 matches, **0 true positives** — no `tsc` ever run
+  against a component draft — 3 legitimate `tsc --noEmit` runs in off-platform bundles *inside* B6P
+  workspaces blocked, 9 mentions in commit heredocs / `ls` / `grep` blocked. The same picture that
+  removed `block-inline-frontend` in 0.32.0; a workspace gate would not have saved the real cases.
+  Rule 8 ("never run `tsc` locally; the b6p CLI runs the only build, during a publish push") stays as
+  prose everywhere; the "a hook blocks it" clauses are gone. `block-generated-files` and the canary
+  stay. **Codex: re-trust hooks.**
+- `/b6p-init`, `/project-init`, `/b6p-update` (see Changed). Anything that named them — preflights,
+  `bluestep-vite-report`, `mcp-platform-authoring`, README, test plans — names `/b6p-setup`.
+
+### Migration
+
+- Nothing to run for an existing project: the next `/b6p-pull` (or any daily skill) offers the
+  update when it finds an old template; or run `/b6p-setup` there yourself.
+- Codex: **re-trust the plugin's hooks** after updating, or the remaining guardrail silently stops.
+- `core-tools`' `/repo-setup` points at `/b6p-setup` in its next release.
+
+### Maintainers
+
+- ADR: `docs/decisions/setup-consolidation.md`. `tools/gen-cross-tool/lib.mjs` `INIT_SKILLS` names
+  `skills/b6p-setup/SKILL.md` and `references/enablement-claude-code.md`. `tools/test-hooks.sh`:
+  15 cases (block-tsc's six gone, two canary-nudge cases added).
+
 ## [plugin 0.36.0] — 2026-09-22
 
 > **The September close wave: 24 feedback tasks worked, three of them proven live first.** Most of
