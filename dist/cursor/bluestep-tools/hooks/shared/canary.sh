@@ -9,6 +9,12 @@
 # SessionStart hook is added to the model's context, and this must cost nothing), exit 0.
 #
 # Exit 1, not 2: a SessionStart exit 2 is a blocking error. The canary only reports.
+#
+# Second job (0.37.0): one line on stdout — which a SessionStart hook adds to the model's context —
+# when the folder holds BlueStep components (a U######/ unit folder) but no AGENTS.md rules file, so
+# the model offers /b6p-setup before the person asks. Finite per project: it stops the moment setup
+# runs. Silent for folders without a unit folder and for an old-template AGENTS.md (that case is the
+# daily skills' preflight, at the moment the old file costs something).
 
 HOOK_NAME="canary"
 HOOK_DETECT_ONLY=1
@@ -20,6 +26,10 @@ source "${BASH_SOURCE[0]%/*}/lib/hook-input.sh" || {
 if [ -z "$_hook_parser" ]; then
   echo "bluestep-tools: no JSON parser on PATH (looked for jq, python3, python, node). The guardrail hooks will BLOCK every Edit, Write and Bash call in this session until one is installed — jq is the smallest." >&2
   exit 1
+fi
+
+if ls -d U[0-9][0-9][0-9][0-9][0-9][0-9]/ >/dev/null 2>&1 && [ ! -f AGENTS.md ]; then
+  echo "bluestep-tools: this folder holds BlueStep components (a U######/ unit folder) but has no AGENTS.md rules file, so the always-on platform rules are not loaded. Say 'set up' and I will run /b6p-setup."
 fi
 
 exit 0

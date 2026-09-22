@@ -55,6 +55,13 @@ fi
 rmdir "$TMPD" 2>/dev/null
 
 echo "=== canary.sh (SessionStart) ==="
+NUDGE=$(mktemp -d); mkdir -p "$NUDGE/U123456"
+out=$(cd "$NUDGE" && printf '{"hook_event_name":"SessionStart","source":"startup"}' | bash "$H/canary.sh" 2>/dev/null); rc=$?
+if [ "$rc" = 0 ] && [[ "$out" == *"/b6p-setup"* ]]; then echo "  PASS  nudge: U######/ and no AGENTS.md → one stdout line, exit 0"; pass=$((pass+1)); else echo "  FAIL  nudge: expected the /b6p-setup line, exit 0 — got rc=$rc: ${out:0:80}"; fail=$((fail+1)); fi
+touch "$NUDGE/AGENTS.md"
+out=$(cd "$NUDGE" && printf '{"hook_event_name":"SessionStart","source":"startup"}' | bash "$H/canary.sh" 2>/dev/null); rc=$?
+if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "  PASS  nudge: U######/ with AGENTS.md → silent"; pass=$((pass+1)); else echo "  FAIL  nudge: expected silence — got rc=$rc: ${out:0:80}"; fail=$((fail+1)); fi
+rm -rf "$NUDGE"
 out=$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | bash "$H/canary.sh" 2>&1); rc=$?
 if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "  PASS  parser present: silent, exit 0"; pass=$((pass+1));
 else echo "  FAIL  parser present gave exit $rc, output '${out:0:80}'"; fail=$((fail+1)); fi
