@@ -11,7 +11,7 @@ A spec lives at `.claude/specs/<feature-name>/` and consists of three files: `re
 
 Read the `draft/README.md` of each component this feature will touch (the project's `AGENTS.md` says how to read the workspace scoped to the task). Read only the relevant components' READMEs, not the whole workspace. Those READMEs are your baseline for what each component does today — design decisions in Phase 2 should reference that knowledge, not re-derive it. If a relevant module's README is missing, ask the user to `/b6p-pull` it (or scaffold the README) before continuing.
 
-**Project setup check.** If the working directory has no `AGENTS.md` (and no populated `CLAUDE.md`), this project has not been set up and the always-on platform rules are missing. Say so and offer to run `/project-init` first; it is non-destructive and takes a minute. If the user would rather go on, continue and repeat the offer in the report.
+**Setup preflight.** If the working directory has no `AGENTS.md` (and no populated `CLAUDE.md`), or its `AGENTS.md` carries a `<!-- bluestep-tools rules-template N -->` marker below the one in `../b6p-setup/templates/AGENTS.md.template` (relative to this file), run `/b6p-setup` step 2 here and then continue with this request — it performs what has one correct answer and asks only the one question an old file with project rules raises. If `b6p` is missing, `~/.b6p/secrets.enc` is absent, or `$B6PT_TOKEN` is unset when a `[PLATFORM]` op needs it, run its step 1 first and hand over the commands only a person can run. Never drop the request: if the user would rather go on without setup, continue and repeat the offer in the report.
 
 ## Steps
 
@@ -25,7 +25,7 @@ Read the `draft/README.md` of each component this feature will touch (the projec
 
 ### Phase 1 — Requirements
 
-1. Copy `spec-templates/requirements.template.md` (relative to this file) to `.claude/specs/<feature-name>/requirements.md`.
+1. Copy `spec-templates/requirements.template.md` to `.claude/specs/<feature-name>/requirements.md`.
 2. Fill it in based on the user's description (and ClickUp ticket if provided).
 3. **STOP. Tell the user: "Requirements drafted at `.claude/specs/<feature-name>/requirements.md`. Review and approve before I proceed to design."**
 4. Wait for explicit approval ("approved", "ok", "next", etc.) before moving on.

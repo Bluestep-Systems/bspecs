@@ -9,7 +9,7 @@ This skill scaffolds an **off-platform Vite/Preact SPA merge report** in-session
 
 For the pattern itself — what this build model is, when to pick it over the CLI-compiled `static/script.ts` path, the two data models — this skill **points at** the `bluestep-reference` files rather than restating them (see [Point at the reference](#5-point-at-the-reference)).
 
-This is a **separate, focused** skill from `/project-init` (project bootstrap). Run `/project-init` first if you are setting up a brand-new BlueStep project; run this when you specifically want a Vite/Preact SPA merge report.
+This is a **separate, focused** skill from `/b6p-setup` (machine and project setup). Run `/b6p-setup` first if you are setting up a brand-new BlueStep project; run this when you specifically want a Vite/Preact SPA merge report.
 
 It is **non-destructive**: any file that already exists is left untouched and reported as skipped.
 
@@ -114,7 +114,7 @@ Drive `create-vite` **live** — this skill does **not** vendor a template tree;
 
 ### 4. Print (do NOT run) the [PLATFORM] + repo steps
 
-Print these as a clear checklist the **human** executes — this skill does not create the platform report or the GitHub repo unattended (mirroring how `/project-init` guides `git init`):
+Print these as a clear checklist the **human** executes — this skill does not create the platform report or the GitHub repo unattended (mirroring how `/b6p-setup` guides `git init`):
 
 **[PLATFORM] — create the BSJS MergeReport component:**
 
@@ -142,7 +142,7 @@ Do **not** restate the pattern here — send the user to the three `bluestep-ref
 - **The deploy workflow (install deploy-lib, the `config` keys, auth, `npm run deploy -- --build --clean`):** `../bluestep-reference/conventions/deploy-lib-workflow.md`
 - **The sharp edges (`base: './'`, `<head>` stripping, mount-id match, Node 20+, config-key casing, `Swal`/site-CSS in local dev, the `build` script):** `../bluestep-reference/gotchas/vite-merge-report-gotchas.md`
 
-Note the relationship to `/project-init`: that skill bootstraps a whole BlueStep project; this one is the focused Vite/Preact SPA merge-report scaffold. They are separate skills.
+Note the relationship to `/b6p-setup`: that skill sets up the machine and bootstraps a whole BlueStep project; this one is the focused Vite/Preact SPA merge-report scaffold. They are separate skills.
 
 ## Done
 
