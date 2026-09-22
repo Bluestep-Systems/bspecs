@@ -333,13 +333,10 @@ const DENYLIST = [
   ['CLAUDE.md', /CLAUDE\.md/],
 ];
 
-// The two init skills own the Claude Code enablement / bridge-writing prose:
-// b6p-init (marketplace + plugin install, "### Claude Code" subsection) and
-// project-init (writes and migrates the CLAUDE.md bridge, project settings).
-const INIT_SKILLS = new Set([
-  'skills/b6p-init/SKILL.md', 'skills/project-init/SKILL.md', // removed in 0.37.0 (task 5)
-  'skills/b6p-setup/SKILL.md', 'skills/b6p-setup/references/enablement-claude-code.md',
-]);
+// The setup skill owns the Claude Code enablement / bridge-writing prose: b6p-setup's
+// SKILL.md (writes and migrates the CLAUDE.md bridge, project settings) and its Claude Code
+// enablement reference (marketplace + plugin install).
+const INIT_SKILLS = new Set(['skills/b6p-setup/SKILL.md', 'skills/b6p-setup/references/enablement-claude-code.md']);
 const PER_TOOL_LINE = /Claude Code|Cursor|Codex/;
 
 // Lint shipped prose — every .md under plugin/**, plus the plugin.json
