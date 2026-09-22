@@ -5,7 +5,7 @@ description: Scaffold an off-platform Vite/Preact SPA merge-report project — c
 
 # /bluestep-vite-report — Scaffold a Vite/Preact SPA merge report
 
-This skill scaffolds an **off-platform Vite/Preact SPA merge report** in-session: it checks Node 20, drives `create-vite` (the `preact-ts` template) live, sets the load-bearing `base: './'`, wires the deploy-lib `config` block + `repository` field into `package.json`, and then **prints** — does not run — the `[PLATFORM]` report-creation and GitHub-repo steps for the human to execute. It **guides** the outward steps (create the platform report, create the GitHub repo, deploy) the same way `/b6p-setup` guides `git init`.
+This skill scaffolds an **off-platform Vite/Preact SPA merge report** in-session: it checks Node 20, drives `create-vite` (the `preact-ts` template) live, sets the load-bearing `base: './'`, wires the deploy-lib `config` block + `repository` field into `package.json`, and then **prints** — does not run — the `[PLATFORM]` report-creation and GitHub-repo steps for the human to execute. It **guides** the outward steps (create the platform report, create the GitHub repo, deploy) the same way `/b6p-setup` hands over `b6p auth set`.
 
 For the pattern itself — what this build model is, when to pick it over the CLI-compiled `static/script.ts` path, the two data models — this skill **points at** the `bluestep-reference` files rather than restating them (see [Point at the reference](#5-point-at-the-reference)).
 
@@ -106,7 +106,7 @@ Drive `create-vite` **live** — this skill does **not** vendor a template tree;
    - **`config.deployUrl` is camelCase** — a placeholder for now. deploy-lib reads `npm_package_config_deployUrl`; the README's lowercase `deployurl` silently fails. Leave a note next to it (e.g. a `// TODO` in your working notes, since JSON has no comments): **replace this with the report's WebDAV folder after you create the report in step 4.**
    - `"deploypathsuffix": "static"` and `"builddir": "dist"` are lowercase (in both code and README) — uploads land under the report's `static/` folder; `dist` is Vite's default build output.
    - The `repository` `url` is a `git+https://github.com/<owner>/<repo>.git` placeholder — fill in after creating the GitHub repo in step 4.
-   - **Keep the default `build` script** the `preact-ts` template ships (`tsc -b && vite build`). Do **not** strip the `tsc -b`. It does **not** trip the `block-tsc` hook (that hook only matches a literal top-level Bash `tsc`; here `tsc` runs inside an npm script / as a child of deploy-lib) — see the gotchas file linked in step 5.
+   - **Keep the default `build` script** the `preact-ts` template ships (`tsc -b && vite build`). Do **not** strip the `tsc -b`. The always-on "never run `tsc` locally" rule is about component drafts, which have no declarations wired up locally; this off-platform bundle is an ordinary Node project and type-checking it is what its build is for — see the gotchas file linked in step 5.
 
 5. **Protect the deploy token.** deploy-lib reads a bearer token from `.env-local` (hyphen) in the project root. `create-vite`'s default `.gitignore` uses `*.local`, which does **not** match `.env-local` — so append a line `.env-local` to the project's `.gitignore` so the token file can never be committed. (Full auth options are in the deploy-lib workflow file linked in step 5.)
 
@@ -114,7 +114,7 @@ Drive `create-vite` **live** — this skill does **not** vendor a template tree;
 
 ### 4. Print (do NOT run) the [PLATFORM] + repo steps
 
-Print these as a clear checklist the **human** executes — this skill does not create the platform report or the GitHub repo unattended (mirroring how `/b6p-setup` guides `git init`):
+Print these as a clear checklist the **human** executes — this skill does not create the platform report or the GitHub repo unattended (mirroring how `/b6p-setup` hands over `b6p auth set`):
 
 **[PLATFORM] — create the BSJS MergeReport component:**
 

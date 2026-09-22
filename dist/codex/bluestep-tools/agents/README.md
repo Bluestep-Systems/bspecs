@@ -17,9 +17,9 @@ So these `.toml` files are **payload**: to use them, copy them into
 - the project's `.codex/agents/` (per project), or
 - `~/.codex/agents/` (all your projects).
 
-Copy them yourself for now — the `/b6p-init` Codex enablement section
-tells you when. (Automated copying by the init skill is planned but not yet
-shipped; until then this folder is the source and the copy is manual.)
+Copy them yourself — `/b6p-setup` step 1 (its Codex enablement reference)
+gives you the exact command when it runs on Codex. The skill hands the copy
+over rather than running it: `~/.codex/agents/` is outside the project.
 
 ## What the generator changed
 

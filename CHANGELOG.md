@@ -24,14 +24,29 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   reference files read only for that tool), the optional platform token — check first, act only on
   what is missing. Step 2 is the folder: what it is, the six project files that are missing, then the
   migration catalogue (unchanged; the migrations stay data assets — `per-project-migrations` ADR).
-  `--all` sweeps every B6P project on the machine, as `/b6p-update all` did. Every guardrail sentence
-  carried over: report before writing, never drop a line silently, never commit, touch only what a
-  matched migration names, never ask for a credential in chat.
+  `--all` sweeps every B6P project on the machine, as `/b6p-update all` did — migrations only, it
+  never writes missing project files. Every guardrail sentence carried over: report before writing,
+  never drop a line silently, never commit, touch only what a matched migration (or, in the current
+  folder, a missing file) names, never ask for a credential in chat. Two things the fused skill now
+  **does** that the three did not: it runs `git init` itself in a folder that is not a repo (before:
+  "or tell the user to"), and a populated `CLAUDE.md` is moved into `AGENTS.md` **only on an explicit
+  yes** — `/b6p-update`'s `rules-file-bridge` used to move it unasked; the file is the user's, so it
+  asks now, and no answer means no.
 - **Setup is a step the daily skills take.** `/b6p-pull`, `/b6p-push`, `/spec-create` and
-  `/quick-task` now run `/b6p-setup` when the folder has no rules file **or an old template**, or when
-  the machine half is missing, and then continue with your request. The session canary prints one
-  line when a folder holds `U######/` but no `AGENTS.md`, so the offer comes before you ask —
-  finite per project, silent everywhere else.
+  `/quick-task` now invoke `/b6p-setup` when the folder has no rules file, a rules file from before
+  the version marker (every project set up before 0.33.0), a marker below the shipped one, or rules
+  in `CLAUDE.md` with no `AGENTS.md` — or when the machine half is missing — and then continue with
+  your request. On Claude Code the session canary prints one line when a folder holds `U######/` but
+  no rules file at all (no `AGENTS.md`, no populated `CLAUDE.md`), so the offer comes before you ask
+  — finite per project, silent everywhere else.
+- **Rules template 3.** Templates 0.33.0–0.36.0 told the agent, on every turn, that a hook blocks
+  both the generated-files rule and the `tsc` rule; with `block-tsc` gone that sentence is false, so
+  the template marker moves to 3 and every project on template 2 detects the `rules-template`
+  migration — a text-only swap for a file without project lines, the usual one-table approval
+  otherwise. Numbering is unchanged from template 2. The `**Scaffolded:**` line now sits after the
+  marker (so the marker stays on line 3), and the renumbering note is added only when the project's
+  own docs cite a rule by number. `project-settings` now also names the older array shape of
+  `enabledPlugins`.
 - **Two new layouts handled.** A parent folder whose subfolders hold `U######/` gets a rules file per
   subfolder, never platform rules at the root. A non-empty folder with no BlueStep signal gets one
   question — set it up, opt the plugin out, or "not a BlueStep repo" (→ `core-tools`' `/repo-setup`).
@@ -40,26 +55,33 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   (desktop app, Cursor), checks `b6p`, and tells you to run `b6p auth set` and open a new session.
   One for the project folder — `/b6p-setup` without stopping except for credentials. Install details
   per tool moved below them; maintainers' content unchanged.
-- **Always-on cost.** Skill descriptions: 5009 → 3764 bytes (12 skills instead
-  of 14). The fused `SKILL.md` is 78 lines against 422 across the three it replaces.
+- **Always-on cost.** Skill descriptions: 5009 → 3491 bytes (12 skills instead of 14). The fused
+  `SKILL.md` is 92 lines against 418 across the three it replaces — fewer lines, but at 17 K bytes it
+  is longer than any one of them; the saving is the two descriptions in every session, not the body,
+  which is read only when setup runs.
 
 ### Removed
 
 - **The `block-tsc` hook.** Measured over every transcript on the maintainer's machine since the
   hooks started working (2026-09-09 → 09-22): 15 matches, **0 true positives** — no `tsc` ever run
-  against a component draft — 3 legitimate `tsc --noEmit` runs in off-platform bundles *inside* B6P
-  workspaces blocked, 9 mentions in commit heredocs / `ls` / `grep` blocked. The same picture that
-  removed `block-inline-frontend` in 0.32.0; a workspace gate would not have saved the real cases.
-  Rule 8 ("never run `tsc` locally; the b6p CLI runs the only build, during a publish push") stays as
-  prose everywhere; the "a hook blocks it" clauses are gone. `block-generated-files` and the canary
+  against a component draft. Blocked instead: 3 real invocations in an off-platform bundle repo (two
+  `--noEmit` type-checks and one `tsc -v`), 9 mentions of the word in commit heredocs / `ls` / `grep`,
+  and 2 of its own self-tests; 1 mention slipped through. That repo holds no `U######/` folder and no
+  marker, so a "B6P workspace only" gate would have let the three through — but the reason to remove
+  the hook is the zero, not the three. The same picture that removed `block-inline-frontend` in
+  0.32.0. Rule 8 ("never run `tsc` locally; the b6p CLI runs the only build, during a publish push")
+  stays as prose everywhere; the "a hook blocks it" clauses are gone from the plugin, the template
+  (hence template 3, above) and the generated `dist/` READMEs. `block-generated-files` and the canary
   stay. **Codex: re-trust hooks.**
 - `/b6p-init`, `/project-init`, `/b6p-update` (see Changed). Anything that named them — preflights,
   `bluestep-vite-report`, `mcp-platform-authoring`, README, test plans — names `/b6p-setup`.
 
 ### Migration
 
-- Nothing to run for an existing project: the next `/b6p-pull` (or any daily skill) offers the
-  update when it finds an old template; or run `/b6p-setup` there yourself.
+- Nothing to run for an existing project: the next `/b6p-pull` (or any daily skill) runs the update
+  when it finds a rules file from before the marker or on template 1–2 — every project set up before
+  this release qualifies, because of template 3 — asking only if the file has lines of yours; or run
+  `/b6p-setup` there yourself.
 - Codex: **re-trust the plugin's hooks** after updating, or the remaining guardrail silently stops.
 - `core-tools`' `/repo-setup` points at `/b6p-setup` in its next release.
 
@@ -67,7 +89,12 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 - ADR: `docs/decisions/setup-consolidation.md`. `tools/gen-cross-tool/lib.mjs` `INIT_SKILLS` names
   `skills/b6p-setup/SKILL.md` and `references/enablement-claude-code.md`. `tools/test-hooks.sh`:
-  15 cases (block-tsc's six gone, two canary-nudge cases added).
+  17 cases (block-tsc's six gone, four canary-nudge cases added: nudge, populated `CLAUDE.md`,
+  `AGENTS.md`, non-B6P folder). The project `README.md.template` was rewritten around the install
+  being per machine (its Tooling and Configuration sections said the project settings enable the
+  plugin; they register the marketplace only). Prove-out cases (e)–(g) in the spec — the preflight
+  from a live `/b6p-pull`, which skill the three natural questions trigger, and prompt 1 from a
+  profile without the plugin — were **not run before merge**; a miss is a 0.37.1.
 
 ## [plugin 0.36.0] — 2026-09-22
 

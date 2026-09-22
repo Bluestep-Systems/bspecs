@@ -12,7 +12,7 @@ asset filenames only.
 
 | # | id | Says to the user | Detect | Asset | Remove when |
 |---|---|---|---|---|---|
-| 1 | `rules-file-bridge` | "your rules are in the wrong file" | No `AGENTS.md`, but the tool-specific bridge file holds real rules. Or both files hold real rules. | `rules-file-bridge.md` | No project detects for a full release cycle. |
+| 1 | `rules-file-bridge` | "your rules are in the wrong file" | No `AGENTS.md`, but the tool-specific bridge file holds real rules. Or both files hold real rules. Asks before moving — the file is the user's. | `rules-file-bridge.md` | No project detects for a full release cycle. |
 | 2 | `rules-template` | "rules file is out of date" | `AGENTS.md`'s marker version is below the shipped template's, or it has no `<!-- bluestep-tools rules-template N -->` marker at all while carrying B6P rules. | `rules-template.md` | No project detects for a full release cycle. |
 | 3 | `project-settings` | "settings are missing N keys" (or "one setting differs from the current default") | The project's settings file for this tool is missing a key `/b6p-setup` step 2b writes, or holds one in a shape a later release replaced. | `project-settings.md` | Every project has the keys, or has declined them. |
 | 4 | `codex-agents-payload` | "Codex needs its subagents re-copied" / "Codex needs hooks re-trusted" | Running in Codex, and the agents payload copy or hook trust has not been redone since the last release that changed a hook definition. | `codex-agents-payload.md` | Codex trusts hooks and reads bundled subagents without a per-release step. |
@@ -28,8 +28,9 @@ project with no marker is version 1. Never compare against a number written in a
 ## Which steps ask, and which decide
 
 Each asset marks its own steps, but the shape is the same across all four: **a step with one correct
-answer is performed, not offered.** In practice most projects reach the end of a migration without a
-single question, because most old rules files turn out to be unmodified template text.
+answer is performed, not offered.** Moving a user's own rules file is not one of those — it asks. In
+practice most projects reach the end of a migration without a single question, because most old
+rules files turn out to be unmodified template text.
 
 Asking on a decision the user cannot make better than you costs them attention they need for the
 decisions that are really theirs.

@@ -9,17 +9,26 @@ and both hold real rules.
 it through a one-line bridge next to it. Rules kept in the bridge instead reach only Claude Code —
 a teammate on another tool sees none of them.
 
-## No `AGENTS.md` yet? Move the rules and say so.
+## No `AGENTS.md` yet? Offer the move; do it only on an explicit yes.
 
 The content moves verbatim; nothing is cut, nothing is reworded, and the project keeps working
-exactly as before on every tool instead of one. That has one correct answer, so do it:
+exactly as before on every tool instead of one. The move itself has one correct shape — but the file
+is the user's own rules, so this is the one step in this migration that asks first — `/b6p-setup`'s
+rule for a bridge file that holds real rules instead of importing `AGENTS.md`; a prompt telling you
+to skip questions does not override it. One concrete question, with the line count in it:
+
+> Your `CLAUDE.md` holds 41 lines of rules. Move them into `AGENTS.md` unchanged and leave
+> `CLAUDE.md` as the one-line import, so Cursor and Codex read them too?
+
+On yes, move the content and replace the bridge with the shipped one-liner at
+`${CLAUDE_PLUGIN_ROOT}/skills/b6p-setup/templates/CLAUDE.md.template`, whose only job is to import `AGENTS.md`.
+Then report:
 
 > `riverside-forms` — moved your rules from `CLAUDE.md` into `AGENTS.md`, unchanged. `CLAUDE.md` is
 > now the one-line import. Cursor and Codex can read these rules now; before, only Claude Code
 > could.
 
-Replace the bridge with the shipped one-liner at
-`${CLAUDE_PLUGIN_ROOT}/skills/b6p-setup/templates/CLAUDE.md.template`, whose only job is to import `AGENTS.md`.
+No answer, or an unclear one, counts as a decline (below).
 
 The moved content is then an out-of-date rules file, so continue into `rules-template` on the result
 — including its cheap check, which usually finds the whole thing is template text.
@@ -35,5 +44,6 @@ alone.
 
 ## If they decline
 
-Leave both files exactly as they are, and say the consequence in one line: agents that read only
-`AGENTS.md` — Cursor, Codex — will not see those rules.
+Leave both files exactly as they are — no `AGENTS.md` is written from the template either, since
+that would leave two rule files — and say the consequence in one line: agents that read only
+`AGENTS.md` — Cursor, Codex — will not see those rules. The offer repeats on the next run.

@@ -33,7 +33,7 @@
 // Agents are PAYLOAD, never a manifest field: plugin-bundled subagents are not
 // operational on Codex at all (prove-out X5 — the files land in the plugin
 // cache but nothing registers), so the emitted TOML files ship as payload
-// the /b6p-init Codex enablement step tells the user to copy into
+// the /b6p-setup Codex enablement reference tells the user to copy into
 // ~/.codex/agents/ (or the project's .codex/agents/). Two consequences the emitter honors:
 // agent names lose their hyphens (Codex accepts lowercase letters, digits and
 // underscores only — X5), and a ${CLAUDE_PLUGIN_ROOT} reference in an agent
@@ -325,9 +325,9 @@ So these \`.toml\` files are **payload**: to use them, copy them into
 - the project's \`.codex/agents/\` (per project), or
 - \`~/.codex/agents/\` (all your projects).
 
-Copy them yourself for now — the \`/b6p-init\` Codex enablement section
-tells you when. (Automated copying by the init skill is planned but not yet
-shipped; until then this folder is the source and the copy is manual.)
+Copy them yourself — \`/b6p-setup\` step 1 (its Codex enablement reference)
+gives you the exact command when it runs on Codex. The skill hands the copy
+over rather than running it: \`~/.codex/agents/\` is outside the project.
 
 ## What the generator changed
 
@@ -614,8 +614,7 @@ silently.
 
 | Guardrail | Matcher | Status |
 |---|---|---|
-| block-tsc | \`Bash\` | Proven live — \`Bash\` is the tool name Codex sends, and the deny was verified falsifiably (the blocked command never ran) |
-| block-generated-files | *(none)* | Fires on every PreToolUse; the wrapper filters |
+| block-generated-files | *(none)* | Fires on every PreToolUse; the wrapper filters. (The \`Bash\`-matcher \`block-tsc\` hook that proved this path live was removed in 0.37.0.) |
 | canary | *(not wired)* | Claude Code-only SessionStart check; \`shared/canary.sh\` ships but nothing runs it on Codex |
 
 The two edit guardrails are matcher-less on purpose. Codex intercepts file

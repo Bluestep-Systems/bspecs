@@ -16,14 +16,16 @@ Open your AI coding agent (Claude Code, Cursor or Codex) in any folder, paste th
 > 2. If it is not: on the Claude Code CLI run `claude plugin marketplace add Bluestep-Systems/bspecs`
 >    and then `claude plugin install bluestep-tools@bluestep --scope user`. On Codex run
 >    `codex plugin marketplace add Bluestep-Systems/bspecs` and tell me to install bluestep-tools from
->    it and trust its hooks. On the Claude desktop app or Cursor you cannot install it yourself: give
+>    it, trust its hooks, and copy its three subagents from the installed plugin's `agents/` folder
+>    into `~/.codex/agents/`. On the Claude desktop app or Cursor you cannot install it yourself: give
 >    me the exact clicks (desktop app: Customize → Plugins → + → Add marketplace → From repository
 >    `https://github.com/Bluestep-Systems/bspecs` → Browse plugins → install bluestep-tools; Cursor:
 >    Plugins → Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bspecs` →
 >    install bluestep-tools).
 > 3. Check whether the `b6p` command is on my PATH. If not and Node.js is installed, run
 >    `npm i -g @bluestep-systems/b6p-cli`; if Node is not installed, give me the download link
->    `https://github.com/Bluestep-Systems/b6p-cli/releases` for my OS.
+>    `https://github.com/Bluestep-Systems/b6p-cli/releases` for my OS (binaries exist for macOS
+>    arm64 and Windows x64 — on Linux, WSL or an Intel Mac tell me to install Node first).
 > 4. Tell me to run `b6p auth set` in my own terminal — never ask me for the token.
 > 5. Finish with one line: start a **new** session in the folder where my BlueStep work will live,
 >    and there type `/b6p-setup`.
@@ -52,16 +54,19 @@ settings), and brings a project set up by an older release up to date, keeping e
 It asks nothing on a fresh folder and reports nothing to do on a second run. `/b6p-setup --all`
 sweeps every BlueStep project on the machine.
 
-If you want it to run without stopping, paste this instead:
+If you want it to get on with it, paste this instead:
 
-> Run /b6p-setup for this folder. Do everything you can without asking me. Stop only for what only I
-> can do — running `b6p auth set`, creating the platform token — and for each one tell me the exact
-> command or click, then continue when I say done. Finish by telling me how to pull my first component.
+> Run /b6p-setup for this folder. Decide everything the skill says you can decide, and ask me only
+> what it says is mine — a rules file with my own lines in it, a populated CLAUDE.md, a settings
+> value that differs, a folder that is not clearly a BlueStep workspace. For anything only I can run
+> (`b6p auth set`), give me the exact command and carry on with the rest; the platform token is
+> optional, skip it unless I ask. Finish by telling me how to pull my first component.
 
 **You will rarely need to type it.** The first time you ask the agent to pull a component, plan a
-feature or fix a bug in a folder that is not set up — or is set up on an old template — the skill
-you asked for runs the setup as its first step and then does what you asked. A session opened in a
-folder that holds components but no rules file starts with a one-line offer to set it up.
+feature or fix a bug in a folder that is not set up — no rules file, a rules file from before the
+version marker, or one on an older template — the skill you asked for runs the setup as its first
+step and then does what you asked. On Claude Code, a session opened in a folder that holds components
+but no rules file at all starts with a one-line offer to set it up.
 
 The platform token (`B6PT_TOKEN`) is **optional**: only platform authoring over the bundled gateway
 MCP needs it, and it is a separate credential from the `b6p` CLI's. `/b6p-setup` walks you through it
@@ -76,15 +81,17 @@ Codex: update from the plugins screen or CLI, and **re-trust the hooks** after a
 changes one — the changelog says which; an untrusted hook does nothing, silently.
 
 Updating the plugin changes the skills, hooks and reference; it never rewrites the files
-`/b6p-setup` put in your project. The next time you work in that project, the setup step notices the
-old template and offers the update; or run `/b6p-setup` there yourself.
+`/b6p-setup` put in your project. The next time you pull, plan or fix something in that project, the
+setup step notices the old template (or a rules file from before the marker) and runs the update —
+asking only if the file has lines of yours; or run `/b6p-setup` there yourself.
 
 ## Sharing it with your team
 
 Commit the `AGENTS.md`, the `CLAUDE.md` bridge and, on Claude Code, the `.claude/settings.json`
 that `/b6p-setup` writes: the rules and the marketplace registration then travel with the repo. The
 plugin install itself is per machine — each teammate pastes the prompt above once. Your project's
-`README.md` (also written by `/b6p-setup`) says so.
+`README.md` (also written by `/b6p-setup`) carries the install commands and clicks, since Claude Code
+shows no hint when the plugin is missing.
 
 ## What you get
 
@@ -105,7 +112,7 @@ Once `bluestep-tools` is enabled:
 - **Setup** — `/b6p-setup` (machine, project and update in one run) and `/bluestep-vite-report` (scaffold an off-platform Vite/Preact merge report).
 - **Platform authoring** — the bundled `bluestep-gateway` MCP server (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set) lets the agent create and wire platform objects in-session.
 - **Subagents** — `b6p-task-implementer` (isolated task execution), `b6p-commenter` (component README), `b6p-code-review` (report-only review).
-- **Guardrail hook** — blocks hand-edits to platform-generated files (`declarations/`, `B.d.ts`, …). Claude Code blocks; Cursor warns after the edit; Codex runs it only once trusted. A session canary warns once if no JSON parser is on PATH and offers setup in a folder that holds components but no rules file.
+- **Guardrail hook** — blocks hand-edits to platform-generated files (`declarations/`, `B.d.ts`, …). Claude Code blocks; Cursor warns after the edit; Codex runs it only once trusted. On Claude Code a session canary warns once if no JSON parser is on PATH and offers setup in a folder that holds components but no rules file.
 - **On-demand reference** — `bluestep-reference`, a BsJs/RelateScript/platform reference the agent reads one file at a time, only when a task calls for it.
 - **Feedback** — `/task-comment` (ClickUp implementation comment), `/bspecs-feedback` (propose a plugin change upstream; you get an email when it is closed).
 
@@ -161,9 +168,10 @@ the plugin page's skill count; the composer's slash menu with your project open 
 **Codex.** `codex plugin marketplace add Bluestep-Systems/bspecs`, install **bluestep-tools** from it,
 start a fresh session. Then two steps the tooling depends on: **trust the hooks** (plugin page →
 Review → trust, or `/hooks` in the CLI — an untrusted hook does nothing, silently, and needs
-re-trust after any release that changes one), and **copy the three subagents** from
-`dist/codex/bluestep-tools/agents/` into `~/.codex/agents/` (Codex plugins cannot register them;
-without the copy the spec skills run in-session instead of delegating).
+re-trust after any release that changes one), and **copy the three subagents** from the installed
+plugin's `agents/` folder (the same files are in this repo under `dist/codex/bluestep-tools/agents/`)
+into `~/.codex/agents/` (Codex plugins cannot register them; without the copy the spec skills run
+in-session instead of delegating).
 
 **Verify**, on any tool: in a fresh session the `bluestep-tools` skills appear in the slash menu, and
 with `B6PT_TOKEN` set the plugin page shows `bluestep-gateway` connected.

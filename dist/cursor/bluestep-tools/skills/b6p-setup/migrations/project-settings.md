@@ -53,8 +53,8 @@ whether to remove it depends on what the machine holds. **Read** `~/.claude/plug
   here. **Leave it.** Mention in the report that this project carries its own install and that `/b6p-setup` step 1
   can replace it with one machine-wide install.
 - Neither row → the `true` loads nothing while looking enabled. Say so, give the command for the user to
-  run — `claude plugin install bluestep-tools@bluestep --scope user` on Claude Code (desktop app: the
-  claude.ai Plugins screen) — and **ask** before removing the entry; it is harmless until the install
+  run — `claude plugin install bluestep-tools@bluestep --scope user` on Claude Code (desktop app:
+  Customize → Plugins → + → Add marketplace → From repository → Browse plugins → install) — and **ask** before removing the entry; it is harmless until the install
   exists and removing it first leaves nothing that even hints at the plugin.
 - A project that holds `false` is an **opt-out** someone chose for a repo that is not a B6P workspace.
   Leave it exactly as it is, and skip every other key here — it is not a B6P project.

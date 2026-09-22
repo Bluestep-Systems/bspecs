@@ -14,9 +14,14 @@ for that content on every turn of every session.
 
 ## Step 1 — Find out whether the project added anything (cheap check first)
 
-Diff the file against `${CLAUDE_PLUGIN_ROOT}/skills/b6p-setup/templates/legacy/AGENTS.md.v1.template`,
-the last pre-split template. Revisions before it differ by a few lines, so read a near match as
-template text. The title line and a `**Scaffolded:**` line are per-project header, not rules.
+A file with **no marker** is diffed against
+`${CLAUDE_PLUGIN_ROOT}/skills/b6p-setup/templates/legacy/AGENTS.md.v1.template`, the last pre-split
+template. Revisions before it differ by a few lines, so read a near match as template text. A file
+that **already carries a marker** (template 2 or later) is diffed against the current
+`templates/AGENTS.md.template` with the project name substituted: the shipped text changed by a
+sentence or two between those numbers, and everything under a `## Project rules` heading is the
+project's own by construction. Either way, the title line and a `**Scaffolded:**` line are
+per-project header, not rules.
 
 This one command usually settles it. **Most old rules files turn out to be unmodified template
 text** — they were hand-updated to track each template release and never grew rules of their own.
@@ -86,8 +91,9 @@ what survived under a `## Project rules` heading, before the `## Compaction` sec
 
 Write any `docs/` page a chunk moved into during the same change, so no pointer dangles.
 
-**The rebuild renumbers the platform rules.** Template 2 shuffled most of the v1 numbers (v1 rule 1 is
-now 7, 2 is 1, 3 is 8, 4 is 2, 6 is 5, 8 is 3, 9 is 4, 10 is 6), and a project's own quick-tasks, specs
+**The rebuild renumbers the platform rules — from v1.** Template 2 shuffled most of the v1 numbers (v1 rule 1 is
+now 7, 2 is 1, 3 is 8, 4 is 2, 6 is 5, 8 is 3, 9 is 4, 10 is 6); template 3 keeps template 2's numbering and
+only corrected the sentence about which rules a hook enforces, so a 2 → 3 swap needs none of this. A project's own quick-tasks, specs
 and decision logs often cite "Critical rule N" by the old number — after the swap every one of those
 points at the wrong rule, with no signal that anything is off. So, if
 `grep -rlin "rules\? [0-9]" docs .claude 2>/dev/null` lists at least one file, add this line right under the

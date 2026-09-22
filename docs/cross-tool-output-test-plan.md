@@ -68,9 +68,10 @@ Fill in per run (copy the row):
       any empty folder works). Cursor needs an **open workspace** for skills/hooks — an
       empty window shows only user-global surfaces — so open this folder in each tool
       before testing.
-- [ ] `tsc` does **not** need to be installed. The block-tsc test below uses
-      `tsc --version > tsc-ran.txt`: the shell creates the file the moment the command
-      runs at all, so "file absent" proves the block even on a machine without tsc.
+- [ ] *(Historical — `block-tsc` was removed in 0.37.0; its P1 probe below is kept as the
+      record of how the Bash-hook path was proven on each tool, and is skipped on a
+      current build.)* `tsc` did **not** need to be installed: `tsc --version > tsc-ran.txt`
+      creates the file the moment the command runs at all, so "file absent" proved the block.
 - [ ] The `b6p` CLI is **not** needed for this checklist. (The `/b6p-*` skills need it at
       runtime, but this plan only checks they are discoverable, not that they sync.)
 
@@ -156,7 +157,7 @@ Three reusable probes referenced below:
       common-gotchas file and quote its first heading." → the agent reads the bundled file
       and quotes a heading that matches
       `plugin/skills/bluestep-reference/gotchas/common-gotchas.md` in this repo.
-- [ ] **Hook — block-tsc:** P1 → command denied, `tsc-ran.txt` absent, `echo ok` passes.
+- [ ] ~~**Hook — block-tsc:** P1 → command denied, `tsc-ran.txt` absent, `echo ok` passes.~~ *(removed 0.37.0)*
 - [ ] **Hook — block-generated-files:** P2 → edit denied, file byte-identical.
 - [ ] **Hook — block-inline-frontend:** P3 → edit denied.
 - [ ] **MCP:** ask the agent to call `available_tenants` on the bluestep gateway → a
@@ -186,9 +187,9 @@ the guardrail message goes to Cursor's hook logs. Only the shell guardrail block
       error. *(First run: this also closes prove-out C2 — skill body execution + bundled
       resource reads on Cursor.)*
 - [ ] **Reference on-demand:** same probe as 4.1 → correct heading quoted.
-- [ ] **Hook — block-tsc (BLOCKING):** P1 → denied via `beforeShellExecution`,
-      `tsc-ran.txt` absent, `echo ok` passes. *(First run: this also closes §5.1 — see
-      there before moving on.)*
+- [ ] ~~**Hook — block-tsc (BLOCKING):** P1 → denied via `beforeShellExecution`,
+      `tsc-ran.txt` absent, `echo ok` passes.~~ *(removed 0.37.0; §5.1 was closed by it
+      while it existed)*
 - [ ] **Hook — block-generated-files (ADVISORY — the edit is EXPECTED to land):** P2 →
       the file **is** modified (that is the pass condition on Cursor, not a failure), and
       the `BLOCKED: … platform-generated` message appears in Cursor's hook logs/output.
@@ -221,10 +222,11 @@ indistinguishable from a broken one. Full failure ladder if a hook seems dead:
       may be `$`-prefixed — note which you used) → reports no specs (or lists them), no
       error.
 - [ ] **Reference on-demand:** same probe as 4.1 → correct heading quoted.
-- [ ] **Hook — block-tsc (BLOCKING via JSON deny):** P1 → denied, **`tsc-ran.txt`
-      absent**, `echo ok` passes. On Codex the deny is a `hookSpecificOutput` JSON with
-      exit 0 (exit-2 is unreachable on the Windows harness); the plugin page's hook "runs"
-      counter incrementing confirms the hook actually executed.
+- [ ] ~~**Hook — block-tsc (BLOCKING via JSON deny):** P1 → denied, `tsc-ran.txt`
+      absent, `echo ok` passes.~~ *(removed 0.37.0. What it established still holds: on
+      Codex a deny is a `hookSpecificOutput` JSON with exit 0 — exit-2 is unreachable on
+      the Windows harness — and the plugin page's hook "runs" counter is the proof a hook
+      executed.)*
 - [ ] **Hook — edit guardrails:** P2 and P3. Two acceptable outcomes, record which:
       - Edit goes through a Claude-compatible tool (`Edit`/`Write`/…) → **blocked**, file
         untouched.
@@ -260,7 +262,7 @@ tooling.
 - [ ] **5.1 Cursor hook runtime path resolution (prove-out C4).** The generated Cursor
       `hooks.json` uses relative commands (`./hooks/*-cursor.sh`); whether Cursor resolves
       those against the **installed plugin location** at runtime was only proven at
-      registration level. The 4.2 block-tsc pass **is** the proof. If it never fires:
+      registration level. The 4.2 block-tsc pass **was** the proof (closed while that hook existed; a fresh run uses the advisory edit hook's log line instead). If it never fires:
       likely the relative path resolved against the workspace instead → fix task on
       `tools/gen-cross-tool/emit-cursor.mjs` (anchor the command differently), and record
       the finding in the dist README.
