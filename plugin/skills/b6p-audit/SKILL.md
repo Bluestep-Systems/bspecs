@@ -69,6 +69,7 @@ Read the JSON output. The shape is:
 
 - If `changedFiles` is empty: tell the user "Local is in sync with the platform."
 - If non-empty: list each path and note which side has the newer version when you can tell (a `(new)` suffix means the file exists on the platform but not locally; otherwise the file exists on both sides with different content).
+- Say what a push would do to each. A file that differs is **overwritten** by the next push — `b6p push` asks first only when run without `--yes`, and `/b6p-push` always passes `--yes`. A `(new)` file is **deleted** by the next push under the same conditions (push asks "Delete them?" and `--yes` answers Yes; verified 2026-09 on b6p-cli 0.7.0). So "I deleted it locally and pushed" is a destructive act, not a test that the file was unused. If the platform copy has to survive, pull it before pushing.
 
 ### 4. Suggest a next step (do not auto-execute)
 

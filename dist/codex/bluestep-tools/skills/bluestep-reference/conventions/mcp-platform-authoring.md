@@ -152,9 +152,15 @@ which org. Required at **every** entry point, conversational included.
 ### 6 — Execute + declaration read-back
 
 Run the op via `invoke_org_tool(org, tool, arguments)`; the org authorizes on its own authority. Then, **if
-the op wired an import**, call **`invoke_org_tool(org, tool:"get_script_declarations", …)`** so the script's
-`B` type reflects the new dependency, and surface it so a subsequent `[CODE]` task can code against it
-immediately — no manual re-pull.
+the op wired an import**, call **`invoke_org_tool(org, tool:"get_script_declarations", …)`** and read the
+result. The read-back proves the **platform** is wired — the dependency exists on the script and the generated
+declarations name the accessors a `[CODE]` task will use — so that task can be written against them right away.
+It does **not** refresh the local `declarations/` tree, and `b6p push` type-checks against that local tree: the
+sequence grant → read-back → code → push publishes with stale-declaration diagnostics (`Property 'x' does not
+exist on type …`, "Published WITHOUT a passing type-check") that look exactly like a real type error. So
+**`b6p pull` the affected components before their first push** — a normal step after any wiring op a `[CODE]`
+task builds on, not a fallback. Commit or back up unpushed local edits first: b6p-cli 0.6+ keeps a locally
+edited, previously synced file and lists it at the end of the pull; older CLIs overwrite it.
 
 - The read-back is **mandatory after any schema or wiring op a `[CODE]` task will build on** — not
   optional polish. A successful `add_field_access` (or any wiring success response) is **not** proof
@@ -164,13 +170,16 @@ immediately — no manual re-pull.
 - A **`null` or blank property key** in the generated declarations means the field has **no
   `formulaId`** — typically a pre-existing field. Repair per the `formulaId` bullet in
   [Known authoring quirks](#known-authoring-quirks), then re-run the read-back.
-- Prove-out bar is **"declarations sufficient to code against," not byte-parity** with `/b6p-pull`.
-- If the reduced declarations are insufficient, fall back to a CLI `/b6p-pull` for the full
-  `declarations/` tree.
+- Prove-out bar for the read-back is **"declarations sufficient to code against," not byte-parity** with
+  `/b6p-pull` — the pull is still what the build verifies against, so it happens before the first push either way.
 - **If the op created a query or view**, the same "success ≠ done" rule applies to the object itself:
   run the
   [create-time rules and completeness read-back](#create-time-rules-and-completeness-read-back-queries-and-views)
   before reporting the task complete.
+- **If the op created a script** (`create_script`), read its permissions back with `list_permissions`. A new
+  script lands with **no** permissions — `create_script` has no permissions parameter — so a create that
+  returned success is not a testable component until `set_permissions` has run and the read-back shows the
+  intended subjects. See the `create_script` bullet under [Known authoring quirks](#known-authoring-quirks).
 - **`get_script_declarations` may be absent from a given org's toolset** (confirm via `list_org_tools`).
   When it is, the declaration read-back step is impossible — fall back to a `b6p pull` to refresh the
   script's `declarations/`. Treat `b6p pull` as the **norm** for declaration refresh wherever this tool is
@@ -197,8 +206,10 @@ the filter and match by name/type before concluding an object doesn't exist (det
   guardrail. One exception: endpoint ops are additionally gated by the **ENGINEER ENDPOINT** custom
   privilege, so "global-super" does **not** guarantee END_POINT authoring — see
   [Known authoring quirks](#known-authoring-quirks).
-- **Destructive tools** (`remove_*`, `record` delete, `user` deactivate) run **only** when the task
-  explicitly requires them, with **extra** confirmation. Out of default scope.
+- **Destructive tools** (`remove_*`, `record` delete, `user` deactivate, and `set_permissions` — it **replaces the
+  entire** permission set of an object, dropping anything not in the list) run **only** when the task
+  explicitly requires them, with **extra** confirmation. Out of default scope. To add or remove one permission
+  on an existing object use `grant_permission` / `revoke_permission`.
 - **Schema creation is not (currently) MCP-reversible.** The wiring trio (`add_*`) has clean `remove_*`
   inverses, but **schema-authoring** ops (`form` / `field` / `option_list` / `view` / `record_type`) do
   **not** — an option list created via `create_option_list` has no `delete_option_list`, and
@@ -221,10 +232,11 @@ tools, not a fixed inventory.
 **Wiring / imports**
 - `add_queries`, `add_forms`, `add_field_access`, `add_record_types`
 - destructive siblings: `remove_queries`, `remove_forms`, `remove_field_access`, `remove_record_types`
-- **Writability is two independent flags** — the form-level `writable` on `add_forms` and the
-  per-field `writable` on `add_field_access`, stamped at grant time and never recalculated. Pass
-  the intended value explicitly on both, and verify with `list_field_access`, never the UI
-  checkboxes: [gotchas/field-access-writability.md](../gotchas/field-access-writability.md).
+- **Field access is independent grant rows** — read and write are separate rows on the same field
+  (`add_field_access writable:true` grants write only; a read+write field needs both), on top of the
+  form-level `writable` on `add_forms`. Change a level by adding the new row **before** removing the old
+  one, and verify with `list_field_access`, never the UI checkboxes:
+  [gotchas/field-access-writability.md](../gotchas/field-access-writability.md).
 - **Against a BSJS endpoint these are privilege-gated, not unsupported.** `add_field_access` (and the
   `add_queries` / `add_forms` siblings) on an END_POINT script requires the **ENGINEER ENDPOINT** custom
   privilege on the token's subject; without it the call fails cleanly and applies nothing. That privilege
@@ -291,6 +303,13 @@ tools, not a fixed inventory.
   `get_form`, `get_view`, `get_option_list`, `get_record_type`, `lookup_script_by_name`,
   `list_script_scope`
 
+**Permissions**
+- `list_permissions`, `set_permissions`, `grant_permission`, `revoke_permission` (plus `form_permission` for
+  forms). A script's permission set is separate from its wiring, and `create_script` sets none — so for a
+  **new** script the path is `create_script` → `set_permissions` → `list_permissions` read-back (step 6).
+  `set_permissions` replaces the whole set, so on an existing object use `grant_permission` / `revoke_permission`. Served on
+  the reference org as of 2026-09; confirm with `list_org_tools` on yours.
+
 **Declaration read-back**
 - `get_script_declarations`
 
@@ -355,6 +374,18 @@ verified — the dating key at the top of this page says how to read the markers
     platform UI for that session.
 
   (A pre-flight error is being added server-side as of 2026-07; the invariants hold either way.)
+- **`create_script` creates an unpermissioned script — and says nothing about it.** The tool has no
+  permissions parameter (schema checked 2026-09: `scriptType`, `name`, `path`, `formulaType`, `unitId`,
+  `includeSubUnits`, `recordTypes`, `primaryFormId`, `onDemandIdentifier`, `schedule`, `altIds`), so every
+  MergeReport, EndPoint and Formula it creates lands with no permission set, and the response reads as a
+  clean success. The failure shows up later as a code bug — a MergeReport embedded in a form renders nothing,
+  an EndPoint answers with errors — and costs a debugging round each time (seen twice on one project,
+  2026-09). Forms do not have this gap: `form` create is followed by `form_permission` / `grant_permission`
+  as a matter of course. Treat a script create the same way: `create_script`, then `set_permissions` for the
+  intended subjects — harmless on a script that has none, but it **replaces** the set, so on an existing
+  script use `grant_permission` instead (Reader has been the right ceiling for a script in every case so far) — then the
+  `list_permissions` read-back in step 6 **before** anyone tests the component. A permissions parameter or a
+  Reader default on `create_script` is a platform-side ask, not something this page can promise.
 - **`lookup_script_by_name` misses are name mismatches far more often than missing scripts.** The
   exact-name lane is **case-sensitive** and matches the script's **display name literally** — trailing
   spaces, casing, and punctuation all count — and BSJS endpoints *are* searched, so a miss is not

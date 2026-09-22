@@ -296,6 +296,11 @@ if (isMultiEntry) {
 }
 ```
 
+Iterating says nothing about **order**. If code treats `entries()[0]` (or a report treats its first
+row) as the *latest* entry, the sort key behind that order matters, and a null in the sort field
+sorts above real data — see [multi-entry-form-sorting](multi-entry-form-sorting.md) for safe sort-key
+designs and the DateTime/Signature caveats.
+
 ## Query Access Patterns
 
 Which queries, forms, and fields a script can use are defined by the component's **form-import config on the platform**, regenerated into `declarations/index.d.ts` on `b6p pull`. A configured query is available in `app.ts` as a **bare top-level variable** named after the query FID — directly iterable, no `.query()` call:

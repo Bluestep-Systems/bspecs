@@ -8,6 +8,75 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.36.0] — 2026-09-22
+
+> **The September close wave: 24 feedback tasks worked, three of them proven live first.** Most of
+> this release is reference text — nine new files and a dozen corrections — but the three claims that
+> mattered most were checked against b6p-cli 0.7.0 and bkplayground before a word was written, and two
+> of them came back different from what the reporters (and the first draft of the plan) assumed.
+
+### Fixed
+
+- **Who compiles what.** Six passages said, or implied, that `b6p push` never transpiles a MergeReport's
+  `static/script.ts`, that compilation "happens on the platform", or that it "never happens locally".
+  The truth, from the CLI source and two live repros: `b6p push --snapshot` compiles `scripts/` **and**
+  every nested `static/` bundle in the CLI before upload and ships the emitted JS with the source; a
+  plain push compiles nothing and warns on a stale client bundle. The docs now say what the CLI does per
+  mode and no longer attribute the build to the platform — the hand-written `static/script.ts` path is
+  called "CLI-compiled" everywhere, not "platform-compiled". (`b6p-push`, `single-script.md`, `b6p-platform.md`,
+  `bsjs-development.md`, `crm-dashboard-inspo.md`, the manifest.)
+- **Field writability is grant rows, and remove-then-re-add was the dangerous order.** Read and write
+  are independent rows on a field; `add_field_access(writable: true)` grants write only, and removing
+  the only row drops the field to zero access — reproduced live, which is what took a published
+  component down. The gotcha now says add the new level first, then remove the old one, and that a
+  read+write field needs both rows. (`gotchas/field-access-writability.md`, `mcp-platform-authoring.md`.)
+- **Sibling modules load only through an ES import.** `bsjs-development.md` and `single-script.md`
+  contradicted each other on multi-file `scripts/`. Proven on an endpoint: an imported sibling runs; a
+  sibling that only declares globals compiles, uploads and is `undefined` at runtime. All three files now
+  state the condition, and the "hand-port the edit into the compiled `.js`" workaround is gone.
+- **What `b6p push` checks, and what `--yes` agrees to.** Push does ask before overwriting a synced file
+  the platform changed, and does ask before deleting platform-only files — and `--yes`, which `/b6p-push`
+  passes, answers Overwrite and Yes to both, silently. Verified on 0.7.0: a platform edit overwritten, a
+  platform-only file deleted, nothing printed but `Push complete!`. `b6p-push` step 2 now says so and
+  sends you to `/b6p-audit` when the platform may have moved; `b6p-audit` says a `(new)` file is deleted
+  by the next push. Audit is still not chained into push.
+- **Step 6's read-back proves the platform is wired, not that a pull is unnecessary.** `b6p push`
+  type-checks against the local `declarations/`, which the MCP grant never touches, so grant → read-back
+  → code → push published "WITHOUT a passing type-check" with stale-declaration noise indistinguishable
+  from a real error. `b6p pull` the affected components before their first push is now a normal step.
+- **`create_script` leaves a script unpermissioned and says nothing.** New Known-authoring-quirk bullet,
+  the four permission tools added to the Supported tool set, and a `list_permissions` read-back in
+  step 6: create, then `set_permissions`, before anyone tests the component.
+- **The `b6p-task-implementer` description claimed to compile each tsconfig folder.** It never did (the
+  `block-tsc` hook forbids it); it now says it verifies without a local compile.
+- **The rules-template swap renumbers the platform rules and said nothing.** Step 4 now adds one line to
+  the rebuilt `AGENTS.md` telling readers that older project docs cite rules by the old number; the
+  template tells agents to cite a rule by what it says.
+
+### Added
+
+- **Nine reference files**, each with its manifest line: connected relationship fields show as writes
+  in the dependency inspector; relationship-field emptiness in RelateScript; field ids are not portable
+  across org propagation; Relate consolidated entry reports (the artifact choice and wizard);
+  `[all entries]` vs `[current entry]` current-record bindings; multi-entry form sorting and the
+  DateTime/Signature caveats (cross-linked from `api-patterns`); an unpublished pre-save draft blocks the
+  component under test; MergeReport editability is a component-level setting; the client-side form API
+  (`_SR_.onLoad`, `getElementObj`, `setRequired`, `showHide`) and the collapsed-section trap.
+- **Three task markers.** `/spec-execute` now picks the implementer's model tier from
+  `[mechanical]` / `[routine]` / `[judgment]` — the set `/plan` already writes — with escalation one tier
+  up, once; `/spec-create` marks every task and the tasks template carries the legend. Supersedes the
+  proposed `[S]/[M]/[L]`.
+
+### Changed
+
+- **The plugin is enabled at user scope; projects stop carrying `enabledPlugins: true`.** `/project-init`
+  no longer writes it (a project-level `true` with no user-scope install loads nothing while looking
+  enabled), writes the `false` opt-out when run in a repo that is not a B6P workspace, and checks for the
+  user-scope install in its end-of-run report. `/b6p-update` removes a project-level `true` the user-scope install makes
+  redundant, keeps one that is a working project-scope install, and offers the `--scope user` install when
+  the machine has none; `/b6p-init`'s account of the per-project settings agrees. The user-scope detector asked for on 2026-09-10 is
+  not built — that request was withdrawn by its reporter.
+
 ## [plugin 0.35.0] — 2026-09-10
 
 > **`/b6p-update` stops asking questions it can answer itself.** The first real run asked seven

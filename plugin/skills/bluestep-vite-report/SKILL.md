@@ -1,6 +1,6 @@
 ---
 name: bluestep-vite-report
-description: Scaffold an off-platform Vite/Preact SPA merge-report project — check Node 20, run create-vite (preact-ts), set base "./", wire the deploy-lib config block + repository field, then print the [PLATFORM] report-creation and GitHub-repo steps for the human to execute. Use when starting a new Vite/Preact single-page-app merge report (the report serves a bundled static/index.html deployed via deploy-lib, not the platform-compiled static/script.ts path).
+description: Scaffold an off-platform Vite/Preact SPA merge-report project — check Node 20, run create-vite (preact-ts), set base "./", wire the deploy-lib config block + repository field, then print the [PLATFORM] report-creation and GitHub-repo steps for the human to execute. Use when starting a new Vite/Preact single-page-app merge report (the report serves a bundled static/index.html deployed via deploy-lib, not the CLI-compiled static/script.ts path).
 allowed-tools: Read Write Edit AskUserQuestion Bash(node:*) Bash(npm:*) Bash(git:*) Bash(ls:*) Bash(basename:*) Bash(mkdir:*)
 ---
 
@@ -8,7 +8,7 @@ allowed-tools: Read Write Edit AskUserQuestion Bash(node:*) Bash(npm:*) Bash(git
 
 This skill scaffolds an **off-platform Vite/Preact SPA merge report** in-session: it checks Node 20, drives `create-vite` (the `preact-ts` template) live, sets the load-bearing `base: './'`, wires the deploy-lib `config` block + `repository` field into `package.json`, and then **prints** — does not run — the `[PLATFORM]` report-creation and GitHub-repo steps for the human to execute. It **guides** the outward steps (create the platform report, create the GitHub repo, deploy) the same way `/project-init` guides `git init`.
 
-For the pattern itself — what this build model is, when to pick it over the platform-compiled `static/script.ts` path, the two data models — this skill **points at** the `bluestep-reference` files rather than restating them (see [Point at the reference](#5-point-at-the-reference)).
+For the pattern itself — what this build model is, when to pick it over the CLI-compiled `static/script.ts` path, the two data models — this skill **points at** the `bluestep-reference` files rather than restating them (see [Point at the reference](#5-point-at-the-reference)).
 
 This is a **separate, focused** skill from `/project-init` (project bootstrap). Run `/project-init` first if you are setting up a brand-new BlueStep project; run this when you specifically want a Vite/Preact SPA merge report.
 

@@ -2,7 +2,7 @@
 description: "Don't pile CSS/HTML/JS into app.ts — use the dedicated files (styles.css, index.html, script.ts) that the pulled folder already has"
 ---
 
-> This describes the **platform-compiled** hand-written path (`styles.css` / `index.html` / `script.ts`). For an off-platform Vite/Preact SPA bundle (built off-platform, deployed to `static/` via deploy-lib), see [vite spa merge report](../reference/vite-spa-merge-report.md).
+> This describes the **CLI-compiled** hand-written path (`styles.css` / `index.html` / `script.ts`). For an off-platform Vite/Preact SPA bundle (built off-platform, deployed to `static/` via deploy-lib), see [vite spa merge report](../reference/vite-spa-merge-report.md).
 
 When a BlueStep pull contains dedicated files (`styles.css`, `index.html`, `script.ts`, etc.) alongside `app.ts`, put each kind of content in the file that is named for it. Do not dump all CSS and HTML into a single giant `B.out = ` template literal in `app.ts`.
 

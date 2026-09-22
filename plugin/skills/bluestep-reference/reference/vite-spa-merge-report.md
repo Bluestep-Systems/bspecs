@@ -1,20 +1,20 @@
 ---
-description: "Off-platform Vite/Preact SPA merge report — build a full single-page app with Node + npm off-platform, deploy the minified dist/ into the report's static/ folder via deploy-lib (the platform compiler is bypassed). Covers when to use this vs the platform-compiled static/script.ts path, the architecture (SPA in static/, report serves index.html, app.ts is a no-op or a B.out window-bootstrap), the two data models (endpoint fetch carrying the session vs. server bootstrap needing an objects/imports.ts round-trip), history in GitHub via package.json repository, and Preact-default/React-alternative."
+description: "Off-platform Vite/Preact SPA merge report — build a full single-page app with Node + npm off-platform, deploy the minified dist/ into the report's static/ folder via deploy-lib (the CLI's static build is bypassed). Covers when to use this vs the CLI-compiled static/script.ts path, the architecture (SPA in static/, report serves index.html, app.ts is a no-op or a B.out window-bootstrap), the two data models (endpoint fetch carrying the session vs. server bootstrap needing an objects/imports.ts round-trip), history in GitHub via package.json repository, and Preact-default/React-alternative."
 ---
 
 A BlueStep merge report can ship its `static/` bundle two different ways. This file describes the
 **off-platform Vite/Preact SPA** model: you build a full single-page app off-platform (Node 20 + npm, any
 package), producing a minified `dist/`, and deploy that `dist/` into the report's `static/` folder with
-**deploy-lib**. The platform compiler is bypassed entirely. See
+**deploy-lib**. The CLI's static build is bypassed entirely. See
 [`docs/decisions/off-platform-bundler-build-model.md`](../../../../docs/decisions/off-platform-bundler-build-model.md)
 for the "why two models" rationale.
 
-## When to use this vs. the platform-compiled path
+## When to use this vs. the CLI-compiled path
 
 - **Off-platform Vite/Preact bundle (this file)** — the report is a real SPA that needs npm packages
   (Preact, a charting library, etc.), hot-reload local dev, or source history in git. Build/deploy/history
   all live off-platform.
-- **Platform-compiled `static/script.ts` (the existing docs)** — a simple report with hand-written client
+- **CLI-compiled `static/script.ts` (the existing docs)** — a simple report with hand-written client
   JS and no npm dependency. BlueStep compiles root `static/script.ts` → `.build/script.js` on the platform;
   nothing to install, no off-platform toolchain. See
   [merge report static index](merge-report-static-index.md) and
@@ -25,7 +25,7 @@ for the "why two models" rationale.
 
 The two are distinct architectures with different toolchains and failure modes — pick one, don't mix.
 `single-script.md`'s rule (only root `static/script.ts` compiles) does **not** apply to a Vite bundle,
-because Vite does the bundling off-platform and the platform compiler never runs.
+because Vite does the bundling off-platform and the CLI's static build never runs.
 
 ## Architecture
 
@@ -73,7 +73,7 @@ Two ways to get server data to the SPA:
 
 Both models are commonly combined: bootstrap the record id via `B.out`, then fetch the rest from the
 endpoint. For a related-but-different build model (a `B.out` JSON island + endpoint on a
-**platform-compiled** bundle, not an off-platform one), see [crm dashboard inspo](crm-dashboard-inspo.md).
+**CLI-compiled** bundle, not an off-platform one), see [crm dashboard inspo](crm-dashboard-inspo.md).
 
 ## History in GitHub
 
@@ -105,4 +105,4 @@ framework and the `create-vite` template differ. Nothing in the off-platform mod
   `<head>` stripping, mount-id match, Node 20+, deploy-lib config-key casing, `Swal`/site-CSS absent in
   local dev).
 - [merge report static index](merge-report-static-index.md) and
-  [single script](../conventions/single-script.md) — the platform-compiled `static/script.ts` path.
+  [single script](../conventions/single-script.md) — the CLI-compiled `static/script.ts` path.

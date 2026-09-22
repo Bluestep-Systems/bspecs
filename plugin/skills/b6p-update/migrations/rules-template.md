@@ -86,5 +86,20 @@ what survived under a `## Project rules` heading, before the `## Compaction` sec
 
 Write any `docs/` page a chunk moved into during the same change, so no pointer dangles.
 
+**The rebuild renumbers the platform rules.** Template 2 shuffled most of the v1 numbers (v1 rule 1 is
+now 7, 2 is 1, 3 is 8, 4 is 2, 6 is 5, 8 is 3, 9 is 4, 10 is 6), and a project's own quick-tasks, specs
+and decision logs often cite "Critical rule N" by the old number — after the swap every one of those
+points at the wrong rule, with no signal that anything is off. So, unless
+`grep -rlin "rules\? [0-9]" docs .claude 2>/dev/null` finds nothing, add this line right under the
+`## Platform rules` list (before `## Reading`), verbatim — it applies whether or not the project has a
+`## Project rules` section:
+
+> Older project docs cite the platform rules by their pre-migration number. None of those numbers
+> carried over — match a citation by what the rule says, which each one states inline.
+
+Two v1 rules (the bare-`b6p` rule and the old #7) have no numbered successor at all; a citation to one of
+those is matched by its text or dropped with a note. This step has one correct answer; do not ask. Say in
+the report that the line was added and why.
+
 Leave the bridge file alone. In Claude Code the one-line `CLAUDE.md` that imports `AGENTS.md` is
 already correct; a bridge holding rules instead is the `rules-file-bridge` migration's job.
