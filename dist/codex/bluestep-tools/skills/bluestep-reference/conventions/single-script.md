@@ -15,20 +15,19 @@ Symptom when you get this wrong: silent 404s on every subdirectory `.build/*.js`
 - `b6p push --snapshot` compiles `static/script.ts` → `static/.build/script.js` in the CLI and uploads both (b6p-cli 0.6+; verified 2026-09-04 on two orgs — a component with no `.build/` folder at all had one, with the emitted JS, on the platform right after the publish). Its diagnostics are advisory and never fail the push.
 - A **plain** `b6p push` compiles nothing. When the `.ts` is newer than its `.build` output the CLI prints a `Stale client bundle` warning and uploads as-is, so a draft-only push after editing only the `.ts` leaves the old client JS in place — no error, the change just never reaches the browser until the next publish.
 - The platform serves the emitted `.build/script.js` verbatim; it does not rebuild it. Treat "I edited `static/script.ts` and saved a draft" as **not** having deployed any client change.
-- Observed shape can differ from the `.build/script.js` claim above: on at least one component the compiled `static/script.js` sat **directly beside** `script.ts` with **no `.build` subfolder** for static assets. Take this as an observed variation in layout, not a contradiction of the compilation description — the compiled artifact exists, but its path and whether anything regenerates it are not guaranteed.
-- **Workaround seen in the field:** hand-port the edit into the compiled `static/script.js` and push that file explicitly — e.g. `b6p push --file <path-to>/static/script.js`. This is a gotcha/stopgap; the real fix (having push transpile the `.ts`) is tracked upstream in the b6p CLI.
+- Observed shape can differ from the `.build/script.js` claim above: on at least one component the compiled `static/script.js` sat **directly beside** `script.ts` with **no `.build` subfolder** for static assets. Take this as an observed variation in layout, not a contradiction of the compilation description — check `static/index.html` for which path it loads.
 
 **How to apply:**
 
 - Put all merge-report client code in one file: `static/script.ts`.
 - Use banner comments to organize logical sections (TYPES, UTILITIES, COMPONENTS, PAGES, ENTRY POINT).
 - `static/index.html` should load only `styles.css`, any CDN scripts (e.g. Chart.js), and `.build/script.js`.
-- Server endpoint code follows the same rule: `scripts/app.ts` is the only runtime-loaded entry. Confirmed on server-side endpoints — a sibling `scripts/runAction.ts` containing runtime functions compiled to its own `.build/scripts/runAction.js`, but BlueStep never loaded it, so `handleRunAction is not defined` at runtime.
+- Server-side `scripts/` is different: `scripts/app.ts` is the only file the platform loads **on its own**, and a sibling runtime file is reachable **only through an ES `import` from `app.ts`** (verified 2026-09 on an endpoint: an imported `helper.ts` ran; a sibling declaring a top-level function and never imported compiled to its own `.build/scripts/*.js`, pushed clean, and was `undefined` at runtime). The earlier field failure — a sibling `scripts/runAction.ts` whose functions were called as globals, giving `handleRunAction is not defined` — is that second case, not proof that only `app.ts` can run. See `bsjs-development.md` for the import pattern. The safe default under every reading is still one `app.ts` organised with banner sections.
 
 **Exception — pure type files are safe to keep separate:**
 
 - A `scripts/types.ts` that contains ONLY `interface`/`type`/type-alias declarations (zero runtime emit) can live alongside `app.ts`. TypeScript sees it at compile time; no JS is emitted for it; BlueStep has nothing to load or miss. Verified in practice.
-- The moment you add a runtime value (a `const`, `function`, or `class` that emits), it becomes invisible unless merged into `app.ts`.
+- The moment you add a runtime value (a `const`, `function`, or `class` that emits), it becomes invisible unless `app.ts` **imports** it (server side) or it is merged into the one client file (`static/script.ts`).
 
 **Gotcha — module-level `const` + top-level dispatcher = temporal dead zone (TDZ) errors:**
 

@@ -66,6 +66,10 @@ Only one file executes automatically:
 /objects/*.ts            ← imported by app.ts
 ```
 
+Only `app.ts` is loaded by the platform on its own. A sibling `.ts` that exports a runtime value runs
+**only if `app.ts` imports it** — a file that merely declares top-level functions and is never imported
+compiles and uploads fine, and is `undefined` at runtime (verified 2026-09). Type-only files need no import.
+
 ### Query access pattern
 
 Which queries are available in `app.ts` is set by the component's **form-import config on the platform**, regenerated into `declarations/index.d.ts` on `b6p pull`. A configured query is a **bare top-level variable** named after the query FID — directly iterable, no `.query()` call:
@@ -88,7 +92,8 @@ The b6p CLI tracks sync state between the local workspace and the BlueStep serve
 ### Creating files that aren't imported
 
 ```typescript
-// ❌ Wrong - objects/helpers.ts exists but is never imported → it never executes
+// ❌ Wrong - objects/helpers.ts exists but is never imported → it never executes,
+//    and calling helperFunction() as if it were a global fails at runtime: "helperFunction is not defined"
 // ✅ Correct - import it (in app.ts)
 import { helperFunction } from './objects/helpers';
 ```
