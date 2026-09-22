@@ -1,375 +1,172 @@
 # bluestep — BlueStep tooling marketplace for AI coding agents
 
-A public **plugin marketplace** for BlueStep (B6P) development, serving
-**Claude Code, Cursor, and OpenAI Codex**. This repo *is* the marketplace —
-three of them, actually, one per tool, all built from the same source: add it
-once in your tool, then install the plugins you want. It currently ships one
-plugin — **`bluestep-tools`** — with more on the way.
+A public **plugin marketplace** for BlueStep (B6P) development, serving **Claude Code, Cursor and
+OpenAI Codex**. This repo *is* the marketplace — three of them, one per tool, all built from the
+same source. It ships **`bluestep-tools`** (for BlueStep component workspaces) and lists
+**`core-tools`** (for every other repo).
 
-## Prerequisites
+## Get started
 
-Install these before (or shortly after) enabling the plugin — the sync skills
-and hooks depend on them.
+Open your AI coding agent (Claude Code, Cursor or Codex) in any folder, paste this, press enter:
 
-- **`b6p` CLI** — powers the `/b6p-*` platform-sync skills. It's distributed on
-  npm as
-  [`@bluestep-systems/b6p-cli`](https://www.npmjs.com/package/@bluestep-systems/b6p-cli):
+> Set up the BlueStep developer tooling on this machine. Work it out by checking, not by asking me.
+> 1. Find out which agent tool you are running in (Claude Code CLI, the Claude desktop app, Cursor,
+>    or Codex) and whether the `bluestep-tools` plugin from the `Bluestep-Systems/bspecs` marketplace
+>    is already installed.
+> 2. If it is not: on the Claude Code CLI run `claude plugin marketplace add Bluestep-Systems/bspecs`
+>    and then `claude plugin install bluestep-tools@bluestep --scope user`. On Codex run
+>    `codex plugin marketplace add Bluestep-Systems/bspecs` and tell me to install bluestep-tools from
+>    it and trust its hooks. On the Claude desktop app or Cursor you cannot install it yourself: give
+>    me the exact clicks (desktop app: Customize → Plugins → + → Add marketplace → From repository
+>    `https://github.com/Bluestep-Systems/bspecs` → Browse plugins → install bluestep-tools; Cursor:
+>    Plugins → Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bspecs` →
+>    install bluestep-tools).
+> 3. Check whether the `b6p` command is on my PATH. If not and Node.js is installed, run
+>    `npm i -g @bluestep-systems/b6p-cli`; if Node is not installed, give me the download link
+>    `https://github.com/Bluestep-Systems/b6p-cli/releases` for my OS.
+> 4. Tell me to run `b6p auth set` in my own terminal — never ask me for the token.
+> 5. Finish with one line: start a **new** session in the folder where my BlueStep work will live,
+>    and there type `/b6p-setup`.
 
-  ```sh
-  npm install -g @bluestep-systems/b6p-cli   # puts a bare `b6p` on your PATH
-  ```
+What the agent will hand back to you, and why:
 
-  **No npm?** Every [GitHub Release](https://github.com/Bluestep-Systems/b6p-cli/releases)
-  ships a self-contained `b6p` binary (`b6p-windows-x64.exe`, `b6p-macos-x64`,
-  `b6p-macos-arm64`) — no build step, no source checkout. Download it and put it on your
-  `PATH` as `b6p`. `/b6p-init` (step ② below) checks for it and tells you exactly which
-  file to grab; it does not download it for you.
+- **The install click**, on the Claude desktop app and Cursor — plugins there are installed from a
+  screen the agent cannot reach. On the Claude Code CLI and Codex it runs the commands itself.
+- **`b6p auth set`** — the BlueStep access token for the `b6p` CLI is typed by a person, once per
+  machine. The agent never sees it.
+- **A new session** — a plugin's skills only exist in sessions started after the install.
 
-  Then authenticate **once per machine**:
+Then, in the folder where your BlueStep work will live (an empty folder is fine):
 
-  ```sh
-  b6p auth set   # access token stored globally in ~/.b6p, not per project
-  ```
-
-- **`B6PT_TOKEN`** *(optional)* — only needed for platform MCP authoring, and a
-  **separate** credential from the `b6p` CLI's own access token (`b6p auth set`, stored in
-  `~/.b6p/`; also a bearer token since b6p-cli 0.6.0, so keep the two straight — they are
-  configured independently). The platform MCP is
-  the **bundled `bluestep-gateway` server** — no per-org connect step; you just
-  set `$B6PT_TOKEN` and it auto-registers once the plugin is enabled (in a
-  **fresh session** — restart the app after setting it). It's an OS environment
-  variable, so one token serves every tool on the machine. **Windows:**
-  `setx B6PT_TOKEN "b6pt_…"` (User scope), then fully restart the app — a
-  variable exported in a shell never reaches a GUI-launched app.
-  `/b6p-init` checks for the token and walks you through creating it if it's
-  missing.
-
-## Getting set up
-
-Setup is **three steps**: **① install the plugin** (once per machine or account),
-**② run `/b6p-init`** once on the machine to finish the tool-side setup, then
-**③ run `/project-init`** in each project to activate the rules there. Installing
-alone gives you the skills, hooks, and reference — but the always-on BlueStep
-rules only take effect after step ③.
-
-### Step 1 — Install the plugin
-
-Add the marketplace **once** (paste this repo:
-`https://github.com/Bluestep-Systems/bspecs`), then install **`bluestep-tools`**
-from it. **Each section below is self-contained** — follow only the one for the
-tool you use ([Claude Code](#claude-code) · [Cursor](#cursor) ·
-[Codex (OpenAI)](#codex-openai)) and skip the rest.
-
----
-
-### Claude Code
-
-The `@bluestep` suffix in the commands below is the marketplace name, so future
-plugins install the same way (`<plugin>@bluestep`). Pick your surface:
-
-#### Claude desktop app (Mac/Windows)
-
-No terminal required:
-
-1. Click **Customize** in the left sidebar, then open the **Plugins** tab.
-2. Under **Personal plugins**, click **+** → **Add marketplace**.
-3. Choose **From repository** and paste the repo URL `https://github.com/Bluestep-Systems/bspecs`, then click **Done**.
-4. Click **Browse plugins**, find **bluestep-tools**, and click **Install**.
-
-**Recommended:** turn on **Sync automatically** in the marketplace's settings so
-new releases install on their own (needs a one-time GitHub access approval).
-Otherwise, use **Check for updates** to pull new releases manually.
-
-#### Claude Code CLI (terminal)
+## Set up a project
 
 ```
-/plugin marketplace add Bluestep-Systems/bspecs
-/plugin install bluestep-tools@bluestep
+/b6p-setup
 ```
 
-For scripting, the same thing works non-interactively from your shell:
-`claude plugin marketplace add Bluestep-Systems/bspecs` then
-`claude plugin install bluestep-tools@bluestep`.
+One run does everything that is done once: checks the machine (the `b6p` CLI and its login, the
+plugin for the tool you are in, the optional platform token), writes the project files that are
+missing (a short `AGENTS.md` with the always-on platform rules, a one-line `CLAUDE.md` bridge for
+Claude Code, `README.md`, `package.json`, `.gitignore`, `.prettierrc`, and on Claude Code the project
+settings), and brings a project set up by an older release up to date, keeping every rule of yours.
+It asks nothing on a fresh folder and reports nothing to do on a second run. `/b6p-setup --all`
+sweeps every BlueStep project on the machine.
 
-#### Claude Code VS Code extension
+If you want it to run without stopping, paste this instead:
 
-1. Type `/plugins` in the prompt box to open **Manage plugins**.
-2. On the **Marketplaces** tab, add `Bluestep-Systems/bspecs`.
-3. On the **Plugins** tab, find **bluestep-tools** and click **Install** (pick user, project, or local scope).
-4. Restart Claude Code when prompted, or run `/reload-plugins`.
+> Run /b6p-setup for this folder. Do everything you can without asking me. Stop only for what only I
+> can do — running `b6p auth set`, creating the platform token — and for each one tell me the exact
+> command or click, then continue when I say done. Finish by telling me how to pull my first component.
 
-(JetBrains IDEs have no plugin GUI — run `claude` in the integrated terminal and use the CLI commands above.)
+**You will rarely need to type it.** The first time you ask the agent to pull a component, plan a
+feature or fix a bug in a folder that is not set up — or is set up on an old template — the skill
+you asked for runs the setup as its first step and then does what you asked. A session opened in a
+folder that holds components but no rules file starts with a one-line offer to set it up.
 
-Also needed on this machine (regardless of surface): the **`b6p` CLI** (installed
-separately — see [Prerequisites](#prerequisites)) and, for platform MCP authoring,
-the **`B6PT_TOKEN`** environment variable (Windows: `setx` at User scope + fully
-restart the app). **Verify:** in a fresh session, the `/bluestep-tools:*` skills
-appear in the slash menu.
+The platform token (`B6PT_TOKEN`) is **optional**: only platform authoring over the bundled gateway
+MCP needs it, and it is a separate credential from the `b6p` CLI's. `/b6p-setup` walks you through it
+when you want it. Windows: `setx B6PT_TOKEN "b6pt_…"` at User scope, then fully restart the app — a
+variable exported in a shell never reaches a GUI-launched app.
 
----
+## Keeping it updated
 
-### Cursor
+Claude Code: `/plugin marketplace update` (or turn on auto-update; the desktop app's marketplace
+settings have **Sync automatically**). Cursor: imported marketplaces refresh from this repo on push.
+Codex: update from the plugins screen or CLI, and **re-trust the hooks** after any release that
+changes one — the changelog says which; an untrusted hook does nothing, silently.
 
-1. Open the plugins screen and choose **Add Marketplace → Import from Repo**,
-   pasting the repo URL `https://github.com/Bluestep-Systems/bspecs`.
-2. Find **bluestep-tools** in the imported marketplace and install it (enable it
-   on the Manage screen if it isn't on by default).
+Updating the plugin changes the skills, hooks and reference; it never rewrites the files
+`/b6p-setup` put in your project. The next time you work in that project, the setup step notices the
+old template and offers the update; or run `/b6p-setup` there yourself.
 
-Notes for Cursor:
+## Sharing it with your team
 
-- **Open your project folder first.** Skills and hooks are workspace-coupled —
-  an empty window shows only user-global surfaces (like the MCP server).
-- **Updates arrive on their own**: an imported marketplace refreshes from this
-  repo on push, so new releases show up without re-importing.
-- The edit guardrail (platform-generated files) runs as a **post-edit advisory** on
-  Cursor (it has no blocking pre-edit event) — it warns instead of blocks. The
-  `tsc` guardrail still blocks, before the command runs.
-- Also needed on this machine: the **`b6p` CLI** (installed separately — see
-  [Prerequisites](#prerequisites)) and, for platform MCP authoring, the
-  **`B6PT_TOKEN`** environment variable in the environment Cursor launches from
-  (Windows: `setx` at User scope + fully restart the app).
-- **Verify:** with a project folder open, the `bluestep-tools` skills appear in
-  the composer's slash menu, and the plugin page shows the `bluestep-gateway`
-  MCP server.
-- Don't judge the install by the plugin page's skill count — it can under-count
-  (it renders workspace-dependently). The composer's slash menu with your
-  project open is the source of truth.
+Commit the `AGENTS.md`, the `CLAUDE.md` bridge and, on Claude Code, the `.claude/settings.json`
+that `/b6p-setup` writes: the rules and the marketplace registration then travel with the repo. The
+plugin install itself is per machine — each teammate pastes the prompt above once. Your project's
+`README.md` (also written by `/b6p-setup`) says so.
 
----
+## What you get
 
-### Codex (OpenAI)
-
-```
-codex plugin marketplace add Bluestep-Systems/bspecs
-```
-
-then install **bluestep-tools** from it (CLI or the desktop app's plugins
-screen), and start a **fresh session** so the bundled MCP server and hooks load.
-
-Two Codex steps that are easy to miss:
-
-- **Trust the hooks — they silently do nothing until you do.** Open the
-  plugin's page and use **Review → trust** on its hooks (`/hooks` in the CLI).
-  An untrusted hook produces no error and no log. **Re-trust after any release
-  that changes a hook** (the changelog calls those out).
-- **Subagents don't ship via the plugin on Codex.** Copy the three TOML agents
-  from `dist/codex/bluestep-tools/agents/` in this repo into `~/.codex/agents/`
-  or your project's `.codex/agents/` (they use underscore names, e.g.
-  `b6p_task_implementer`). Until `/b6p-init` learns to write them, this is
-  a manual step — without it, the spec skills simply run in-session instead of
-  delegating.
-- Also needed on this machine: the **`b6p` CLI** (installed separately — see
-  [Prerequisites](#prerequisites)) and, for platform MCP authoring, the
-  **`B6PT_TOKEN`** environment variable in the environment Codex launches from
-  (Windows: `setx` at User scope + fully restart the app).
-- **Verify:** in a fresh session the skill catalog lists
-  `bluestep-tools:` skills, and with the token set the plugin page shows
-  `bluestep-gateway` connected.
-
-### Step 2 — Run `/b6p-init` once on the machine
-
-In any folder, in the tool you just installed the plugin into, run:
-
-```
-/b6p-init
-```
-
-It checks the once-per-machine items and walks you through whatever is missing:
-the `b6p` CLI and `b6p auth set`, the marketplace registration (so updates
-arrive), hook trust and the subagents copy on Codex, and the optional
-`B6PT_TOKEN` for platform authoring. Everything it finds already done, it skips.
-`/project-init` re-checks these at the end and points you back here if
-something is missing, so skipping this step is not fatal — you just hear about
-it later.
-
-One thing it will tell you on Claude Code: a user-scope install loads the plugin
-in **every** session on the machine, including the two guardrail hooks, so a
-hand-run `tsc` is blocked in any TypeScript project, BlueStep or not. In a repo
-where that is wrong, add
-`"enabledPlugins": { "bluestep-tools@bluestep": false }` to that project's
-`.claude/settings.json`.
-
-### Step 3 — Activate the rules in your project
-
-Installing the plugin gives the agent the skills, guardrail hooks, and the
-on-demand reference. But the **always-on** BlueStep rules live in a project
-`AGENTS.md` — read natively by Cursor, Codex, and most other tools — plus a
-one-line `CLAUDE.md` containing `@AGENTS.md` for Claude Code (which doesn't read
-`AGENTS.md` natively). A plugin can't write those files on its own. So, from
-your project directory, run:
-
-```
-/project-init
-```
-
-It asks nothing on a fresh folder: the project name is the folder name. The
-only questions it ever asks are offers about files from an older setup (below).
-
-The `AGENTS.md` it writes is **short** (about 40 lines): the platform rules, how to
-read the workspace, the spec routing rule, and the compaction rule.
-Everything else comes from the `bluestep-reference` skill on demand, so it no longer
-costs ~4 K tokens per turn. This works in a **new *or* existing** project — it's non-destructive and skips any
-file that already exists, so in an existing repo it just drops the missing
-`AGENTS.md` (plus the other tooling files) and leaves your code untouched. An
-existing populated `CLAUDE.md` is never overwritten — the skill offers the
-migration to `AGENTS.md` instead of doing it silently. Think of it as "activate
-BlueStep rules here," not only "scaffold a new project."
-
-Skip step ③ and Claude still has the tools and hard guardrails, but may miss
-BlueStep-specific patterns since the rules aren't in context every turn.
-
-### Keeping it updated
-
-Claude Code: run `/plugin marketplace update` (or enable `autoUpdate`). Cursor:
-imported marketplaces refresh from this repo on push — nothing to run. Codex:
-update from the plugins screen / CLI, and **re-trust the hooks** after any
-release that changes one (the changelog calls those out). On every tool, an
-install only changes when the plugin's version changes — see
-[For maintainers](#for-maintainers).
-
-**Then run `/b6p-update`.** Updating the plugin is only half of it: the files
-`/project-init` wrote into your project stay exactly as they were, because that
-skill never overwrites an existing file. So a release that shortens the rules
-file, adds a settings key, or changes what belongs in `AGENTS.md` reaches new
-projects and leaves yours as it was — and your project's `AGENTS.md` is re-read
-on **every turn** of every session in it, so an outdated one keeps costing you
-all day.
-
-```
-/b6p-update
-```
-
-It reports first — a table of each project, what it's behind on, and what would
-change — and writes nothing until you pick. `here` does the current project;
-`all` sweeps the projects your tool has opened plus the subfolders of where
-you're sitting. When it swaps a rules file it shows you your own project-specific
-lines, carries every one over, and then offers cuts one at a time with a reason
-for each, so nothing of yours disappears into a migration. Edits in other repos
-are left as **uncommitted** changes for you to review with `git diff` — it never
-commits.
-
-Run it after any update. When there's nothing to do it says so, and it's safe to
-run again.
-
-### Sharing it with your team
-
-On Claude Code, the same `/project-init` from step ③ also writes a project
-`.claude/settings.json` that registers the `bluestep` marketplace and sets
-`"enabledPlugins": { "bluestep-tools@bluestep": true }`. Commit that file **and**
-the generated `AGENTS.md` + `CLAUDE.md` bridge, and most of the setup **travels
-with the repo**: a teammate who clones it gets step ③ for free (the rules files
-are already there), and when they trust the folder Claude Code registers the
-marketplace and shows the `claude plugin install bluestep-tools@bluestep`
-command for step ① — there is no automatic install, they run that one command
-(desktop app: install from the Plugins screen on claude.ai). Step ② (`/b6p-init`)
-is still theirs to run once. (Cursor and Codex enablement is per-user — teammates
-on those tools do step ① themselves, but still get the committed `AGENTS.md`
-for free.)
-
-## What it solves
-
-BlueStep developers work in local copies of components whose source of truth
-lives on the BlueStep platform, using ad-hoc per-developer tooling and
-undocumented platform conventions. The `bluestep` marketplace packages the
-team's shared practice — a spec-driven workflow, platform-sync skills, guardrail
-hooks, subagents, and an on-demand BsJs/RelateScript reference — into versioned
-agent plugins (Claude Code, Cursor, Codex — one source, three generated
-outputs). Everyone gets the same reviewed, traceable conventions with
-no per-project copying and no drift: updates ship centrally instead of being
-hand-copied into each `.claude/` tree.
-
-## Available plugins
-
-This marketplace ships the following plugins; more are on the way.
+BlueStep developers work in local copies of components whose source of truth lives on the platform.
+`bluestep-tools` packages the team's shared practice into a versioned plugin — one source, three
+generated outputs — so everyone gets the same reviewed conventions with no per-project copying and no
+drift.
 
 | Plugin | What it's for | Install |
 | --- | --- | --- |
-| **`bluestep-tools`** | Spec-driven BlueStep development: the `/spec-*` workflow, `/b6p-*` platform-sync skills, BlueStep subagents, guardrail hooks, and an on-demand platform reference. | `bluestep-tools@bluestep` |
+| **`bluestep-tools`** | BlueStep component workspaces: the `/spec-*` workflow, `/b6p-*` platform-sync skills, BlueStep subagents, a guardrail hook, the bundled gateway MCP and an on-demand platform reference. | `bluestep-tools@bluestep` |
+| **`core-tools`** | Every other repo: the `core` rule set, `/task`, `/plan`, `/repo-setup`. Source: [`Bluestep-Systems/bluestep-ai`](https://github.com/Bluestep-Systems/bluestep-ai). | `core-tools@bluestep` |
 
-Each plugin is versioned and released independently — installing one does not
-pull in the others.
-
-## What `bluestep-tools` gives you
-
-Everything below is contributed by the `bluestep-tools` plugin once it's enabled:
+Once `bluestep-tools` is enabled:
 
 - **Spec-driven workflow** — `/spec-create` → `/spec-execute` → `/spec-status`, plus `/quick-task` for small changes.
-- **Platform sync** — `/b6p-pull`, `/b6p-push`, `/b6p-audit` (the agent usually runs these for you).
-- **Setup** — `/b6p-init` (once per machine), `/project-init` (once per project), `/b6p-update` (after a plugin update, to bring existing projects onto the new release) and `/bluestep-vite-report` (scaffold a Vite/Preact merge report).
-- **Platform authoring** — the bundled `bluestep-gateway` MCP server (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set) lets the agent create/wire platform objects in-session.
+- **Platform sync** — `/b6p-pull`, `/b6p-push`, `/b6p-audit`; the agent usually runs these for you. `/b6p-push` tells you what a push will overwrite and delete on the platform before it goes.
+- **Setup** — `/b6p-setup` (machine, project and update in one run) and `/bluestep-vite-report` (scaffold an off-platform Vite/Preact merge report).
+- **Platform authoring** — the bundled `bluestep-gateway` MCP server (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set) lets the agent create and wire platform objects in-session.
 - **Subagents** — `b6p-task-implementer` (isolated task execution), `b6p-commenter` (component README), `b6p-code-review` (report-only review).
-- **Guardrail hooks** — block hand-editing platform-generated files, block local `tsc` (Claude Code blocks both; Cursor blocks `tsc` and warns after an edit; Codex runs them only once trusted).
-- **On-demand reference** — `bluestep-reference`, a BsJs/RelateScript/platform reference Claude reads only when a task needs it.
-- **Feedback** — `/task-comment` (ClickUp implementation comment), `/bspecs-feedback` (propose a plugin change upstream).
+- **Guardrail hook** — blocks hand-edits to platform-generated files (`declarations/`, `B.d.ts`, …). Claude Code blocks; Cursor warns after the edit; Codex runs it only once trusted. A session canary warns once if no JSON parser is on PATH and offers setup in a folder that holds components but no rules file.
+- **On-demand reference** — `bluestep-reference`, a BsJs/RelateScript/platform reference the agent reads one file at a time, only when a task calls for it.
+- **Feedback** — `/task-comment` (ClickUp implementation comment), `/bspecs-feedback` (propose a plugin change upstream; you get an email when it is closed).
 
-## How the rules & reference reach the agent
+A plugin cannot ship *always-on* context, which is why `/b6p-setup` writes the platform rules into
+your project's own `AGENTS.md` (with the one-line `CLAUDE.md` bridge for Claude Code). Everything
+deeper is read on demand.
 
-A plugin can't ship *always-on* context, which is why `/project-init` writes
-the critical BlueStep rules into your project's own `AGENTS.md` (with a
-one-line `CLAUDE.md` bridge for Claude Code) — that's their only correct home.
-The deeper platform reference (`bluestep-reference`) works differently: the
-agent reads it on demand, one self-contained file at a time, only when a task
-actually calls for it — nothing is bulk-loaded into every session.
-
-## The `bluestep-tools` tools, and when to use each
-
-### Set up a project
+### The tools, and when to use each
 
 | Command | Use it to | When |
 | --- | --- | --- |
-| `/b6p-init` | Once-per-machine setup for the tool you are in — `b6p` CLI + `b6p auth set`, marketplace registration and plugin install, hook trust and subagents copy (Codex), the optional `B6PT_TOKEN`. Checks each item, skips what is done. | Once on each machine, right after installing the plugin; again when `/project-init` reports something missing. |
-| `/project-init` | Set up one project — writes the short `AGENTS.md` (the always-on rules), a one-line `CLAUDE.md` bridge, `README.md`, `package.json`, `.gitignore`, `.prettierrc`, the Claude Code project `.claude/settings.json`, and guides `git init`. | Starting a new project, or adding tooling to an empty/existing dir. Non-destructive; asks nothing on a fresh folder (the project name is the folder name). |
-| `/bluestep-vite-report` | Scaffold an **off-platform** Vite/Preact single-page-app merge report — a different approach from a platform-compiled report (a bundled `static/index.html` deployed via deploy-lib). | Starting a merge report that needs a real SPA build rather than the platform's `static/script.ts` path. |
-
-### Spec-driven workflow
-
-| Command | Use it to | When |
-| --- | --- | --- |
-| `/spec-create` | Plan a feature — produces `requirements.md`, then `design.md`, then `tasks.md`, with explicit approval between each phase. | A non-trivial change that's worth designing before coding. |
-| `/spec-execute` | Implement **one** approved task, then update its checkbox. Delegates to the `b6p-task-implementer` subagent by default (isolated context); `--inline` implements in the main session. | After `/spec-create` has produced an approved `tasks.md`. Run once per task. |
-| `/spec-status` | Show progress across all specs in `.claude/specs/`. | A quick done/pending tally of what's in flight. |
-| `/quick-task` | A short workflow for small, clearly-scoped changes and bugs — one living markdown doc, no 3-phase spec. | Small fixes that don't warrant a full spec (escalates to `/spec-create` if the scope grows). |
-
-### Sync with the platform (usually automatic)
-
-You rarely invoke these yourself — the agent runs pull / push / audit as part of
-its normal workflow (bringing a component down before editing, auditing before a
-push, pushing when you're ready). You mainly just need the `b6p` CLI installed
-and authed (see [Prerequisites](#prerequisites)). For reference:
-
-| Command | What it does |
-| --- | --- |
-| `/b6p-pull` | Bring a component down from the platform into the local workspace. |
-| `/b6p-push` | Push local edits back to the platform. |
-| `/b6p-audit` | List files that differ between local and platform (read-only). |
-
-### Platform authoring (bundled gateway MCP)
-
-The plugin bundles the `bluestep-gateway` MCP server, so the agent can
-create/wire platform objects (forms, fields, queries) directly in-session
-instead of a manual UI round-trip. There's no per-org connect step: the gateway
-auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set — a
-**separate** credential from the `b6p` CLI (see [Prerequisites](#prerequisites),
-and `/b6p-init` for token setup). The authoring flow itself lives in the
-`bluestep-reference` skill's `conventions/mcp-platform-authoring.md`.
-
-Component sync (`/b6p-*`) stays on the `b6p` CLI; MCP owns only the platform
-authoring the CLI can't do.
-
-### Subagents
+| `/b6p-setup` | Check the machine, write the missing project files, bring an old project up to date; `--all` for every project on the machine. | A new machine, a new or existing folder, after a plugin update — or never, because the skills below run it for you. |
+| `/bluestep-vite-report` | Scaffold an **off-platform** Vite/Preact single-page-app merge report (a bundled `static/index.html` deployed via deploy-lib). | A merge report that needs a real SPA build rather than the hand-written `static/script.ts` path. |
+| `/spec-create` | Plan a feature — `requirements.md`, then `design.md`, then `tasks.md`, with approval between each. | A non-trivial change worth designing before coding. |
+| `/spec-execute` | Implement **one** approved task and tick it; delegates to `b6p-task-implementer` by default, `--inline` to stay in the session. | After `/spec-create`, once per task. |
+| `/spec-status` | Progress across all specs in `.claude/specs/`. | A quick tally of what is in flight. |
+| `/quick-task` | A short workflow for a small, clearly scoped change or bug — one living doc, no three-phase spec. | Small fixes; escalates to `/spec-create` if the scope grows. |
+| `/b6p-pull` · `/b6p-push` · `/b6p-audit` | Bring a component down · push local edits back (publish or draft, your choice, with what it will overwrite and delete stated first) · list what differs (read-only). | Usually the agent's call, as part of its workflow. |
+| `/task-comment` · `/bspecs-feedback` | Draft a ClickUp implementation comment · send a plugin-change request upstream. | After shipping · whenever the tooling itself should change. |
 
 | Agent | What it does | How it fires |
 | --- | --- | --- |
-| `b6p-task-implementer` | Implements one approved spec task in an isolated context and returns a summary. | **Automatically**, as the default path of `/spec-execute` (skipped with `--inline`). |
-| `b6p-commenter` | Fills in a component's `draft/README.md` from the code (edits the README only). | On-demand; suggested at a `/spec-execute` STOP, never auto-fired. |
-| `b6p-code-review` | Report-only code review grouped Critical / Warnings / Suggestions. | On-demand; suggested at a `/spec-execute` STOP, never auto-fired. |
+| `b6p-task-implementer` | Implements one approved spec task in an isolated context and returns a summary. | Automatically, as `/spec-execute`'s default path. |
+| `b6p-commenter` | Fills in a component's `draft/README.md` from the code. | On demand; suggested at a `/spec-execute` STOP. |
+| `b6p-code-review` | Report-only review grouped Critical / Warnings / Suggestions. | On demand; suggested at a `/spec-execute` STOP. |
 
-### Feedback
+Platform authoring goes through the bundled `bluestep-gateway` MCP server — no per-org connect step,
+one global token — following `bluestep-reference`'s `conventions/mcp-platform-authoring.md`.
+Component sync (`/b6p-*`) stays on the `b6p` CLI; MCP owns only what the CLI cannot do.
 
-| Command | Use it to |
-| --- | --- |
-| `/task-comment` | Draft a standardized ClickUp implementation comment after shipping a fix or feature. |
-| `/bspecs-feedback` | Propose a change to the plugin itself — drafted from session context, confirmed in chat, POSTed to the BlueHQ intake endpoint (ClickUp task + linked GitHub issue, no account needed). You'll get an email when your item is closed, saying what happened. |
+## Install details per tool
+
+Prompt 1 above gives the agent these; they are here for the record.
+
+**Claude desktop app (Mac/Windows).** Customize (left sidebar) → **Plugins** → under Personal plugins
+**+** → **Add marketplace** → **From repository** → `https://github.com/Bluestep-Systems/bspecs` →
+Done → **Browse plugins** → **bluestep-tools** → **Install**. Turn on **Sync automatically** in the
+marketplace's settings so releases install on their own. Plugins on the desktop app are managed by
+your claude.ai account, not by local files.
+
+**Claude Code CLI.** `/plugin marketplace add Bluestep-Systems/bspecs` then
+`/plugin install bluestep-tools@bluestep` — or from a shell, `claude plugin marketplace add …` and
+`claude plugin install bluestep-tools@bluestep --scope user`. **VS Code extension:** `/plugins` →
+Marketplaces → add `Bluestep-Systems/bspecs` → Plugins → install **bluestep-tools** → restart or
+`/reload-plugins`. JetBrains has no plugin GUI: use the CLI in its terminal.
+
+**Cursor.** Plugins → **Add Marketplace → Import from Repo** → `https://github.com/Bluestep-Systems/bspecs`
+→ install **bluestep-tools** (enable it on the Manage screen if it is off). Open your project folder
+first — skills and hooks are workspace-coupled. Updates arrive on their own. The edit guardrail runs
+as a post-edit advisory on Cursor (it has no blocking pre-edit event). Do not judge the install by
+the plugin page's skill count; the composer's slash menu with your project open is the truth.
+
+**Codex.** `codex plugin marketplace add Bluestep-Systems/bspecs`, install **bluestep-tools** from it,
+start a fresh session. Then two steps the tooling depends on: **trust the hooks** (plugin page →
+Review → trust, or `/hooks` in the CLI — an untrusted hook does nothing, silently, and needs
+re-trust after any release that changes one), and **copy the three subagents** from
+`dist/codex/bluestep-tools/agents/` into `~/.codex/agents/` (Codex plugins cannot register them;
+without the copy the spec skills run in-session instead of delegating).
+
+**Verify**, on any tool: in a fresh session the `bluestep-tools` skills appear in the slash menu, and
+with `B6PT_TOKEN` set the plugin page shows `bluestep-gateway` connected.
 
 ---
 
@@ -390,6 +187,7 @@ these files (`cli.js`/`src/*`) is retained but **dormant** (unpublished,
 unsupported). See
 [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md),
 [`docs/decisions/cross-tool-plugin-output.md`](docs/decisions/cross-tool-plugin-output.md),
+[`docs/decisions/setup-consolidation.md`](docs/decisions/setup-consolidation.md),
 and
 [`docs/decisions/content-sanitization-for-public-tooling.md`](docs/decisions/content-sanitization-for-public-tooling.md).
 
@@ -445,7 +243,7 @@ in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) — a
 `name`, a `source` directory (its own folder alongside `plugin/`), and a
 `description`. Each plugin carries its own `plugin.json` `version` and is
 released and tagged independently (`<name>-vX.Y.Z`). Add a row to the
-[Available plugins](#available-plugins) table above when you do.
+[What you get](#what-you-get) table above when you do.
 
 **Proposing changes.** Found something that should improve across all BlueStep
 projects — a skill, hook, reference rule, or subagent? Use the `/bspecs-feedback`
