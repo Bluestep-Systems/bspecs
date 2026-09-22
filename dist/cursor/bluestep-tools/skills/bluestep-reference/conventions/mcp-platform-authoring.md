@@ -152,9 +152,15 @@ which org. Required at **every** entry point, conversational included.
 ### 6 — Execute + declaration read-back
 
 Run the op via `invoke_org_tool(org, tool, arguments)`; the org authorizes on its own authority. Then, **if
-the op wired an import**, call **`invoke_org_tool(org, tool:"get_script_declarations", …)`** so the script's
-`B` type reflects the new dependency, and surface it so a subsequent `[CODE]` task can code against it
-immediately — no manual re-pull.
+the op wired an import**, call **`invoke_org_tool(org, tool:"get_script_declarations", …)`** and read the
+result. The read-back proves the **platform** is wired — the dependency exists on the script and the generated
+declarations name the accessors a `[CODE]` task will use — so that task can be written against them right away.
+It does **not** refresh the local `declarations/` tree, and `b6p push` type-checks against that local tree: the
+sequence grant → read-back → code → push publishes with stale-declaration diagnostics (`Property 'x' does not
+exist on type …`, "Published WITHOUT a passing type-check") that look exactly like a real type error. So
+**`b6p pull` the affected components before their first push** — a normal step after any wiring op a `[CODE]`
+task builds on, not a fallback. Commit or back up unpushed local edits first: b6p-cli 0.6+ keeps a locally
+edited, previously synced file and lists it at the end of the pull; older CLIs overwrite it.
 
 - The read-back is **mandatory after any schema or wiring op a `[CODE]` task will build on** — not
   optional polish. A successful `add_field_access` (or any wiring success response) is **not** proof
@@ -164,9 +170,8 @@ immediately — no manual re-pull.
 - A **`null` or blank property key** in the generated declarations means the field has **no
   `formulaId`** — typically a pre-existing field. Repair per the `formulaId` bullet in
   [Known authoring quirks](#known-authoring-quirks), then re-run the read-back.
-- Prove-out bar is **"declarations sufficient to code against," not byte-parity** with `/b6p-pull`.
-- If the reduced declarations are insufficient, fall back to a CLI `/b6p-pull` for the full
-  `declarations/` tree.
+- Prove-out bar for the read-back is **"declarations sufficient to code against," not byte-parity** with
+  `/b6p-pull` — the pull is still what the build verifies against, so it happens before the first push either way.
 - **If the op created a query or view**, the same "success ≠ done" rule applies to the object itself:
   run the
   [create-time rules and completeness read-back](#create-time-rules-and-completeness-read-back-queries-and-views)
