@@ -45,7 +45,7 @@ The workspace is a **local copy** of components that live on the BlueStep platfo
 
 - New B6P components (MergeReport, Endpoint, Formula) are created **on the platform**, never locally.
 - Inside an existing component, creating new `.ts` files locally is fine — they ship to the platform on `push`.
-- Compilation happens at **publish/snapshot** time, never locally — local `tsc` is forbidden (enforced by hook), and a plain push does not compile at all.
+- Compilation happens in the **b6p CLI**, only on a publish/snapshot push (`b6p push --snapshot`) — never by hand (`tsc` is forbidden, enforced by hook) and never on a plain push, which uploads the source as-is.
 
 ## Data hierarchy
 
@@ -158,7 +158,7 @@ The cleanest way to push an already-pulled component is `--file`, which lets the
 b6p push --file "U######/<Component>/draft/scripts/app.ts"
 ```
 
-Any file inside the component works as the `--file` argument; the CLI walks up to find the component root and looks up its recorded sync metadata. Same per-file integrity check applies — only changed files are uploaded. A plain push uploads the draft source **as-is** — it does **not** compile and does **not** change the live version. Only a **publish/snapshot** (`b6p push --snapshot --message "…"`) runs the TypeScript build and ships the compiled `app.js`.
+Any file inside the component works as the `--file` argument; the CLI walks up to find the component root and looks up its recorded sync metadata. Same per-file integrity check applies — only changed files are uploaded. A plain push uploads the draft source **as-is** — it does **not** compile and does **not** change the live version. Only a **publish/snapshot** (`b6p push --snapshot --message "…"`) runs the TypeScript build — in the CLI, before upload, covering `scripts/` and any `static/` bundle — and ships the emitted JS together with the source.
 
 ### Fallback: VS Code extension
 

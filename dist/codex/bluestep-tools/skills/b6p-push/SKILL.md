@@ -49,7 +49,7 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 
 ### 3. Choose how the change goes out (this also confirms the push)
 
-**What the two modes actually do** (verified live on bkplayground — a plain push skips the TypeScript build entirely; only a snapshot transpiles and ships the compiled `app.js`):
+**What the two modes actually do** (the build runs in the b6p CLI on your machine, never on the platform — a plain push compiles nothing; only a snapshot transpiles `scripts/` and any `static/` bundle before upload and ships the emitted JS alongside the source):
 
 - **Publish** (`--snapshot --message`) — compiles the code, updates the **live** version, and records a restorable snapshot the user can roll back to.
 - **Save draft only** (plain push) — uploads the draft source as-is; does **not** compile and does **not** change the live version. Rarely what the user wants.
@@ -89,7 +89,7 @@ Use any existing file inside the component for `--file`; `app.ts` is the most co
 
 The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call fails with exit `1` naming that prompt. Always include it.
 
-> **Warning — stale client JS.** If you edited `draft/static/script.ts`, verify `draft/static/script.js` was regenerated/updated **before** pushing. `b6p push` does **not** transpile `static/script.ts` → `static/script.js`, so a push after editing only the `.ts` silently ships stale client JS. Keep the compiled `.js` in sync with the `.ts`. (Detail: the `bluestep-reference` `conventions/single-script.md` caveat.)
+> **Warning — stale client JS on a draft-only push.** `b6p push --snapshot` compiles `draft/static/script.ts` → `draft/static/.build/script.js` in the CLI before uploading (b6p-cli 0.6+, verified 2026-09 on two orgs), so a publish always ships fresh client JS. A **plain** push compiles nothing: if the `.ts` is newer than its `.build` output the CLI prints a `Stale client bundle` warning and uploads as-is, so a draft-only push after editing only the `.ts` leaves the old client JS in place. Publish, or accept that the draft's client code is stale until you do. (Detail: the `bluestep-reference` `conventions/single-script.md` caveat.)
 
 > **Warning — never-published script.** On a script that has **never been published**, `b6p push --snapshot` reports "Snapshot complete!" but creates **no live version** — every execution then throws `java.nio.file.NoSuchFileException: …/scripts/app` (that ERR-log path, via the gateway MCP's `read_script_log`, is the detection signature). The first publish must be done **once in the platform script editor** ("Snapshot Project"); after that, `--snapshot` pushes work normally. Previously-published scripts are unaffected. Tracked as a b6p-cli bug — until it's fixed, treat a first-ever publish as a UI step. (verified 2026-08)
 
@@ -115,7 +115,7 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
 
 `b6p --json push …` prints core's `PushResult` — `{"pushed": true, "historyRecorded": true, "typeCheckDiagnostics": 0}` — which tells you which case without parsing prose. One shape to expect: if the user cancelled at a target-URL prompt the CLI prints `{"cancelled": true}` and exits `0` — there is no `pushed` key at all, so test for it rather than assuming it is false.
 
-- **Publish** runs the TypeScript build and ships the compiled output. The build type-checks `scripts/app.ts` **with** the component's `declarations/` wired in, so it is a real type-check, not a syntax pass. **Save draft only** does not compile at all.
+- **Publish** runs the TypeScript build in the CLI and uploads the compiled output with the source. The build type-checks `scripts/app.ts` **with** the component's `declarations/` wired in, so it is a real type-check, not a syntax pass. **Save draft only** does not compile at all.
 - **Reading the diagnostics.** A correctly-pulled component reports **zero**. A `Cannot find name` on a **platform global or imported query/field name** (`B`, your query-group consts, …) now means the declaration is genuinely missing — the `declarations/` were not pulled, or the name was never imported into *this* component (rule 8: never fabricate references). Fix it by re-pulling the component, or adding the import on the platform and pulling again — **not** by adding a `/// <reference … />` directive (obsolete now: the build wires declarations in for you). A `Cannot find name` on **one of your own** symbols is an ordinary type error in your source; fix it.
   - **A stray unescaped backtick** inside a `B.out` template literal also cascades into bogus `Cannot find name` diagnostics and produces genuinely broken `app.js` — rule it out via the `bluestep-reference` skill's `conventions/ts-in-template-literal.md`.
   - **Client-bundle noise is separate and does NOT fail the push.** A MergeReport `static/` bundle can reference browser-only third-party globals it declares nowhere (GridStack, Swal); those print as **advisory** diagnostics (visible with `--verbose`) and are excluded from `typeCheckDiagnostics`, so they never fail the push and do not mean anything is wrong. See the `bluestep-reference` skill's `gotchas/third-party-lib-type-noise.md`.

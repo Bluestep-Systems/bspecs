@@ -45,7 +45,7 @@ Deep reference for BlueStep TypeScript development. Critical rules live in `AGEN
 
 A project may contain multiple Unit folders, each with multiple components of varying types. **Module split convention:** split complex logic into focused files under `scripts/`. `app.ts` is the entry point.
 
-**Multi-file components with ES imports are supported** (verified on the platform — `SMS Data Diagnostics`, `app.ts` importing `cleanupDuplicates.ts`). A sibling file `export`s a symbol and `app.ts` pulls it in with a standard relative ES import (no file extension); it links correctly on the platform (compiled at publish/snapshot). Use this to split a large `app.ts` into focused modules:
+**Multi-file components with ES imports are supported** (verified on the platform — `SMS Data Diagnostics`, `app.ts` importing `cleanupDuplicates.ts`). A sibling file `export`s a symbol and `app.ts` pulls it in with a standard relative ES import (no file extension); it links correctly on the platform (the CLI compiles it at publish/snapshot). Use this to split a large `app.ts` into focused modules:
 
 ```typescript
 // scripts/cleanupDuplicates.ts
@@ -429,7 +429,7 @@ Each project root has a `tsconfig.json`. BlueStep projects run with **`strict: f
 }
 ```
 
-Do not run `tsc` locally (a hook blocks it). Compilation happens only at **publish/snapshot** (`b6p push --snapshot`) — a **plain push skips the TypeScript build entirely**, so pushing without a snapshot means the code has been compiled nowhere.
+Do not run `tsc` locally (a hook blocks it). Compilation happens only in the b6p CLI at **publish/snapshot** (`b6p push --snapshot`) — a **plain push skips the TypeScript build entirely**, so pushing without a snapshot means the code has been compiled nowhere.
 
 ### Graal compatibility (server-side)
 
