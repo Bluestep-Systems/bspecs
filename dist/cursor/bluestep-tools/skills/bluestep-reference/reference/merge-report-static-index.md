@@ -2,9 +2,9 @@
 description: BlueStep merge report with a static/ bundle — B.out (server content) and static/index.html (client markup) BOTH render but are completely disjoint (B.out is injected as a tag that runs AFTER index.html), and static/styles.css + .build/script.js load automatically. Put the mount/config/markup/CSS in static/, use B.out only for final server-rendered markup; never fetch/inline your own styles.css and never use a B.out config island as a data channel to the index.html client script.
 ---
 
-> This file describes the **platform-compiled** `static/script.ts` path (`B.out` +
+> This file describes the **CLI-compiled** `static/script.ts` path (`B.out` +
 > `static/index.html` + the autoloaded `.build/script.js`). For an **off-platform**
-> Vite/Preact SPA bundle deployed to `static/` via deploy-lib (the platform compiler
+> Vite/Preact SPA bundle deployed to `static/` via deploy-lib (the CLI's static build
 > bypassed), see [vite spa merge report](vite-spa-merge-report.md).
 
 In a BlueStep merge report that ships a `static/` bundle (`static/index.html` +
@@ -42,8 +42,8 @@ block in `app.ts` is pointless work. CSS stays in `static/styles.css` per
   `<script src=".build/script.js">` tag. (E.g. a `<div id="…-widget"></div>` mount
   lives in index.html, not in `B.out`.)
 - CSS → `static/styles.css`. Client JS → `static/script.ts` (→ `.build/script.js`).
-  Caveat: push does **not** transpile `static/script.ts` — keep the compiled
-  client `.js` in sync yourself or you silently ship stale client JS. See
+  Caveat: only a snapshot push (`b6p push --snapshot`) compiles `static/script.ts`, in the
+  CLI; a plain push uploads as-is and warns on a stale bundle. See
   [single script](../conventions/single-script.md).
 - `B.out` (from `app.ts`) → **final server-rendered markup only**: HTML with
   server-computed values baked straight in, e.g. record-scoped section URLs (see

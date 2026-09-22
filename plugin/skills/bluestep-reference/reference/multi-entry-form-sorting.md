@@ -22,7 +22,7 @@ Three valid designs:
 
 1. **A required date field first** — the value always exists, so nothing needs filtering.
 2. **A signature field first, deliberately nullable** — for forms where only a *signed* entry
-   governs (e.g. an unsigned draft assessment isn't the controlling document). This is sound
+   governs (e.g. an unsigned draft isn't the controlling record). This is sound
    *because* the reading formula filters out unsigned entries, not despite the nullability.
 3. **A custom MEFR with an explicitly configured sort** — not merely a custom MEFR.
 

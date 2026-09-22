@@ -6,7 +6,8 @@ description: "How to build a consolidated, one-row-per-entry Relate Report acros
 
 A **consolidated entry listing** shows one row per multi-entry form *entry*, pulled across every
 record in scope — e.g. "every failed item, across all records, in one exportable table." The
-obvious artifacts for this both fail in ways that look like bugs rather than a wrong choice.
+obvious artifacts for this both fail in ways that look like bugs rather than a wrong choice. Everything
+below comes from one live build-out (2026-09) and has not been re-run since.
 
 ## Artifact choice
 
@@ -39,7 +40,7 @@ wizard):
 - The "Set Value" popup for an option-list search criterion stores the **option item's topId**, not
   its export value or label.
 - That popup opens via `doPopup`/`window.open`, which embedded agent browsers commonly block. The
-  verified workaround: call `updateValueShow('searchValue[N]', '<optionItemTopId>', '<display
+  workaround that worked in that build-out: call `updateValueShow('searchValue[N]', '<optionItemTopId>', '<display
   label>')` directly on the wizard page. It sets the hidden input and updates the UI exactly like
   the popup would.
 - `add3()` — the "add another column/criteria row" control — is a server-side form submit, not a

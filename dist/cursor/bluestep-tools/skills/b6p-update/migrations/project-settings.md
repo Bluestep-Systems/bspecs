@@ -35,20 +35,26 @@ That value may be deliberate. Show the key, their value, what `/project-init` wr
 difference does — then let them decide. One question per differing key, and only for real
 differences, not formatting.
 
-## The plugin enablement key: remove a project-level `true`, offer the user-scope install
+## The plugin enablement key: drop a redundant `true`, keep a working one, offer the install
 
 `/project-init` no longer writes `"enabledPlugins": { "bluestep-tools@bluestep": true }` (nor the older
-array shape): the plugin is enabled at **user scope** by `/b6p-init`, which covers every B6P project on
-the machine, and a project-level `true` with no user-scope install loads nothing while looking enabled.
-So:
+array shape): the plugin is meant to be enabled at **user scope** by `/b6p-init`, which covers every B6P
+project on the machine. But a project-level `true` can also be a working **project-scope install**
+(on Claude Code, `claude plugin install … --scope project` writes exactly that key plus a `scope: project` row), so
+whether to remove it depends on what the machine holds. **Read** `~/.claude/plugins/installed_plugins.json`
+(Claude Code; read only, never write it) and look for `bluestep-tools@bluestep` rows:
 
-- A project that holds the `true` (either shape) → **remove that key.** One correct answer; say it in
-  the report: "removed the per-project plugin switch — the plugin is enabled for the whole machine."
-- Then **read** `~/.claude/plugins/installed_plugins.json` (Claude Code) and look for a
-  `bluestep-tools@bluestep` row with `scope: user`. If there is none, the machine has no install at
-  all — say so in the report and give the command for the user to run:
-  `claude plugin install bluestep-tools@bluestep --scope user` on Claude Code (desktop app: the claude.ai Plugins
-  screen). Do not run it and do not write outside the project.
+- A `scope: user` row exists → the project-level `true` is redundant. **Remove that one entry**
+  (`"bluestep-tools@bluestep": true` — leave any other plugin in `enabledPlugins` alone, and drop the
+  `enabledPlugins` object only if it is now empty). One correct answer; say it in the report: "removed the
+  per-project plugin switch — the plugin is enabled for the whole machine."
+- A `scope: project` row for **this** project exists and no user row → the `true` is what loads the plugin
+  here. **Leave it.** Mention in the report that this project carries its own install and that `/b6p-init`
+  can replace it with one machine-wide install.
+- Neither row → the `true` loads nothing while looking enabled. Say so, give the command for the user to
+  run — `claude plugin install bluestep-tools@bluestep --scope user` on Claude Code (desktop app: the
+  claude.ai Plugins screen) — and **ask** before removing the entry; it is harmless until the install
+  exists and removing it first leaves nothing that even hints at the plugin.
 - A project that holds `false` is an **opt-out** someone chose for a repo that is not a B6P workspace.
   Leave it exactly as it is, and skip every other key here — it is not a B6P project.
 

@@ -57,7 +57,7 @@ setting instead.
 Otherwise `[all entries]` is the right choice — build a custom MEFR only for one of these:
 
 1. **Display/sort control.** `[all entries]` shows the form's summary fields, caps at 8
-   fields total, and sorts on the first field only. A custom MEFR can sort on multiple
+   fields total, and sorts on the first field only (as observed 2026-09). A custom MEFR can sort on multiple
    fields, show more than 8, and display connected merge reports instead of raw fields —
    but only if configured that way. Creating one with no sort order specified inherits the
    same first-column-only sort and fixes nothing.

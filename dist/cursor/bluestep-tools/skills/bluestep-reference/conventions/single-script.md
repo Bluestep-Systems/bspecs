@@ -1,10 +1,10 @@
 ---
-description: "The client build (run by the b6p CLI on a snapshot push) only ever compiles root static/script.ts to .build/script.js — subdirectory .ts files are NOT compiled and never load at runtime"
+description: "Only root static/script.ts → .build/script.js is ever loaded by a merge report page (the CLI snapshot build compiles subdirectory .ts files too, but nothing loads them); a server-side sibling under scripts/ runs only through an ES import from app.ts"
 ---
 
 > This rule is the **CLI-compiled** path and does **not apply to a Vite bundle** — a Vite bundle is built by Vite, so the CLI's `static/` build never runs (nothing here about "only root `static/script.ts` compiles" is in force). See [vite spa merge report](../reference/vite-spa-merge-report.md).
 
-Keep all BlueStep merge-report client code in ONE file: `static/script.ts`. Only the root `static/script.ts` → `.build/script.js` ever gets compiled and loaded (the build runs in the b6p CLI at `b6p push --snapshot` and covers only that root file). Nothing recursively compiles `static/util/*.ts`, `static/pages/*.ts`, etc. — even though a `tsconfig.json` with `"include": ["**/*.ts"]` suggests it should.
+Keep all BlueStep merge-report client code in ONE file: `static/script.ts`. Only the root `static/script.ts` → `.build/script.js` is ever **loaded**: `static/index.html` requests that one file and nothing else. The CLI's snapshot build does compile every `.ts` under `static/` (each to its own `.build/…js`), but nothing loads `static/util/*.ts`, `static/pages/*.ts`, etc., and a plain `<script>` tag does not follow `import` statements — so code outside the root file never runs.
 
 Symptom when you get this wrong: silent 404s on every subdirectory `.build/*.js`, producing a completely blank page (no errors — the scripts just don't load).
 
@@ -14,7 +14,7 @@ Symptom when you get this wrong: silent 404s on every subdirectory `.build/*.js`
 
 - `b6p push --snapshot` compiles `static/script.ts` → `static/.build/script.js` in the CLI and uploads both (b6p-cli 0.6+; verified 2026-09-04 on two orgs — a component with no `.build/` folder at all had one, with the emitted JS, on the platform right after the publish). Its diagnostics are advisory and never fail the push.
 - A **plain** `b6p push` compiles nothing. When the `.ts` is newer than its `.build` output the CLI prints a `Stale client bundle` warning and uploads as-is, so a draft-only push after editing only the `.ts` leaves the old client JS in place — no error, the change just never reaches the browser until the next publish.
-- The platform serves the emitted `.build/script.js` verbatim; it does not rebuild it. Treat "I edited `static/script.ts` and saved a draft" as **not** having deployed any client change.
+- What the page loads is the uploaded `.build/script.js`. Treat "I edited `static/script.ts` and saved a draft" as **not** having deployed any client change.
 - Observed shape can differ from the `.build/script.js` claim above: on at least one component the compiled `static/script.js` sat **directly beside** `script.ts` with **no `.build` subfolder** for static assets. Take this as an observed variation in layout, not a contradiction of the compilation description — check `static/index.html` for which path it loads.
 
 **How to apply:**

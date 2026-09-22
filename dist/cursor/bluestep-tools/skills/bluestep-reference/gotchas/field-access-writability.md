@@ -31,7 +31,7 @@ intended state while the stored grant disagrees.**
 
 Because write does not imply read, a field granted only `writable: true` has **one** row. It renders
 as a normal writable field everywhere — `list_field_access` shows one entry, `list_applicable_fields`
-collapses the pair into a single `access` value and reports `write` — so nothing says "there is no
+collapses the pair into a single `access` value and reports `write` (as reported 2026-09, not re-run here) — so nothing says "there is no
 read row underneath". Two consequences, both seen on live orgs:
 
 - A script that later **reads** such a field fails at runtime with a permission error, long after
@@ -56,7 +56,7 @@ add_field_access(scriptId, [fieldId], writable: true)    # adds the write row; r
 list_field_access(scriptId)                              # two entries for the field
 ```
 
-Verified 2026-09-22 (scratch formula, bkplayground): remove-write on a read+write field left the
+Verified 2026-09-22 (scratch formula on a test org): remove-write on a read+write field left the
 read row intact; remove-read then remove-write on the same field emptied it; re-adding read restored
 it. The old prescription — remove the grant, then re-add it with the intended `writable` — opens
 exactly that zero-access window and is superseded.

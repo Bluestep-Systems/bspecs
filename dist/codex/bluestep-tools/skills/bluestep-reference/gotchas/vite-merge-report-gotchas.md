@@ -90,6 +90,6 @@ declare const Swal: any;
 ## See also
 
 - [vite spa merge report](../reference/vite-spa-merge-report.md) — the pattern, architecture, and when to
-  use the off-platform bundle vs. the platform-compiled `static/script.ts` path.
+  use the off-platform bundle vs. the CLI-compiled `static/script.ts` path.
 - [deploy-lib workflow](../conventions/deploy-lib-workflow.md) — installing deploy-lib, the `package.json`
   `config` keys (owns the casing detail), and running `npm run deploy -- --build --clean`.

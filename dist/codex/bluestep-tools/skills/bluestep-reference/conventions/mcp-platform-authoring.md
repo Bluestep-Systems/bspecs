@@ -206,8 +206,10 @@ the filter and match by name/type before concluding an object doesn't exist (det
   guardrail. One exception: endpoint ops are additionally gated by the **ENGINEER ENDPOINT** custom
   privilege, so "global-super" does **not** guarantee END_POINT authoring — see
   [Known authoring quirks](#known-authoring-quirks).
-- **Destructive tools** (`remove_*`, `record` delete, `user` deactivate) run **only** when the task
-  explicitly requires them, with **extra** confirmation. Out of default scope.
+- **Destructive tools** (`remove_*`, `record` delete, `user` deactivate, and `set_permissions` — it **replaces the
+  entire** permission set of an object, dropping anything not in the list) run **only** when the task
+  explicitly requires them, with **extra** confirmation. Out of default scope. To add or remove one permission
+  on an existing object use `grant_permission` / `revoke_permission`.
 - **Schema creation is not (currently) MCP-reversible.** The wiring trio (`add_*`) has clean `remove_*`
   inverses, but **schema-authoring** ops (`form` / `field` / `option_list` / `view` / `record_type`) do
   **not** — an option list created via `create_option_list` has no `delete_option_list`, and
@@ -304,7 +306,8 @@ tools, not a fixed inventory.
 **Permissions**
 - `list_permissions`, `set_permissions`, `grant_permission`, `revoke_permission` (plus `form_permission` for
   forms). A script's permission set is separate from its wiring, and `create_script` sets none — so for a
-  script the path is `create_script` → `set_permissions` → `list_permissions` read-back (step 6). Served on
+  **new** script the path is `create_script` → `set_permissions` → `list_permissions` read-back (step 6).
+  `set_permissions` replaces the whole set, so on an existing object use `grant_permission` / `revoke_permission`. Served on
   the reference org as of 2026-09; confirm with `list_org_tools` on yours.
 
 **Declaration read-back**
@@ -379,7 +382,8 @@ verified — the dating key at the top of this page says how to read the markers
   an EndPoint answers with errors — and costs a debugging round each time (seen twice on one project,
   2026-09). Forms do not have this gap: `form` create is followed by `form_permission` / `grant_permission`
   as a matter of course. Treat a script create the same way: `create_script`, then `set_permissions` for the
-  intended subjects (Reader has been the right ceiling for a script in every case so far), then the
+  intended subjects — harmless on a script that has none, but it **replaces** the set, so on an existing
+  script use `grant_permission` instead (Reader has been the right ceiling for a script in every case so far) — then the
   `list_permissions` read-back in step 6 **before** anyone tests the component. A permissions parameter or a
   Reader default on `create_script` is a platform-side ask, not something this page can promise.
 - **`lookup_script_by_name` misses are name mismatches far more often than missing scripts.** The

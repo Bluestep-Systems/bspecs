@@ -22,7 +22,8 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   The truth, from the CLI source and two live repros: `b6p push --snapshot` compiles `scripts/` **and**
   every nested `static/` bundle in the CLI before upload and ships the emitted JS with the source; a
   plain push compiles nothing and warns on a stale client bundle. The docs now say what the CLI does per
-  mode and stay silent on the platform's internals. (`b6p-push`, `single-script.md`, `b6p-platform.md`,
+  mode and no longer attribute the build to the platform — the hand-written `static/script.ts` path is
+  called "CLI-compiled" everywhere, not "platform-compiled". (`b6p-push`, `single-script.md`, `b6p-platform.md`,
   `bsjs-development.md`, `crm-dashboard-inspo.md`, the manifest.)
 - **Field writability is grant rows, and remove-then-re-add was the dangerous order.** Read and write
   are independent rows on a field; `add_field_access(writable: true)` grants write only, and removing
@@ -71,8 +72,9 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 - **The plugin is enabled at user scope; projects stop carrying `enabledPlugins: true`.** `/project-init`
   no longer writes it (a project-level `true` with no user-scope install loads nothing while looking
   enabled), writes the `false` opt-out when run in a repo that is not a B6P workspace, and checks for the
-  user-scope install in its end-of-run report. `/b6p-update` removes a project-level `true` and offers
-  the `--scope user` install when the machine has none. The user-scope detector asked for on 2026-09-10 is
+  user-scope install in its end-of-run report. `/b6p-update` removes a project-level `true` the user-scope install makes
+  redundant, keeps one that is a working project-scope install, and offers the `--scope user` install when
+  the machine has none; `/b6p-init`'s account of the per-project settings agrees. The user-scope detector asked for on 2026-09-10 is
   not built — that request was withdrawn by its reporter.
 
 ## [plugin 0.35.0] — 2026-09-10

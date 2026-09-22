@@ -13,7 +13,7 @@ to anything on a MergeReport's setup page, and confuses whoever is asked to act 
 
 ## Cause
 
-MergeReports have no per-field writability at all. A single **component-level** setting —
+MergeReports have no per-field writability at all (observed 2026-09 on a live org). A single **component-level** setting —
 **"Allow this merge report to be used to edit data"**, under **Advanced Usage Options** on the
 component's setup page — decides whether `mergeTag("F")` renders an editable control, and it
 applies to **every** field in the report at once. There is no per-field equivalent to a formula
