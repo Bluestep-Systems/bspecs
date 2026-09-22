@@ -29,14 +29,6 @@ t "allows app.ts (backslashes)" block-generated-files.sh file_path 'C:\x\U129161
 t "allows README" block-generated-files.sh file_path '/x/draft/README.md' 0
 t "allows a path with 'declarations' as a filename part" block-generated-files.sh file_path '/x/draft/scripts/declarations-helper.ts' 0
 
-echo "=== block-tsc.sh ==="
-t "blocks bare tsc" block-tsc.sh command 'tsc -p tsconfig.json' 2
-t "blocks npx tsc" block-tsc.sh command 'cd /x && npx tsc --noEmit' 2
-t "blocks tsc mid-command" block-tsc.sh command 'cd /x && tsc && echo done' 2
-t "allows b6p push" block-tsc.sh command 'b6p push --file app.ts' 0
-t "allows git status" block-tsc.sh command 'git status' 0
-t "allows npm test" block-tsc.sh command 'npm test' 0
-
 echo "=== fail closed ==="
 out=$(printf '%s' 'not json at all' | bash "$H/block-generated-files.sh" 2>&1); rc=$?
 if [ "$rc" = 2 ]; then echo "  PASS  unparseable input blocks"; pass=$((pass+1));

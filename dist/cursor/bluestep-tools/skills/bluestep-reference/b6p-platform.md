@@ -45,7 +45,7 @@ The workspace is a **local copy** of components that live on the BlueStep platfo
 
 - New B6P components (MergeReport, Endpoint, Formula) are created **on the platform**, never locally.
 - Inside an existing component, creating new `.ts` files locally is fine — they ship to the platform on `push`.
-- Compilation happens in the **b6p CLI**, only on a publish/snapshot push (`b6p push --snapshot`) — never by hand (`tsc` is forbidden, enforced by hook) and never on a plain push, which uploads the source as-is.
+- Compilation happens in the **b6p CLI**, only on a publish/snapshot push (`b6p push --snapshot`) — never by hand (`tsc` is never run locally) and never on a plain push, which uploads the source as-is.
 
 ## Data hierarchy
 
