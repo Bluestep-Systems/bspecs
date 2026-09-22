@@ -1,6 +1,6 @@
 ---
 name: b6p-task-implementer
-description: Implements exactly ONE already-approved task from a feature spec, in an isolated context. Invoked by /spec-execute to keep heavy declaration/source reads out of the main session. Reads the task's spec files and the project's declaration files, writes the code, compiles each tsconfig folder, and returns a structured summary. Does NOT mark the task done, invoke other agents, or start the next task.
+description: Implements exactly ONE already-approved task from a feature spec, in an isolated context. Invoked by /spec-execute to keep heavy declaration/source reads out of the main session. Reads the task's spec files and the project's declaration files, writes the code, verifies it without a local compile, and returns a structured summary. Does NOT mark the task done, invoke other agents, or start the next task.
 tools: Read, Edit, Write, Glob, Grep, Bash
 ---
 
@@ -52,7 +52,7 @@ Open the `bluestep-reference` skill index at `${CLAUDE_PLUGIN_ROOT}/skills/blues
 
 ### Step 5 — Verify (no local compile)
 
-Do **not** run `tsc` — local compilation is forbidden and hook-blocked; compilation happens at publish/snapshot time (a plain push does not compile). Instead:
+Do **not** run `tsc` — local compilation is forbidden and hook-blocked; the b6p CLI compiles at publish/snapshot time (a plain push does not compile). Instead:
 
 - After each `Edit`/`Write`, review the `ide_diagnostics` the `PostToolUse` hook injects for the files you touched. Fix any `Error`-severity diagnostic before returning. `Warning`/`Information` can be left unless they point to a real problem.
 - If you touched a `B.out` template literal: scan the inner literal for **unescaped** backticks and `${` — **including inside `//` and `/* */` comments** (escaped `` \` ``/`\${` are legal). An unescaped backtick, or an unescaped `${` that is not an intentional server-side interpolation, is an **error that blocks your return** (it closes/interpolates the literal, misparses the rest of the file, and a snapshot push still "succeeds" while shipping broken output). The lint recipe is in the `bluestep-reference` skill's `conventions/ts-in-template-literal.md`.
