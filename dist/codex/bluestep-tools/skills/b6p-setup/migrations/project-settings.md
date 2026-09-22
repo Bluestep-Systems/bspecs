@@ -45,8 +45,9 @@ whether to remove it depends on what the machine holds. **Read** `~/.claude/plug
 (Claude Code; read only, never write it) and look for `bluestep-tools@bluestep` rows:
 
 - A `scope: user` row exists → the project-level `true` is redundant. **Remove that one entry**
-  (`"bluestep-tools@bluestep": true` — leave any other plugin in `enabledPlugins` alone, and drop the
-  `enabledPlugins` object only if it is now empty). One correct answer; say it in the report: "removed the
+  — the `"bluestep-tools@bluestep": true` key, or the `"bluestep-tools@bluestep"` string in the older array
+  shape — leave any other plugin in `enabledPlugins` alone, and drop the `enabledPlugins` key only if it is
+  now empty. One correct answer; say it in the report: "removed the
   per-project plugin switch — the plugin is enabled for the whole machine."
 - A `scope: project` row for **this** project exists and no user row → the `true` is what loads the plugin
   here. **Leave it.** Mention in the report that this project carries its own install and that `/b6p-setup` step 1

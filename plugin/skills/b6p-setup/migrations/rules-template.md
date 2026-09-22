@@ -81,7 +81,7 @@ Take the answer as final for this project — a chunk the user keeps is settled;
 
 Build the new `AGENTS.md` from `${CLAUDE_PLUGIN_ROOT}/skills/b6p-setup/templates/AGENTS.md.template`
 with `{{PROJECT_NAME}}` substituted, keeping the existing file's title line as line 1 — it may carry
-a client name the template no longer asks for — and its `**Scaffolded:**` line if it has one. Append
+a client name the template no longer asks for — and its `**Scaffolded:**` line if it has one, placed right after the marker line (so the marker stays on line 3). Append
 what survived under a `## Project rules` heading, before the `## Compaction` section.
 
 Write any `docs/` page a chunk moved into during the same change, so no pointer dangles.
@@ -89,10 +89,11 @@ Write any `docs/` page a chunk moved into during the same change, so no pointer 
 **The rebuild renumbers the platform rules.** Template 2 shuffled most of the v1 numbers (v1 rule 1 is
 now 7, 2 is 1, 3 is 8, 4 is 2, 6 is 5, 8 is 3, 9 is 4, 10 is 6), and a project's own quick-tasks, specs
 and decision logs often cite "Critical rule N" by the old number — after the swap every one of those
-points at the wrong rule, with no signal that anything is off. So, unless
-`grep -rlin "rules\? [0-9]" docs .claude 2>/dev/null` finds nothing, add this line right under the
+points at the wrong rule, with no signal that anything is off. So, if
+`grep -rlin "rules\? [0-9]" docs .claude 2>/dev/null` lists at least one file, add this line right under the
 `## Platform rules` list (before `## Reading`), verbatim — it applies whether or not the project has a
-`## Project rules` section:
+`## Project rules` section. If it lists nothing (or those folders do not exist), skip the line and say so in
+the report:
 
 > Older project docs cite the platform rules by their pre-migration number. None of those numbers
 > carried over — match a citation by what the rule says, which each one states inline.
