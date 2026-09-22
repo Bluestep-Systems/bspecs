@@ -47,6 +47,7 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 - Run `git status` to surface what changed and flag anything unexpected.
 - Briefly summarise the diff scope: "X files changed in `U######/<Component>/draft/`".
 - Confirm the component was pulled with `b6p` (so its sync metadata is recorded) — `--file` resolves the destination URL from that metadata. If the component was never pulled here, pull it first.
+- Know what the CLI itself checks (b6p-cli 0.7.0, verified 2026-09). For every file it has synced before, push compares the platform copy's content hash with the last sync and asks before overwriting one that changed (`The upstairs file … has changed since the last time you pushed or pulled. Do you wish to overwrite it?`); after uploading, it lists platform-only files under `draft/` and asks before deleting them. It compares content, never dates, and a file never synced from this machine gets no check at all. The `--yes` this skill passes (step 4) answers both prompts for you — Overwrite, then Yes — so when the platform may have moved since the pull (a days-old pull, a component others edit), run `/b6p-audit` first and read its list: push will not stop for you.
 
 ### 3. Choose how the change goes out (this also confirms the push)
 
@@ -88,7 +89,7 @@ b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"
 
 Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
 
-The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call fails with exit `1` naming that prompt. Always include it.
+The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call fails with exit `1` naming that prompt. Always include it — and know what it agrees to. `--yes` takes the **first option of every prompt**: **Overwrite** for a platform file that changed since the last sync, and **Yes** to deleting platform-only files under `draft/`. Verified 2026-09 on b6p-cli 0.7.0: a platform-side edit was overwritten and a platform-only file deleted, with nothing printed but `Push complete!`. That is why step 2 sends you to `/b6p-audit` when the platform may have moved. A push the user cancels at a prompt exits `0`, not `1`; with `--json` look for `{"cancelled": true}`, not the exit code.
 
 > **Warning — stale client JS on a draft-only push.** `b6p push --snapshot` compiles `draft/static/script.ts` → `draft/static/.build/script.js` in the CLI before uploading (b6p-cli 0.6+, verified 2026-09 on two orgs), so a publish always ships fresh client JS. A **plain** push compiles nothing: if the `.ts` is newer than its `.build` output the CLI prints a `Stale client bundle` warning and uploads as-is, so a draft-only push after editing only the `.ts` leaves the old client JS in place. Publish, or accept that the draft's client code is stale until you do. (Detail: the `bluestep-reference` `conventions/single-script.md` caveat.)
 
