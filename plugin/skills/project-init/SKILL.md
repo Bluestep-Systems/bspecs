@@ -1,6 +1,6 @@
 ---
 name: project-init
-description: Set up one BlueStep (B6P) project — new or existing — in the current directory. Non-destructive and idempotent — writes any missing per-project files (a short AGENTS.md with the always-on platform rules, a one-line CLAUDE.md bridge, README.md, package.json, .gitignore, .prettierrc), skips files that already exist, guides git init, and on Claude Code writes the project settings that enable the bluestep-tools plugin. Asks nothing on a fresh folder; the only questions are offers for files from an older setup. Run it once per project; the once-per-machine setup (b6p CLI, plugin install, platform token) is /b6p-init.
+description: Set up one BlueStep (B6P) project — new or existing — in the current directory. Non-destructive and idempotent — writes any missing per-project files (a short AGENTS.md with the always-on platform rules, a one-line CLAUDE.md bridge, README.md, package.json, .gitignore, .prettierrc), skips files that already exist, guides git init, and on Claude Code writes the project settings (marketplace registration, compaction window, permissions) — or, in a repo that is not a BlueStep workspace, the one-line opt-out that keeps the user-scope plugin out of it. Asks nothing on a fresh folder; the only questions are offers for files from an older setup. Run it once per project; the once-per-machine setup (b6p CLI, plugin install, platform token) is /b6p-init.
 allowed-tools: Read Write Edit AskUserQuestion Bash(git:*) Bash(ls:*) Bash(basename:*) Bash(mkdir:*) Bash(command:*) Bash(test:*)
 ---
 
@@ -25,6 +25,11 @@ On a fresh directory this skill asks **nothing**: the project name is the folder
 The target is the **current directory**. `PROJECT_NAME` = `basename "$PWD"`.
 
 If the user's request named a new subfolder ("set up a project called X in here"), `mkdir -p "<name>"`, use it as the target and as `PROJECT_NAME`, and finish with step 7. Do not ask about this otherwise — people open the folder they want first.
+
+**Is this a BlueStep workspace at all?** The plugin is installed at **user scope** (`/b6p-init`), so it loads in every project on the machine, and a repo that is not a B6P workspace opts out with one line in its own settings. Decide before writing anything:
+
+- An empty folder, a folder holding a `U######/` unit folder, or an `AGENTS.md` carrying the `<!-- bluestep-tools rules-template N -->` marker → a B6P workspace. Continue with step 2.
+- A non-empty folder with none of those (a plain TypeScript or Java repo, a tooling repo) → ask one question with two options: **set it up as a BlueStep project** (continue with step 2) or **opt it out of the plugin** (this is also the answer when the request itself was "keep bluestep-tools out of this repo"). Opting out means: on Claude Code, merge `"enabledPlugins": { "bluestep-tools@bluestep": false }` into the target's `.claude/settings.json` (create the file with just that key if it does not exist; never touch other keys), write **no** other file, and report that the B6P skills, hooks and gateway MCP stay out of this repo from the next session on. Project settings override the user-scope `true`; the plugin stays installed for every other project.
 
 ### 2. Write the per-project files into the target directory
 
@@ -71,7 +76,7 @@ If the target directory is not already a git repo, run `git init` in it (or tell
 
 ### 4. Claude Code only — write the project settings
 
-In the target directory, create `.claude/` if needed, then write `.claude/settings.json` with **exactly** this shape (skip if it already exists). No `hooks` block and no `SessionStart` sync — hooks come from the plugin. `autoCompactWindow` makes Claude Code compact at 400 K tokens instead of near the 1M limit on Fable / `opus[1m]` sessions; it is a no-op on 200 K models. Measured on real sessions it is the single largest quota saving available, and compaction keeps CLAUDE.md, the plan, and recently edited files. `enabledPlugins` is an **object** keyed by `plugin@marketplace` — Claude Code does not document an array form.
+In the target directory, create `.claude/` if needed, then write `.claude/settings.json` with **exactly** this shape (skip if it already exists). No `hooks` block and no `SessionStart` sync — hooks come from the plugin. `autoCompactWindow` makes Claude Code compact at 400 K tokens instead of near the 1M limit on Fable / `opus[1m]` sessions; it is a no-op on 200 K models. Measured on real sessions it is the single largest quota saving available, and compaction keeps CLAUDE.md, the plan, and recently edited files. **No `enabledPlugins` key**: the plugin is enabled at user scope by `/b6p-init`, which covers every B6P project on the machine, and a project-level `true` with no user-scope install does not install anything — the plugin silently does not load, which cost three broken sessions in one day before this line was dropped (2026-09). The only `enabledPlugins` this skill ever writes is the `false` opt-out for a repo that is not a B6P workspace (step 1).
 
 ```json
 {
@@ -94,15 +99,12 @@ In the target directory, create `.claude/` if needed, then write `.claude/settin
         "repo": "Bluestep-Systems/bspecs"
       }
     }
-  },
-  "enabledPlugins": {
-    "bluestep-tools@bluestep": true
   }
 }
 ```
 
-- **If it was skipped**, call that out: an existing `settings.json` may not register the marketplace / enable the plugin, so the marketplace + `enabledPlugins` block may need to be merged in by hand. If it has `"enabledPlugins": ["bluestep-tools@bluestep"]` (the array shape an earlier release wrote), offer to change that one line to the object shape above.
-- This file is what makes the setup **travel with the repo**: when a teammate clones and trusts the folder, Claude Code registers the marketplace from it and, because the plugin itself is not installed yet, reports it as not installed and shows the `claude plugin install bluestep-tools@bluestep` command to run. There is **no automatic install prompt**; on the desktop app, plugins are managed through claude.ai, so the teammate installs from its Plugins screen. CI sees the dependency the same way. It does not replace the user-scope install from `/b6p-init`, which is what loads the plugin for the person running this skill.
+- **If it was skipped**, call that out: an existing `settings.json` may not register the marketplace, so the `extraKnownMarketplaces` block may need to be merged in by hand. If it holds `"enabledPlugins": { "bluestep-tools@bluestep": true }` (or the array shape `["bluestep-tools@bluestep"]` an earlier release wrote), offer to **remove** that key — user scope covers it, and a stray project-level `true` is what hid the missing install. Leave an explicit `false` alone: that is an opt-out someone chose.
+- This file is what makes the marketplace **travel with the repo**: when a teammate clones and trusts the folder, Claude Code registers the `bluestep` marketplace from it, so their one-time `claude plugin install bluestep-tools@bluestep --scope user` (from `/b6p-init`) finds it. The install itself is per machine, never per project — on the desktop app plugins are managed through claude.ai, so the teammate installs from its Plugins screen. Nothing in this file loads the plugin by itself.
 - Plugin-bundled surfaces (MCP servers, hooks) load at session start: after enabling, Claude Code needs a fresh session or `/reload-plugins`.
 
 ### 5. Check the once-only setup
@@ -112,6 +114,7 @@ Run these checks and report, but **do not perform the setup here** — it is `/b
 - `command -v b6p` → if missing, the `b6p` CLI binary is not installed (or not on PATH).
 - `test -f ~/.b6p/secrets.enc` → if missing, `b6p auth set` has not been run, and the first `b6p pull` will stop at a prompt the agent cannot answer.
 - `test -n "$B6PT_TOKEN"` → if empty, the platform gateway MCP will not come up. This one is **optional** — only platform authoring over MCP needs it — so report it as "not set", not as missing.
+- Claude Code only: **read** `~/.claude/plugins/installed_plugins.json` and look for a `bluestep-tools@bluestep` row with `scope: user`. If there is none, the plugin is not installed for this machine — say so and give the command to run: `claude plugin install bluestep-tools@bluestep --scope user` (on the desktop app: install from the claude.ai Plugins screen). Never write that file or `~/.claude/settings.json` from here.
 
 If `b6p` or its credentials are missing, end the report with: "Run `/b6p-init` once on this machine to finish the setup." If only `B6PT_TOKEN` is unset, say that `/b6p-init` can set it up whenever platform authoring is needed. Do not block on any of it — the files written here are useful regardless.
 

@@ -86,6 +86,7 @@ Also gather, per project:
 | Size of any always-on file a matched migration touches | `wc -l` and byte size | Step 3 quotes this. Every number about a user's files is measured from the files — a number from memory would be a number about somebody else's project. |
 | Tracked in git | `git -C <dir> rev-parse --git-dir` | An untracked project has no diff to review, so say the change cannot be undone with git and offer to keep a `.bak` copy. |
 | Which tool this session is | — | Some migrations are per-tool; the catalogue says which. |
+| Plugin installed at **user scope** (Claude Code) | **read** `~/.claude/plugins/installed_plugins.json`, look for a `bluestep-tools@bluestep` row with `scope: user` | The plugin is meant to be enabled once per machine, not per project. A project holding `enabledPlugins: true` with no user-scope row is a project where the plugin silently does not load; the fix is the user-scope install, offered in the report as a command for the user to run — never a per-project key, and never a write outside the project. |
 
 ### 3. Report what you found, and get the go-ahead for the list
 

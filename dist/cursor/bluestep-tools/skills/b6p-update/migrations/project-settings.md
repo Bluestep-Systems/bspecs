@@ -35,6 +35,23 @@ That value may be deliberate. Show the key, their value, what `/project-init` wr
 difference does — then let them decide. One question per differing key, and only for real
 differences, not formatting.
 
+## The plugin enablement key: remove a project-level `true`, offer the user-scope install
+
+`/project-init` no longer writes `"enabledPlugins": { "bluestep-tools@bluestep": true }` (nor the older
+array shape): the plugin is enabled at **user scope** by `/b6p-init`, which covers every B6P project on
+the machine, and a project-level `true` with no user-scope install loads nothing while looking enabled.
+So:
+
+- A project that holds the `true` (either shape) → **remove that key.** One correct answer; say it in
+  the report: "removed the per-project plugin switch — the plugin is enabled for the whole machine."
+- Then **read** `~/.claude/plugins/installed_plugins.json` (Claude Code) and look for a
+  `bluestep-tools@bluestep` row with `scope: user`. If there is none, the machine has no install at
+  all — say so in the report and give the command for the user to run:
+  `claude plugin install bluestep-tools@bluestep --scope user` on Claude Code (desktop app: the claude.ai Plugins
+  screen). Do not run it and do not write outside the project.
+- A project that holds `false` is an **opt-out** someone chose for a repo that is not a B6P workspace.
+  Leave it exactly as it is, and skip every other key here — it is not a B6P project.
+
 ## Always
 
 - **Never overwrite the file wholesale.** The rest of it is the user's, and may hold permissions and
