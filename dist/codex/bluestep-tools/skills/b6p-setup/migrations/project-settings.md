@@ -33,7 +33,7 @@ they chose — check that last part before you add a key the user may have set s
 
 `autoCompactWindow` is a default, not a rule, and the project file outranks the user's own settings
 in Claude Code — so adding it can silently replace a window the user picked for every session.
-Before adding it, **read** (never write) `~/.claude/settings.json` and `.claude/settings.local.json`:
+Before adding it, **read** (never write) the Claude Code settings `~/.claude/settings.json` and `.claude/settings.local.json`:
 
 - **Either one sets `autoCompactWindow`** → do not add the key. Report it: "kept your own compaction
   window (N, from your user settings)".
