@@ -27,7 +27,27 @@ buys:
 
 Do not present a table of missing keys and ask whether to add them. The user has nothing to weigh:
 the keys are absent, the defaults are the ones this tooling ships, and adding them changes nothing
-they chose.
+they chose — check that last part before you add a key the user may have set somewhere else (below).
+
+## Claude Code only — the compaction window: the user's own value wins
+
+`autoCompactWindow` is a default, not a rule, and the project file outranks the user's own settings
+in Claude Code — so adding it can silently replace a window the user picked for every session.
+Before adding it, **read** (never write) `~/.claude/settings.json` and `.claude/settings.local.json`:
+
+- **Either one sets `autoCompactWindow`** → do not add the key. Report it: "kept your own compaction
+  window (N, from your user settings)".
+- **Neither does** → add it, and tell the user before writing — a statement, not a question: "Models
+  make more mistakes as the context gets very large, and every request re-reads the whole history.
+  I'm turning on context compaction at 400K, the value the BlueStep team suggests. To use a different
+  value just for you, set `autoCompactWindow` in `.claude/settings.local.json`."
+- **The project already has the 400 K value and the user's own settings hold a different one** → the
+  project value is what runs here. Do not change the shared file; say so and give the same
+  `settings.local.json` sentence.
+
+A project that removed the key is not something this migration can tell apart from one that never
+had it. If the user says they removed it on purpose, leave it out and tell them that the next run
+will offer it again until opt-outs are recorded.
 
 ## A key that already holds a different value? Ask.
 

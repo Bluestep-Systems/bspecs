@@ -8,6 +8,31 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.37.1] — 2026-09-23
+
+> **The 400 K compaction window no longer overrides your own.** No hook changes — Codex users do
+> not need to re-trust.
+
+### Fixed
+
+- **`/b6p-setup` could silently replace a compaction window you chose.** It writes
+  `autoCompactWindow: 400000` into the project's `.claude/settings.json`, and in Claude Code a
+  project value beats the one in your `~/.claude/settings.json` — so a window you picked for every
+  session stopped applying in that project, without a word. The `project-settings` migration also
+  called the key "additive, conflicts with nothing" and added it without asking. Both now read your
+  user settings and `.claude/settings.local.json` first (read only): if either sets
+  `autoCompactWindow`, the key is left out and the report says your window was kept. Otherwise it
+  tells you before writing, in plain words: models make more mistakes as the context gets very
+  large, every request re-reads the whole history, and 400 K is the value the BlueStep team
+  suggests — and a value in `.claude/settings.local.json` wins over the shared file, for you only. A
+  project that already holds 400 K is not rewritten; the report points at the same override.
+
+### Known gap
+
+- A key you **deleted** from the project file still comes back on the next `/b6p-setup` run: the
+  migration cannot tell a deliberate removal from a key that was never there. Recording opt-outs
+  (settings keys, migrations, individual hooks) is planned as its own change.
+
 ## [plugin 0.37.0] — 2026-09-22
 
 > **One setup command, and you will rarely type it.** `/b6p-init`, `/project-init` and `/b6p-update`
