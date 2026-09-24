@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>BlueStep tooling update — plugin 0.37.1: lighter on tokens, one setup command</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Merriweather:wght@300;400;700&display=swap">
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  
+  <style>
+    a { color: #0063A6; text-decoration: none; }
+    a:hover { color: #004f86 !important; }
+    @media only screen and (max-width: 620px) {
+      .b6p-container { width: 100% !important; max-width: 100% !important; }
+      .b6p-pad { padding-left: 24px !important; padding-right: 24px !important; }
+      .b6p-entry-ver { display: block !important; width: auto !important; padding: 0 0 4px 0 !important; }
+      .b6p-entry-text { display: block !important; width: auto !important; }
+      .b6p-footer-id, .b6p-footer-meta { display: block !important; width: 100% !important; text-align: left !important; }
+      .b6p-footer-meta { padding-top: 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background:#eceef1; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; color:#231F20;">
+
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#FFFFFF; opacity:0;">
+    Your agent now spends fewer tokens on BlueStep work &mdash; plus a batch of gateway MCP fixes.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background:#eceef1;">
+    <tr>
+      <td align="center" style="padding:40px 12px 40px 12px;">
+
+        <!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+        <table class="b6p-container" role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background:#FFFFFF; border:1px solid #e2e6ea; border-radius:12px;">
+
+          <tr>
+            <td class="b6p-pad" style="padding:36px 40px 0 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                <tr>
+                  <td valign="middle" style="padding-right:10px;">
+                    <img src="[LOGO_URL]" alt="BlueStep" width="34" height="34" style="display:block; width:34px; height:34px; border:0; outline:none; text-decoration:none;">
+                  </td>
+                  <td valign="middle" style="font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:24px; font-weight:700; letter-spacing:-0.01em; color:#0063A6; white-space:nowrap;">
+                    Blue<span style="font-weight:400;">Step</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          
+          <tr>
+            <td class="b6p-pad" style="padding:22px 40px 0 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr><td style="border-top:2px solid #0063A6; font-size:0; line-height:0;">&nbsp;</td></tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="b6p-pad" style="padding:16px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#0063A6;">
+              Tooling update
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:32px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:17px; line-height:1.55; color:#231F20;">
+              <p style="margin:0 0 16px 0;">Hey!</p>
+              <p style="margin:0;">Second issue of the tooling digest. Since August 27 the <span style="font-family:Consolas,Menlo,monospace; font-size:15px; color:#231F20; background:#f1f3f3; border-radius:3px; padding:1px 6px;">bluestep-tools</span> plugin went from 0.30.0 to 0.37.1, and a batch of gateway MCP fixes went live. The big theme: your agent carries less context and spends fewer tokens. (No new <span style="font-family:Consolas,Menlo,monospace; font-size:15px; color:#231F20; background:#f1f3f3; border-radius:3px; padding:1px 6px;">b6p</span> CLI this time &mdash; v0.7.0 is still current.)</p>
+            </td>
+          </tr>
+          
+          <tr>
+            <td class="b6p-pad" style="padding:28px 40px 0 40px;">
+              <div style="font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:16px; font-weight:700; color:#231F20;">
+                In a hurry? Let your agent do the updating
+              </div>
+              <div style="margin-top:8px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                It checks your plugin version, tells you how to update if you need to, and brings your project up to date.
+              </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px; background:#f1f3f3; border:1px solid #e6e9ea; border-radius:8px;">
+                <tr>
+                  <td style="padding:16px 20px; font-family:Consolas,Menlo,monospace; font-size:13px; line-height:1.6; color:#231F20; white-space:pre-wrap;">Check my BlueStep tooling:
+1. Confirm the bluestep-tools plugin is on 0.37.1 or later. If it isn't, tell me the update step for the tool I'm using.
+2. If I'm on Codex, walk me through re-trusting the plugin's hooks.
+3. Run /b6p-setup in this project and show me what it would change before writing anything.</td>
+                </tr>
+              </table>
+              <div style="margin-top:10px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                <span style="font-weight:700;">Copy everything in the grey box</span> and paste it into a new Claude Code, Cursor or Codex session, opened in one of your BlueStep projects.
+              </div>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:44px 40px 0 40px;">
+              
+              <div style="font-family:'Merriweather',Georgia,'Times New Roman',serif; font-weight:400; font-size:26px; line-height:1.25; letter-spacing:-0.01em; color:#231F20;">
+                Less context, fewer tokens
+              </div>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+                
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">A rules file a third the size.</span> Your project's <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">AGENTS.md</span> is re-read on every turn. It's ~40 lines now instead of 142; the rest is served only when a task needs it.</td>
+                </tr>
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">Compaction at 400K.</span> Models make more mistakes as the context gets very large, and every request re-reads the whole history. In Claude Code, <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/b6p-setup</span> turns on compaction at 400K &mdash; the value the BlueStep team suggests &mdash; and tells you first. Already set your own <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">autoCompactWindow</span>? It keeps yours. (No effect on 200K models.)</td>
+                </tr>
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">Less loaded into every session.</span> Fewer skills, so the skill descriptions every session starts with went from 5.0 KB to 3.5 KB.</td>
+                </tr>
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">Lighter models for simple tasks.</span> <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/spec-execute</span> picks a lighter model for tasks marked mechanical or routine, and steps up once if it needs to.</td>
+                </tr>
+                
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px; background:#eef6fb; border-radius:8px;">
+                <tr>
+                  <td style="padding:18px 22px 18px 22px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Existing projects:</span> run <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#FFFFFF; border-radius:3px; padding:1px 5px;">/b6p-setup</span> once in each one &mdash; the prompt above does it. It swaps in the short rules file, keeping every line that's yours, and adds the compaction setting. <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#FFFFFF; border-radius:3px; padding:1px 5px;">/b6p-setup --all</span> checks every BlueStep project on your machine.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:44px 40px 0 40px;">
+              
+              <div style="font-family:'Merriweather',Georgia,'Times New Roman',serif; font-weight:400; font-size:26px; line-height:1.25; letter-spacing:-0.01em; color:#231F20;">
+                Also in the plugin
+              </div>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+                
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">Know what a push overwrites.</span> <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/b6p-push</span> passes <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">--yes</span>, which silently overwrites platform-side edits and deletes platform-only files. The skill now warns you and points to <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/b6p-audit</span> when the platform may have changed.</td>
+                </tr>
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">Setup runs itself.</span> <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/b6p-setup</span> handles the machine and the project in one go, and <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/b6p-pull</span>, <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/b6p-push</span>, <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/spec-create</span> and <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/quick-task</span> run it for you when a folder isn't ready.</td>
+                </tr>
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">The guardrail hooks really block now.</span> They had been silently letting everything through. If an edit under <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">declarations/</span> gets blocked, that's why.</td>
+                </tr>
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">Reference corrections.</span> Pages that had bitten people were fixed &mdash; field-access grants, sibling files in <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">scripts/</span>, what compiles where &mdash; and nine new pages were added.</td>
+                </tr>
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">A correction to our last issue.</span> The &quot;option lists cut display names short by one character&quot; gotcha wasn't a platform bug, so it's gone.</td>
+                </tr>
+                
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px; background:#eef6fb; border-radius:8px;">
+                <tr>
+                  <td style="padding:18px 22px 18px 22px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    To update, run <span style="font-family:Consolas,Menlo,monospace; font-size:14px; color:#231F20; background:#FFFFFF; border:1px solid #d4e7f4; border-radius:3px; padding:2px 8px;">/plugin marketplace update</span><br><span style="font-size:14px; color:#5b6264;">Codex: re-trust the plugin's hooks afterwards.</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:44px 40px 0 40px;">
+              
+              <div style="font-family:'Merriweather',Georgia,'Times New Roman',serif; font-weight:400; font-size:26px; line-height:1.25; letter-spacing:-0.01em; color:#231F20;">
+                BlueStep gateway MCP
+              </div>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+                
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">Silent failures fixed.</span> <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">field</span>, <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">batch_fields</span>, <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">form</span> and <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">option_list_item</span> now apply what you send &mdash; names, <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">autoCopy</span>, <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">singleEntry:false</span>, export values &mdash; and check it before reporting success.</td>
+                </tr>
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;"><span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">form_permission</span> merges by default.</span> It used to replace a form's whole permission set; now it only adds or updates the subjects you name. Replace-everything is still there with <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">mode: REPLACE</span>.</td>
+                </tr>
+                <tr>
+                  <td valign="top" width="18" style="width:18px; padding:16px 8px 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#0063A6;">&bull;</td>
+                  <td valign="top" style="padding:16px 0 16px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;"><span style="font-weight:700;">New parameters.</span> <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">schedule</span> and <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">onDemandIdentifier</span> on <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">create_script</span> / <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">update_script</span>, <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">primaryFormId</span> to wire a save formula to its form, and <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">contentId</span> on <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">update_pagelet</span>.</td>
+                </tr>
+                
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px; background:#eef6fb; border-radius:8px;">
+                <tr>
+                  <td style="padding:18px 22px 18px 22px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    Nothing to install &mdash; these changes are already live on the gateway.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:36px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:16px;">
+              <a href="https://github.com/Bluestep-Systems/bspecs/blob/main/CHANGELOG.md" style="font-weight:700; color:#0063A6; text-decoration:none;">Everything else: the full plugin changelog &rarr;</a>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:48px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:17px; line-height:1.55; color:#231F20;">
+              <p style="margin:0 0 16px 0;">If something misbehaves,
+                <span style="font-family:Consolas,Menlo,monospace; font-size:15px; color:#231F20; background:#f1f3f3; border-radius:3px; padding:1px 6px;">/bspecs-feedback</span>
+                comes straight to us.</p>
+              <p style="margin:0;">Thanks for building on BlueStep,<br>The BlueStep tooling team</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:56px 40px 48px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e6e9ea;">
+                <tr>
+                  <td class="b6p-footer-id" valign="top" style="padding:28px 20px 0 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td valign="middle" style="padding-right:8px;">
+                          <img src="[LOGO_URL]" alt="BlueStep" width="26" height="26" style="display:block; width:26px; height:26px; border:0; outline:none; text-decoration:none;">
+                        </td>
+                        <td valign="middle" style="font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:17px; font-weight:700; letter-spacing:-0.01em; color:#0063A6; white-space:nowrap;">
+                          Blue<span style="font-weight:400;">Step</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td class="b6p-footer-meta" valign="top" align="right" width="300" style="width:300px; padding:28px 0 0 0; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:13px; line-height:1.6; color:#767e80;">
+                    <p style="margin:0 0 10px 0;">&copy; BlueStep Systems, Inc.</p>
+                    
+                    <p style="margin:0;">You're on the BlueStep tooling update list. Reply to unsubscribe.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+        <!--[if mso]></td></tr></table><![endif]-->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

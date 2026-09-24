@@ -1,0 +1,295 @@
+<!-- SUBJECT: BlueStep tooling update — plugin 0.30.0, b6p CLI v0.7.0 & gateway MCP fixes -->
+<!doctype html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>BlueStep tooling update — plugin 0.30.0, b6p CLI v0.7.0 &amp; gateway MCP fixes</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&family=Merriweather:wght@300;400;700&display=swap">
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style>
+    a { color: #0063A6; text-decoration: none; }
+    a:hover { color: #004f86 !important; }
+    @media only screen and (max-width: 620px) {
+      .b6p-container { width: 100% !important; max-width: 100% !important; }
+      .b6p-pad { padding-left: 24px !important; padding-right: 24px !important; }
+      .b6p-entry-ver { display: block !important; width: auto !important; padding: 0 0 4px 0 !important; }
+      .b6p-entry-text { display: block !important; width: auto !important; }
+      .b6p-footer-id, .b6p-footer-meta { display: block !important; width: 100% !important; text-align: left !important; }
+      .b6p-footer-meta { padding-top: 20px !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background:#eceef1; -webkit-text-size-adjust:100%; -ms-text-size-adjust:100%; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; color:#231F20;">
+
+  <div style="display:none; max-height:0; overflow:hidden; mso-hide:all; font-size:1px; line-height:1px; color:#FFFFFF; opacity:0;">
+    Plugin 0.28&ndash;0.30, b6p CLI v0.7.0, and gateway MCP fixes &mdash; what changed and how to update.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background:#eceef1;">
+    <tr>
+      <td align="center" style="padding:40px 12px 40px 12px;">
+
+        <!--[if mso]><table role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0"><tr><td><![endif]-->
+        <table class="b6p-container" role="presentation" width="600" align="center" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; background:#FFFFFF; border:1px solid #e2e6ea; border-radius:12px;">
+
+          <tr>
+            <td class="b6p-pad" style="padding:36px 40px 0 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+                <tr>
+                  <td valign="middle" style="padding-right:10px;">
+                    <img src="[LOGO_URL]" alt="BlueStep" width="34" height="34" style="display:block; width:34px; height:34px; border:0; outline:none; text-decoration:none;">
+                  </td>
+                  <td valign="middle" style="font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:24px; font-weight:700; letter-spacing:-0.01em; color:#0063A6; white-space:nowrap;">
+                    Blue<span style="font-weight:400;">Step</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="b6p-pad" style="padding:22px 40px 0 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr><td style="border-top:2px solid #0063A6; font-size:0; line-height:0;">&nbsp;</td></tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td class="b6p-pad" style="padding:16px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase; color:#0063A6;">
+              Tooling update
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:32px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:17px; line-height:1.55; color:#231F20;">
+              <p style="margin:0 0 16px 0;">Hey!</p>
+              <p style="margin:0;">It&#39;s the BlueStep tooling team, with the first issue of a short digest we&#39;ll send when tooling releases are worth a heads-up. This one covers the last week across the
+                <span style="font-family:Consolas,Menlo,monospace; font-size:15px; color:#231F20; background:#f1f3f3; border-radius:3px; padding:1px 6px;">bluestep-tools</span>
+                plugin, the <span style="font-family:Consolas,Menlo,monospace; font-size:15px; color:#231F20; background:#f1f3f3; border-radius:3px; padding:1px 6px;">b6p</span>
+                CLI, and the gateway MCP &mdash; what changed and how to update.</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:28px 40px 0 40px;">
+              <div style="font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:16px; font-weight:700; color:#231F20;">
+                In a hurry? Let Claude do the updating
+              </div>
+              <div style="margin-top:8px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                Paste this into a fresh Claude Code session and it will walk you through both updates &mdash; including the no-npm binary path:
+              </div>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px; background:#f1f3f3; border:1px solid #e6e9ea; border-radius:8px;">
+                <tr>
+                  <td style="padding:16px 20px; font-family:Consolas,Menlo,monospace; font-size:13px; line-height:1.6; color:#231F20; white-space:pre-wrap;">Update my BlueStep tooling to the latest releases:
+1. bluestep-tools plugin &mdash; I have to run /plugin marketplace update myself, so remind me, then help me confirm the plugin is on 0.30.0 or later.
+2. b6p CLI &mdash; if npm is installed, run: npm i -g @bluestep-systems/b6p-cli. If there is no npm, download the standalone binary for my OS from https://github.com/Bluestep-Systems/b6p-cli/releases/latest, verify its sha256, and replace the b6p on my PATH with it.
+3. Verify with b6p -v.
+Note: the updated CLI will make me authenticate again. Walk me through b6p auth set &mdash; and if I don&#39;t have an access token, remind me to ask Steve for one.</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:44px 40px 0 40px;">
+              <div style="font-family:'Merriweather',Georgia,'Times New Roman',serif; font-weight:400; font-size:26px; line-height:1.25; letter-spacing:-0.01em; color:#231F20;">
+                bluestep-tools plugin
+              </div>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    0.30.0
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Six platform-reference fixes from your feedback.</span> The formula rule demanding a <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">/// &lt;reference&gt;</span> line on line 1 is gone (no reference line is needed &mdash; the build wires the types in), and the merge-report docs no longer list a <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">mergeTagResult()</span> method that isn&#39;t there. New gotcha pages: <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">entry().viewUrl()</span> returns a <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">javascript:</span> call rather than a URL, some option lists truncate BSJS display names by one character, and option-list export values are readable via GraphQL.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    0.29.5
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">B.ai reference corrected.</span> The docs now carry the platform&#39;s full <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">stopReason</span> vocabulary, and state that <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">configure()</span> and <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">usageReporting()</span> are superuser-only &mdash; a script can&#39;t read or set its own spend budget.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    0.29.4
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Merge-report URLs on a record.</span> <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">viewUrl()</span> returns a record-less URL (that&#39;s the &quot;No Record Selected&quot; page, not a permissions bug); the reference now documents the record-scoped <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">_id</span>/<span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">_id2</span> URL shape that does open a report on a record.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    0.29.3
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Document-library folder keys gotcha.</span> <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">subFolders()</span> keys each child by its name <em>plus a trailing slash</em>, so the obvious lookup silently returns <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">undefined</span>. Now documented, with the fix.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    0.29.0
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">A plain push does not deploy.</span> The scaffolded project rules no longer imply it does: a plain <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">b6p push</span> uploads draft source only and never changes the live version. If a change doesn&#39;t show up on the page, check the push mode first &mdash; before blaming caches.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    0.28.0
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">The b6p skills caught up with CLI 0.6.x.</span> Auth is a single access token now (<span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">b6p auth set</span> &mdash; everyone gets re-prompted once on upgrade), pulls keep your locally-edited files and say which ones were kept, push results are read from the exit code, and the legacy <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">draft/info/</span> folder is documented as deprecated &mdash; read it when present, never expect it.
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px; background:#eef6fb; border-radius:8px;">
+                <tr>
+                  <td style="padding:18px 22px 18px 22px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    To update, run
+                    <span style="font-family:Consolas,Menlo,monospace; font-size:14px; color:#231F20; background:#FFFFFF; border:1px solid #d4e7f4; border-radius:3px; padding:2px 8px;">/plugin marketplace update</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:44px 40px 0 40px;">
+              <div style="font-family:'Merriweather',Georgia,'Times New Roman',serif; font-weight:400; font-size:26px; line-height:1.25; letter-spacing:-0.01em; color:#231F20;">
+                b6p CLI
+              </div>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    v0.7.0
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Snapshot pushes now type-check for real.</span> The pre-push check finally loads your component&#39;s declaration files, so the wall of false <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">Cannot find name</span> errors is gone &mdash; what remains is real, and <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">b6p push --snapshot</span> now fails the shell on genuine type errors (the platform runs the emitted JS unchecked, so this push is your only type gate). Failed pushes no longer exit 0, prompts fail loudly instead of hanging, and pulls keep locally-edited files. If you&#39;re on the v0.4.0 binary, every snapshot push spams bogus diagnostics &mdash; update.
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px; background:#eef6fb; border-radius:8px;">
+                <tr>
+                  <td style="padding:18px 22px 18px 22px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    To update, run
+                    <span style="font-family:Consolas,Menlo,monospace; font-size:14px; color:#231F20; background:#FFFFFF; border:1px solid #d4e7f4; border-radius:3px; padding:2px 8px;">npm i -g @bluestep-systems/b6p-cli</span>
+                    &mdash; standalone binaries are on the <a href="https://github.com/Bluestep-Systems/b6p-cli/releases/tag/v0.7.0" style="color:#0063A6; text-decoration:underline;">release page</a>.
+                    <br><br>
+                    <span style="font-weight:700;">Heads-up:</span> the updated CLI will ask you to sign in again (<span style="font-family:Consolas,Menlo,monospace; font-size:14px; color:#231F20; background:#FFFFFF; border:1px solid #d4e7f4; border-radius:3px; padding:2px 8px;">b6p auth set</span>). If you don&#39;t have an access token, reach out to Steve and he&#39;ll get you one.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:44px 40px 0 40px;">
+              <div style="font-family:'Merriweather',Georgia,'Times New Roman',serif; font-weight:400; font-size:26px; line-height:1.25; letter-spacing:-0.01em; color:#231F20;">
+                BlueStep gateway MCP
+              </div>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:20px;">
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    Aug 20
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Fields can carry their identifier from the start.</span> The <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">field</span> and <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">batch_fields</span> tools take <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">formulaId</span> (the admin-UI Field Identifier) on CREATE and UPDATE, so new fields land in the generated declarations with a proper property key &mdash; and a field created without one can be repaired afterwards.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    Aug 20
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Signature fields get the Display Credential checkbox.</span> The field tools accept <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">displayCredential</span>, and it defaults on at create time when the org has credential fields &mdash; same gate as the UI.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    Aug 20
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">The form tools&#39; <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">userUpdateable</span> flag is honest now.</span> It&#39;s the platform&#39;s &quot;Show in My Account&quot; checkbox, not entry editability &mdash; the schema says so, and its CREATE default flipped to false to match the platform.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="b6p-entry-ver" valign="top" width="56" style="width:56px; padding:18px 14px 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:14px; color:#767e80;">
+                    Aug 20
+                  </td>
+                  <td class="b6p-entry-text" valign="top" style="padding:18px 0 18px 0; border-bottom:1px solid #e6e9ea; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    <span style="font-weight:700;">Three fixes.</span> A form&#39;s <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">singleEntry</span> setting now persists on create, <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">create_script</span> reports a privilege problem up front instead of after appearing to create something, and <span style="font-family:Consolas,Menlo,monospace; font-size:13px; background:#f1f3f3; border-radius:3px; padding:1px 5px;">lookup_script_by_name</span> finds BSJS endpoints.
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px; background:#eef6fb; border-radius:8px;">
+                <tr>
+                  <td style="padding:18px 22px 18px 22px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; line-height:1.6; color:#231F20;">
+                    Nothing to install &mdash; these changes are already live on the gateway.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:36px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:15px; color:#767e80;">
+              A full release-notes page is coming soon &mdash; future issues will link it here.
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:48px 40px 0 40px; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:17px; line-height:1.55; color:#231F20;">
+              <p style="margin:0 0 16px 0;">If something misbehaves,
+                <span style="font-family:Consolas,Menlo,monospace; font-size:15px; color:#231F20; background:#f1f3f3; border-radius:3px; padding:1px 6px;">/bspecs-feedback</span>
+                comes straight to us.</p>
+              <p style="margin:0;">Thanks for building on BlueStep,<br>The BlueStep tooling team</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td class="b6p-pad" style="padding:56px 40px 48px 40px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #e6e9ea;">
+                <tr>
+                  <td class="b6p-footer-id" valign="top" style="padding:28px 20px 0 0;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td valign="middle" style="padding-right:8px;">
+                          <img src="[LOGO_URL]" alt="BlueStep" width="26" height="26" style="display:block; width:26px; height:26px; border:0; outline:none; text-decoration:none;">
+                        </td>
+                        <td valign="middle" style="font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:17px; font-weight:700; letter-spacing:-0.01em; color:#0063A6; white-space:nowrap;">
+                          Blue<span style="font-weight:400;">Step</span>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td class="b6p-footer-meta" valign="top" align="right" width="300" style="width:300px; padding:28px 0 0 0; font-family:'Lato','Segoe UI','Helvetica Neue',Arial,sans-serif; font-size:13px; line-height:1.6; color:#767e80;">
+                    <p style="margin:0 0 10px 0;">&copy; BlueStep Systems, Inc.</p>
+                    <p style="margin:0;">You&#39;re on the BlueStep tooling update list. Reply to unsubscribe.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+        <!--[if mso]></td></tr></table><![endif]-->
+
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

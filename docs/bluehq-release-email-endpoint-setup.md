@@ -85,8 +85,11 @@ Unchanged from the original setup except for one added field.
       3. `testSendRequested` → **test send** to `testRecipients`, stamp `testSentAt`, clear the
          flag; refuse (and clear the flag) if `testRecipients` is empty. Watermarks never move.
       4. Otherwise no-op.
+- [ ] Ship `emailShell.ts` (the skill's `templates/emailShell.ts`, unchanged) next to `app.ts`:
+      the entry stores the email **body** only, and `wrapEmailDocument(body, subject)` rebuilds
+      the document before sending. Test sends prefix the subject with `[TEST] `; real sends don't.
 - [ ] Know the trigger semantics (all verified live): **UI saves fire the formula — including the
-      signature save; MCP `form_entry` writes do NOT** (they bypass the save pipeline). So the
+      signature save; MCP writes do NOT** (they bypass the save pipeline). So the
       agent can queue and edit entries but can never trigger a send; even the test send needs a
       human Save. And **"signed = armed": any later UI save of a signed, unsent entry sends** —
       never leave an entry signed-and-unsent, and never deploy send-logic changes while one exists.
@@ -98,9 +101,9 @@ Unchanged from the original setup except for one added field.
       for the current-record wiring and for the embedding field to resolve).
 - [ ] Wire the outbox form as a current-record dependency (read access: subject, emailHtml,
       testSentAt, sentAt) after the Primary Form is assigned.
-- [ ] The script renders the stored `emailHtml` inside `<iframe srcdoc="…" sandbox="">` (the
-      stored value is a complete email document — the iframe keeps its CSS out of the platform
-      chrome), with a status line (sent / test-sent / not sent) and an empty-HTML warning. Push
+- [ ] The script rebuilds the email with the same `emailShell.ts` as the post-save and renders it
+      inside `<iframe srcdoc="…" sandbox="">` (the result is a complete email document — the
+      iframe keeps its CSS out of the platform chrome), with a status line (sent / test-sent / not sent) and an empty-HTML warning. Push
       `--snapshot` from the working copy.
 - [ ] **UI step** — in the outbox form's design page, add a **Merge Report** element embedding the
       report (no merge-report field type exists in the MCP field tools), placed above the
@@ -108,17 +111,18 @@ Unchanged from the original setup except for one added field.
 
 ## 5. Verify
 
-- [ ] **Fidelity:** `form_entry` CREATE a scratch entry carrying a real rendered digest, read it
-      back, byte-compare (MSO conditionals, entities, comments, trailing newline). Then have a
-      human UI-save the entry and re-read — still byte-identical (the hidden-field rule at work).
-      Never include the signature fieldId in a `form_entry` READ — it crashes server-side.
+- [ ] **Fidelity:** render a real digest, then `scripts/outbox.mjs queue` it — the script creates
+      the entry over GraphQL, reads it back and byte-compares every field plus the rebuilt
+      document. Then have a human UI-save the entry and `check` again — still identical (the
+      hidden-field rule at work). Never include the signature fieldId in a read — it crashed
+      server-side.
 - [ ] **Test path:** tick the checkbox + Save → mail to `testRecipients`, `testSentAt` stamped,
       flag cleared, watermarks untouched. Repeat with `testRecipients` emptied → no mail, refusal
       in `sendResult`, flag cleared.
 - [ ] **Real path (canary):** point `recipients` at maintainer-only addresses, note the
       watermarks, sign + Save → mail arrives, watermarks advance, `sentAt` + attribution in
       `sendResult`; a later no-change Save is a no-op. Restore `recipients` and the watermarks.
-- [ ] **Boundary:** a `form_entry` write to the signature field is refused by the platform
+- [ ] **Boundary:** an MCP write to the signature field is refused by the platform
       (verified: unsupported boolean type / string format rejection) — and is forbidden to the
       agent regardless.
 
