@@ -18,25 +18,43 @@ sending. **The agent cannot send at all**: MCP writes don't fire the platform's 
 signature. Nothing in this skill can reach the real recipient list.
 
 Read the governing ADR [`docs/decisions/release-update-email.md`](../../../docs/decisions/release-update-email.md)
-(especially its 2026-08-27 outbox addendum) for *why* this shape, and
+(especially its 2026-08-27 and 2026-09-23 addenda) for *why* this shape, and
 [`docs/bluehq-release-email-endpoint-setup.md`](../../../docs/bluehq-release-email-endpoint-setup.md)
 for what exists on the platform.
 
+## What ships with the skill
+
+- `templates/email.html` + `templates/AUTHORING.md` — the email template and how to fill it.
+- `templates/emailShell.ts` — `wrapEmailDocument(body, subject)`. The **same file** is deployed in
+  the platform's Send post-save and Preview merge report; keep the three copies identical.
+- `scripts/draft.mjs` — `writeDraft(dir, base, { html, text, subject, payload })`: cuts the stored
+  body out of the rendered email and proves the shell rebuilds it byte for byte.
+- `scripts/outbox.mjs` — every gateway call the run makes: `watermarks`, `list`, `check` (read
+  only); `queue`, `rewrite` (writes). Run it with **Git Bash** `node` — `$B6PT_TOKEN` is set there,
+  not in WSL.
+- `ids.local.json` (gitignored; copy `ids.example.json`) — the org, record, form and field ids.
+  It lists only the fields the script may touch, so the script *cannot* read the recipient memos
+  or read/write the signature.
+- `assets.local.json` (gitignored; copy `assets.example.json`) — `logoUrl`, `releaseUrl`.
+
 ## Hard rules (read first)
 
-- **Never read the `recipients` or `testRecipients` fields** on the config form — not via
-  `form_entry`, not via GraphQL, not via any read path. Recipient addresses must never enter a
-  session, the repo, or an outbox entry. The watermark and sender-identity fields are fine to read.
+- **Never read the `recipients` or `testRecipients` fields** on the config form — through any read
+  path (GraphQL, the UI, anything else). Recipient addresses must never enter a session, the repo,
+  or an outbox entry. The watermark and sender-identity fields are fine to read.
 - **Never write the signature field** (`approvalSignature`). The real send is a human-only
   platform action. (The platform refuses such writes anyway; do not attempt them.)
-- **Never include a signature fieldId in a `form_entry` READ** — the platform crashes server-side
-  on serializing it. Always pass an explicit `fieldIds` list that excludes it.
+- **Never read the signature field either** — the platform crashed server-side serializing it
+  (2026-08); leave it out of every query. `ids.local.json` has no entry for it on purpose.
 - **Every MCP write is echoed and approval-gated in-session** (tool + target + a content summary),
-  per the `bluestep-reference` `mcp-platform-authoring` procedure.
+  per the `bluestep-reference` `mcp-platform-authoring` procedure. Each `outbox.mjs queue` /
+  `rewrite` run is one such write.
 - **"Signed = armed."** Any UI save of a signed, not-yet-sent entry performs the real send — not
   just the signing save. Warn the human whenever a signed-or-stale unsent entry exists, and never
   leave scratch/abandoned entries around unsigned cleanup.
 - **No recipient address ever lands in the repo.** History files carry counts, never lists.
+- **Don't mention platform tool removals in the email.** The platform removed some MCP data tools
+  on purpose; that is not tooling news for this list.
 
 ## Steps
 
@@ -49,32 +67,32 @@ change nothing. **Fail closed — never draft a digest that silently drops a pro
 - **`$CLICKUP_TOKEN` works** — the MCP product depends on it. Verify with a cheap authorized call
   (e.g. `curl -s -o /dev/null -w '%{http_code}' -H "Authorization: $CLICKUP_TOKEN" https://api.clickup.com/api/v2/user`
   → expect `200`). Note the WSL/`~/.profile` sourcing gotcha if it comes back empty.
-- **The gateway MCP is live for the owning org** — a `describe_tool(form_entry)` sanity check.
-  If the tools aren't registered, the fix is enable-plugin + `$B6PT_TOKEN` + fresh session.
+- **The gateway answers for the owning org** — `node scripts/outbox.mjs watermarks` (Git Bash)
+  prints the three watermarks. If it fails, fix `$B6PT_TOKEN` or `ids.local.json` first.
   **There is no manual fallback for queuing** — the `emailHtml` field is hidden on purpose, and
-  hand-pasting HTML through the form editor mangles it (WYSIWYG), so never instruct the human to
-  complete an entry by hand. On MCP failure: keep the rendered draft in the scratch dir (nothing
-  is lost), fix the connection, resume at the queue step.
-- **Shell note:** `gh` and `$CLICKUP_TOKEN` live in WSL, not Git Bash — run those commands via
-  `wsl -e bash -lc '…'` (see the repo's shell conventions).
-- **`assets.local.json` exists** (non-secret render config: `logoUrl`, `releaseUrl`). If missing,
-  copy `assets.example.json`; if `logoUrl` is unset, drop the logo `<img>` tags; if `releaseUrl`
-  is a placeholder, flag it.
+  hand-pasting HTML through the form editor mangles it, so never instruct the human to complete an
+  entry by hand. On failure: keep the draft in the scratch dir (nothing is lost), fix the
+  connection, resume at the queue step.
+- **Shell note:** `gh` and `$CLICKUP_TOKEN` live in WSL, `$B6PT_TOKEN` lives in Git Bash — run
+  `gh`/`curl` via `wsl -e bash -lc '…'` and `outbox.mjs` with Git Bash `node`.
+- **`assets.local.json` and `ids.local.json` exist.** If `logoUrl` is unset, drop the logo `<img>`
+  tags; if `releaseUrl` is a placeholder, flag it.
 
 Work in a gitignored scratch dir (`.release-email/`) so nothing intermediate is tracked.
 
-### 2. Read the watermarks over MCP
+### 2. Read the watermarks and the outbox
 
-Read the config form entry's **three watermark fields only** — `lastPluginVersion`,
-`lastCliVersion`, `lastMcpSent` — via `form_entry` READ with an explicit `fieldIds` list (never
-the recipient memos, never more than named). Also read `froms`/`sender`/`replyTo` only if the
-sender identity needs confirming. Empty watermarks mean "first run covers everything" — surface
-that loudly before drafting (an empty plugin watermark means ~all changelog history).
+`node scripts/outbox.mjs watermarks` reads `lastPluginVersion`, `lastCliVersion`, `lastMcpSent`
+from the config form (GraphQL `singleEntryFieldData`, one field each). Empty watermarks mean
+"first run covers everything" — surface that loudly before drafting.
 
-Also `form_entry` LIST the outbox form (fields: subject, sentAt) and **warn about any unsent
-entry** — a queued-but-unsigned entry means a previous run is still pending: its version ranges
-go stale the moment a newer entry sends, and if it is *signed*-unsent it is armed. Ask before
-queuing another.
+`node scripts/outbox.mjs list` lists every outbox entry with `sentAt`/`sendResult`. **Warn about
+any unsent entry** — a queued-but-unsigned entry means a previous run is still pending: its version
+ranges go stale the moment a newer entry sends, and if it is *signed*-unsent it is armed. Ask
+before queuing another (`queue` refuses while one exists).
+
+The watermarks are **not** edited by hand before a send: they are the "from" of each range, and
+the real send advances them itself from the entry's `payloadJson.toVersions`.
 
 ### 3. Collect changes, per product
 
@@ -106,12 +124,12 @@ product's section; only present products go into `toVersions` (only their waterm
 ### 4. Draft and render
 
 Read the template `.claude/skills/release-email/templates/email.html` (see `templates/AUTHORING.md`
-for tokens, marked regions, and optional blocks) and produce the finished HTML in a working file in
-the scratch dir — never edit the template itself.
+for tokens, marked regions, and optional blocks) and render it with a throwaway script in the
+scratch dir — never edit the template itself.
 
-- `[SUBJECT]` (+ line-1 comment + `<title>`), `[OVERLINE]` (`Tooling update` when multiple
-  products changed; otherwise `Plugin update` / `CLI update` / `MCP update`), intro prose,
-  `[LOGO_URL]` / `[RELEASE_URL]` from `assets.local.json`.
+- `[SUBJECT]` (+ `<title>`), `[OVERLINE]` (`Tooling update` when multiple products changed;
+  otherwise `Plugin update` / `CLI update` / `MCP update`), intro prose, `[LOGO_URL]` /
+  `[RELEASE_URL]` from `assets.local.json`.
 - Clone the `PRODUCT_SECTION` block per product with changes; clone the `ENTRIES` row per entry.
   - Plugin section: `[UPDATE_INSTRUCTION]` = `/plugin marketplace update`; version cell = version.
   - CLI section: the b6p-cli update command; version cell = version.
@@ -120,40 +138,45 @@ the scratch dir — never edit the template itself.
     a short close date (e.g. `Aug 27`).
 - Footer: plain and honest, no `[RECIPIENT]`/`[OPT_OUT]` merge tokens ("You're on the BlueStep
   tooling update list. Reply to unsubscribe.").
-- Also write the **plain-text alternative**. Strip non-MSO comments after rendering. No
-  flexbox/grid/gap/SVG (see AUTHORING.md).
-- Build `payloadJson`: `{ "fromVersions": {…}, "toVersions": {…} }` with only the products that
+- Also write the **plain-text alternative**. Strip every comment except the two MSO ghost-table
+  conditionals in the body and the one in `<head>`. No flexbox/grid/gap/SVG (see AUTHORING.md).
+- **Write apostrophes as a plain `'`**, never `&#39;` — the platform decodes it on write, so the
+  stored body would no longer match. The template's own sample intro uses `&#39;`; it is replaced.
+- Build the payload: `{ "fromVersions": {…}, "toVersions": {…} }` with only the products that
   changed (`plugin`/`cli` version strings, `mcp` ISO timestamp).
+- Finish with `writeDraft(".release-email", "<YYYY-MM-DD>", { html, text, subject, payload })`
+  from `scripts/draft.mjs`. It throws if the body still holds anything the platform would alter,
+  or if `emailShell.ts` no longer matches the template's `<head>` — then fix the render or the
+  shell (and redeploy the shell to both components) before going on.
 
 ### 5. Queue the outbox entry — approval gate #1
 
-Show the user in-session: the subject, the rendered body (and text alternative), the version
+Show the user in-session: the subject, the rendered email (and text alternative), the version
 ranges, and the target (org + outbox form). **Wait for explicit approval.** On decline: stop —
 nothing was written anywhere.
 
-On approval, create the entry over MCP (`form_entry` CREATE on the outbox form, on the office
-record): `subject`, `emailHtml`, `emailText`, `payloadJson`. Resolve fieldIds with
-`describe_form`/`get_form` if not already known. Then **read the entry back** (excluding the
-signature field) and **byte-compare `emailHtml`** against what was sent — abort and report on any
-mismatch (nothing can send from a corrupt entry; the platform round-trip is normally
-byte-faithful).
+On approval, run `node scripts/outbox.mjs queue .release-email <YYYY-MM-DD>`. It creates the entry
+(GraphQL `createFormRow` on the office record: `subject`, `emailHtml` = the body, `emailText`,
+`payloadJson`), reads it back, and byte-compares every field **and** that
+`wrapEmailDocument(stored body, subject)` equals the rendered email. Any mismatch → stop and
+investigate; nothing may send from a corrupt entry. Agents cannot delete rows: fix the entry in
+place with `outbox.mjs rewrite <entry> …` (after the human confirms it is not signed), or ask the
+human to delete it in the UI.
 
 Tell the human where the entry lives (the office record → the outbox form → the new entry) — the
-embedded **Email Preview** merge report on the entry renders the exact stored HTML.
+embedded **Email Preview** merge report on the entry renders exactly what Send will email.
 
 ### 6. Test send — approval gate #2, human-fired
 
-The test send goes **only** to the config form's `testRecipients`. Two moving parts, split
-human/agent because MCP writes don't fire the post-save:
-
-1. **Agent (gated):** set `testSendRequested = true` on the entry via `form_entry` UPDATE.
-2. **Human:** open the entry in the UI, confirm the preview looks right, and **Save** (the
-   checkbox is already ticked). The post-save sends the test, stamps `testSentAt`, clears the
-   flag. *(Or the human just ticks the box themselves — same thing.)*
+The test send goes **only** to the config form's `testRecipients`, with `[TEST] ` in front of the
+subject (the real send has no prefix). MCP writes don't fire the post-save, so the human does it:
+open the entry, check the preview, **tick the test-send checkbox and Save**. The post-save sends the test,
+stamps `testSentAt`, clears the checkbox.
 
 The human validates the email in their **real inbox** (Outlook + Gmail: rendering, the
-"on behalf of" label, the logo). The agent re-reads `testSentAt`/`sendResult` to confirm the run.
-An empty-`testRecipients` refusal shows up in `sendResult`; fix the config form and repeat.
+"on behalf of" label, the logo). `outbox.mjs check <entry> …` confirms `testSentAt`/`sendResult`.
+An empty-`testRecipients` refusal shows up in `sendResult`; fix the config form and repeat. A
+content fix after the test: re-render, `rewrite`, test again.
 
 ### 7. Hand off the real send — the signature
 
@@ -170,12 +193,15 @@ config/entry — a refused entry stays sendable; `sentAt` is only stamped by an 
 
 ### 8. Record
 
-After the human confirms the real send (or a watermark re-read over MCP shows the advance), write
-two files under `.claude/skills/release-email/sent/`, same basename
+After the human confirms the real send, run `outbox.mjs list` and `outbox.mjs watermarks` to see
+`sentAt`, the counts in `sendResult`, and the advanced watermarks. Then write two files under
+`.claude/skills/release-email/sent/`, same basename
 `<YYYY-MM-DD>-plugin<vA>-cli<vB>-mcp<date>` (drop the token for a product not in the send):
 
-- `….md` — the ranges per product, sent-at, subject, `sentCount`, failure count. **No addresses.**
-- `….html` — the exact rendered HTML that was queued/sent.
+- `….md` — the ranges per product, test and real send times, subject, sent and failed counts, the
+  watermarks after. **No addresses, no names.**
+- `….html` — the sent document (`<base>.html` from the draft) with the logo URL put back as
+  `[LOGO_URL]` — this repo is public and the logo URL is org-specific.
 
 Then **propose a commit** for those two files. Do not run `git commit` unless told.
 
@@ -186,7 +212,7 @@ Then **propose a commit** for those two files. Do not run `git commit` unless to
 - **All empty / re-run** → report and stop (idempotent).
 - **`gh` or `$CLICKUP_TOKEN` missing/broken** → stop *before* drafting.
 - **A queued unsent entry already exists** → warn at step 2; signed-unsent means ARMED.
-- **Round-trip mismatch on `emailHtml`** → abort the run; investigate before anything can send.
+- **Round-trip mismatch** → abort the run; investigate before anything can send.
 - **Partial real-send failures** → watermarks still advanced (the digest went out);
   `sendResult` carries counts/reasons only; never re-blast, never write failures to a file.
 - **A sent entry** (`sentAt` set) → inert forever; re-saves and re-signs are no-ops by design.
@@ -195,11 +221,24 @@ Then **propose a commit** for those two files. Do not run `git commit` unless to
 - **Fresh-org rebuild** → the provisioning checklist is
   [`docs/bluehq-release-email-endpoint-setup.md`](../../../docs/bluehq-release-email-endpoint-setup.md).
 
+## Platform behavior this depends on (verified 2026-09-23)
+
+- **Every write path alters full HTML documents** — GraphQL `createFormRow`/`updateFormRow` and UI
+  saves alike, on any field type: `<html>`/`<head>`/`<body>`/`<meta>`/`<link>`/`<title>` are
+  renamed (`<xxhtmlxx>` …), HTML comments (MSO conditionals too) are escaped, `&#39;` becomes `'`.
+  Tables, spans, inline styles, `<style>` and other entities come through byte for byte. That is
+  why the entry stores the body only and `emailShell.ts` adds the rest back at send time.
+- **`memoFormatType` cannot be changed on an existing field** — the platform refuses it.
+- **Agents cannot delete form rows.** Every failed write leaves an entry: reuse it with `rewrite`
+  or have the human delete it.
+- Entries written before 2026-09 hold full documents; `wrapEmailDocument` passes anything starting
+  with `<!doctype` through unchanged.
+
 ## Known gaps / open items
 
-- **Watermark seeding** — until seeded, a first run covers all history (~55 plugin versions).
-  Seed the three fields on the config form before the first real digest.
 - **`releaseUrl`** in `assets.local.json` is a placeholder until the full release-notes page
   exists.
 - **No per-recipient opt-out** — the footer stays generic ("reply to unsubscribe"); a real
   suppression list + unsubscribe link is a deferred open item.
+- **`queue` and `rewrite` are untested as a pair of commands** — the calls they make were proven
+  one by one in the 2026-09-23 run; the first real use should be watched.

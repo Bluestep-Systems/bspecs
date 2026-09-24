@@ -1,8 +1,8 @@
 # Authoring notes — `email.html`
 
 `email.html` is the send body for the `/release-email` skill. The skill fills its placeholders,
-clones the per-product section block once per product that changed, and POSTs the finished HTML to
-the BlueHQ send endpoint. See the setup guide
+clones the per-product section block once per product that changed, and queues the finished email
+on the BlueHQ outbox form. See the setup guide
 [`docs/bluehq-release-email-endpoint-setup.md`](../../../../docs/bluehq-release-email-endpoint-setup.md)
 and the ADR [`docs/decisions/release-update-email.md`](../../../../docs/decisions/release-update-email.md).
 
@@ -28,8 +28,8 @@ The skill substitutes these; a human editor should leave them as literal tokens.
 | `[LOGO_URL]` | header + footer `<img src>` | Absolute URL of the **hosted PNG** logo. Set once per the setup guide (section 4). Email clients can't render an SVG or a repo-relative path, so this is always an absolute `https://` URL. |
 | `[OVERLINE]` | header kicker | Short uppercase label above the intro. Varies per run — e.g. `Plugin update`, `CLI update`, or `Tooling update` when a run covers both. The skill sets it; don't hardcode a product here. |
 | `[RELEASE_URL]` | "Full release notes" link | Link to the full release-notes page. |
-| `[RECIPIENT]` | footer opt-out line | The recipient's address. **Merged per recipient on the endpoint** — never bake a real (or fabricated) address into the committed file. |
-| `[OPT_OUT]` | footer unsubscribe link | The opt-out / unsubscribe URL. Also merged on the endpoint. |
+| `[RECIPIENT]` | footer opt-out line | **Not used today** — the send has no per-recipient merge, so the skill replaces the line with the generic footer. Never bake a real (or fabricated) address into the committed file. |
+| `[OPT_OUT]` | footer unsubscribe link | **Not used today** either, for the same reason. |
 | `[PRODUCT_NAME]` | section heading | The product a section is about (e.g. `bluestep-tools plugin`, `b6p CLI`). |
 | `[UPDATE_INSTRUCTION]` | section update chip | That product's update command in the code chip (plugin: `/plugin marketplace update`; CLI: the b6p-cli update command). |
 
@@ -167,6 +167,18 @@ attachment**. Rules of thumb:
 
 Always set `alt` text (images are blocked-by-default in many clients until "show images"), size with
 `width` + `max-width:100%; height:auto`, and prefer PNG/JPG (no SVG — Outlook/Gmail drop it).
+
+## Head and body are stored apart
+
+The outbox entry stores only what sits inside `<body>`; everything up to and including the
+`<body …>` tag, plus the closing `</body></html>`, lives in `emailShell.ts` (this folder), which
+the platform's Send and Preview use to rebuild the document. So:
+
+- **Edit the `<head>`, `<title>` line or `<body>` tag here → make the same edit in
+  `emailShell.ts`** and redeploy it to both components. `scripts/draft.mjs` fails the render when
+  the two drift.
+- **Inside `<body>`, no comments survive except the two MSO ghost-table lines** (they become
+  `%%MSO_OPEN%%` / `%%MSO_CLOSE%%` in storage), and apostrophes are written as a plain `'`.
 
 ## Quick check before sending
 

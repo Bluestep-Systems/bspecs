@@ -1,0 +1,21 @@
+{
+  "_comment": "Copy to ids.local.json (gitignored) and fill in. Platform ids scripts/outbox.mjs uses. List ONLY these fields: the script can read or write nothing else, so it can never touch the recipient memos or the Approval signature.",
+  "org": "U<number>",
+  "record": "<the office record the config and outbox forms live on>",
+  "outboxForm": "<outbox form id>",
+  "outbox": {
+    "subject": "<field id>",
+    "emailHtml": "<field id>",
+    "emailText": "<field id>",
+    "payloadJson": "<field id>",
+    "testSendRequested": "<field id>",
+    "testSentAt": "<field id>",
+    "sentAt": "<field id>",
+    "sendResult": "<field id>"
+  },
+  "config": {
+    "lastPluginVersion": "<field id>",
+    "lastCliVersion": "<field id>",
+    "lastMcpSent": "<field id>"
+  }
+}

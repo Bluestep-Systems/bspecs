@@ -219,3 +219,34 @@ inert on every later save.
   post-send `sendResult` records the actual sent count.
 - Setup/provisioning moved to the reworked
   [`../bluehq-release-email-endpoint-setup.md`](../bluehq-release-email-endpoint-setup.md).
+
+---
+
+## Addendum (2026-09-23): GraphQL transport — the entry stores the body, the shell is code
+
+**What changed.** The gateway no longer offers `form_entry`; form data is read and written through
+`graphql_query` / `graphql_mutation` (`singleEntryFieldData`, `formRows`, `fieldData`,
+`createFormRow`, `updateFormRow`). The 2026-08-27 finding "the MCP round-trips HTML
+byte-faithfully" does not hold for that path: GraphQL writes — and UI saves — rename the
+document-level tags (`<html>` → `<xxhtmlxx>`, also `head`, `body`, `meta`, `link`, `title`),
+escape HTML comments including the Outlook MSO conditionals, and decode `&#39;`, on every memo
+type. Tables, spans, inline styles, `<style>` and other entities come through byte for byte. The
+field's `memoFormatType` cannot be changed after creation, so there was no field setting to fix.
+
+**Decision.** `emailHtml` stores only the email **body**, with the two MSO ghost-table comments
+replaced by `%%MSO_OPEN%%` / `%%MSO_CLOSE%%` and apostrophes written as plain `'`. One small
+module, `emailShell.ts`, holds the document head and tail; `wrapEmailDocument(body, subject)`
+rebuilds the full email. The same file ships in the skill (`templates/`), the Send post-save and
+the Preview merge report, and the skill's render step (`scripts/draft.mjs`) proves that the
+rebuilt document equals the rendered one before anything is queued. Stored values starting with
+`<!doctype` (entries from before the change) pass through unchanged.
+
+**Rejected.** Escaping or encoding the whole document (base64 or similar) into the field would
+survive the filter, but the Preview and any human looking at the entry would lose a readable
+value, and the platform formula would need a decoder for no gain over rebuilding a fixed head.
+
+**Also in this change.** Test sends put `[TEST] ` in front of the subject so test recipients can
+tell them apart; the real send is unchanged. The skill's gateway calls moved into one script,
+`scripts/outbox.mjs`, whose ids come from a gitignored `ids.local.json` that lists only the fields
+it may touch — so the script has no way to read the recipient memos or the signature. First send
+on this path: 2026-09-23, 35 sent, 0 failed.
