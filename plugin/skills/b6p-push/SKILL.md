@@ -47,7 +47,7 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 - Run `git status` to surface what changed and flag anything unexpected.
 - Briefly summarise the diff scope: "X files changed in `U######/<Component>/draft/`".
 - Confirm the component was pulled with `b6p` (so its sync metadata is recorded) — `--file` resolves the destination URL from that metadata. If the component was never pulled here, pull it first.
-- Know what the CLI itself checks (b6p-cli 0.7.0, verified 2026-09). For every file it has synced before, push compares the platform copy's content hash with the last sync and asks before overwriting one that changed (`The upstairs file … has changed since the last time you pushed or pulled. Do you wish to overwrite it?`); after uploading, it lists platform-only files under `draft/` and asks before deleting them. It compares content, never dates. A file with **no** sync record on this machine (never pulled or pushed from here — a brand-new file included) fails that comparison too and gets the same prompt; the only files exempt are those inside a snapshot version and compiled build-folder output. The `--yes` this skill passes (step 4) answers both prompts for you — Overwrite, then Yes — so when the platform may have moved since the pull (a days-old pull, a component others edit), run `/b6p-audit` first and read its list: push will not stop for you.
+- Know what the CLI itself checks. Push compares each file's content with the platform copy — content hashes, never dates — and asks **one question before it uploads anything**, listing every file that would overwrite a platform version nobody here has seen, each with its reason: `changed on the platform since the last push or pull from here`, or `the platform has a different copy, never pulled or pushed from this machine`. A new file (not on the platform yet), a file equal to the platform copy, files inside a snapshot version and compiled build-folder output never ask. After uploading, it asks **one more question** before deleting platform-only files under `draft/` (on the platform, not in the local draft). The `--yes` this skill passes (step 4) takes the safe answer of both — **Cancel** and **No** — so a push never overwrites or deletes a platform file on its own: it stops, or keeps the files, and step 5 says what to do next. When the platform may have moved since the pull (a days-old pull, a component others edit), suggest `/b6p-audit` first, so the user sees the differences before the push stops on them.
 
 ### 3. Choose how the change goes out (this also confirms the push)
 
@@ -78,18 +78,18 @@ If the user picks "Other" on the first prompt, treat it as a free-text instructi
 **Publish** (the recommended default — when the user chose "Publish — make it live"):
 
 ```
-b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts" --snapshot --message "<description>"
+b6p --yes --json push --file "U######/<ComponentName>/draft/scripts/app.ts" --snapshot --message "<description>"
 ```
 
 **Save draft only** (when the user chose "Save draft only"):
 
 ```
-b6p --yes push --file "U######/<ComponentName>/draft/scripts/app.ts"
+b6p --yes --json push --file "U######/<ComponentName>/draft/scripts/app.ts"
 ```
 
 Use any existing file inside the component for `--file`; `app.ts` is the most common entry point.
 
-The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call fails with exit `1` naming that prompt. Always include it — and know what it agrees to. `--yes` takes the **first option of every prompt**: **Overwrite** for a platform file that changed since the last sync, and **Yes** to deleting platform-only files under `draft/`. Verified 2026-09 on b6p-cli 0.7.0: a platform-side edit was overwritten and a platform-only file deleted, with nothing printed but `Push complete!`. That is why step 2 sends you to `/b6p-audit` when the platform may have moved. A push the user cancels at the overwrite or delete prompt exits `1` ("Push cancelled by user"; verified 2026-09-22); only a cancel at the target-URL prompt exits `0` with `{"cancelled": true}` under `--json`, as step 5 says.
+The `--yes` is **required** — without it, b6p may ask a question you cannot answer, and the call fails with exit `1` naming that question. Always include it — and know what it answers. `--yes` takes the **safe answer of every question** — **Cancel** to overwriting platform files that changed, **No** to deleting platform-only files — and prints each question it answered, with the answer, on stderr (`[Cancel] / Overwrite all: Cancel  (answered by --yes: the safe choice; --yes never confirms an overwrite or a delete)`); those lines are not errors. So a push never overwrites or deletes a platform file on its own: the CLI prints the command that would, and step 5 says when to run it. `--json` puts the result on stdout as one object — the success test in step 5.
 
 > **Warning — stale client JS on a draft-only push.** `b6p push --snapshot` compiles `draft/static/script.ts` → `draft/static/.build/script.js` in the CLI before uploading (b6p-cli 0.6+, verified 2026-09 on two orgs), so a publish always ships fresh client JS. A **plain** push compiles nothing: if the `.ts` is newer than its `.build` output the CLI prints a `Stale client bundle` warning and uploads as-is, so a draft-only push after editing only the `.ts` leaves the old client JS in place. Publish, or accept that the draft's client code is stale until you do. (Detail: the `bluestep-reference` `conventions/single-script.md` caveat.)
 
@@ -100,22 +100,71 @@ The `--yes` is **required** — without it, b6p may show an interactive confirma
 `b6p push --file <path>` fails with `Missing metadata` when the component has **no local sync metadata** (it was never pulled through the CLI, so there is nothing to derive the destination URL from). Push it explicitly instead:
 
 ```
-b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --message "<description>"]
+b6p --yes --json push <target-url> --root "U######/<ComponentName>" [--snapshot --message "<description>"]
 ```
 
 - `--root` points at the component's **root** — the folder that *contains* `draft/`, **not** `draft/` itself. Pointing at `draft/` gives `Draft folder not found: .../draft/draft`.
 - There is no local metadata to derive `<target-url>` from, so source it from the org's platform MCP: `lookup_script_by_name` → use the returned `webDavUrl`. (Only when connected; otherwise ask the user for the WebDAV URL.)
 - The choice from step 3 **still applies** — carry `--snapshot --message "<description>"` if the user chose Publish (the recommended default). Do **not** trial-and-error the argument shape: guessing can land on a plain draft-only push that never compiles or goes live, defeating the user's explicit choice.
 
-### 5. Report
+### 5. Read the result and report
 
-**Check the exit code first — it's the real success signal.** `b6p push` exits `1` when it did not do what was asked, so a `0` exit is what confirms it did. Three distinct non-zero cases, none of which is a CLI bug:
+**Read the exit code and the `--json` object first — they are the success signal, not the prose.** `b6p push` exits `0` when it pushed and `1` when it did not do everything that was asked. The object has the same seven fields on every push — `pushed`, `historyRecorded`, `typeCheckDiagnostics`, `liveVerified`, `liveMismatches`, `keptPlatformOnly`, `declinedOverwrites` — except after a cancelled target-URL question, which prints `{"cancelled": true}` with no `pushed` key (test for the key rather than assuming it is false). Questions, warnings and next steps are on stderr. Take the first row that matches:
 
-- **Nothing was uploaded** (`pushed: false`) — the push found no draft to send. In practice that is a wrong `--root` (see the fallback above) or an empty `draft/`. Before 0.6.0 this printed a success line and exited `0`, so a typo could mark a CI deploy green. Fix the path or the draft and re-run; do **not** fall back to another tool for this.
-- **A snapshot shipped without its history entry** (`historyRecorded: false`) — the code *is* uploaded but the restore point was not recorded, so the user has no rollback for this version. Say so plainly and offer to re-run the publish.
-- **A publish shipped with type-check diagnostics** (`typeCheckDiagnostics > 0`) — the platform code (`scripts/app.ts`) compiled and is **live**, but its pre-publish type-check reported unresolved diagnostics, so it went out **without passing type-check**. The CLI prints each one. Treat them as real (see below); do not wave them through. `typeCheckDiagnostics` is `null` for a draft-only push (no compile happens) and `0` for a clean publish.
+| Exit | `--json` | What happened | What to do |
+|---|---|---|---|
+| `1` | `pushed: false`, files in `declinedOverwrites` | Stopped before uploading anything: those files changed on the platform | **Stop and ask**, below |
+| `1` | `pushed: false`, `declinedOverwrites: []` | Nothing uploaded: the compiled entrypoint has no code (`Snapshot not published: the compiled entrypoint … has no code`), a wrong `--root` (see the fallback above), or an empty `draft/` | Fix the cause, then re-run |
+| `1` | `liveVerified: false`, files in `liveMismatches` | Uploaded, but the live copy of those files is still missing or wrong after one re-send, and no restore point was recorded | Say the live version may be broken; offer to re-run the publish — a clean re-push repairs it even with no local change |
+| `1` | `historyRecorded: false`, `liveVerified` not `false` | Published without its restore point: no rollback for this version | Say so plainly; offer to re-run the publish |
+| `1` | `typeCheckDiagnostics` above `0` | Live, but it went out without passing type-check; the CLI prints each diagnostic | Treat them as real — "Reading the diagnostics" below |
+| `1` | stdout empty | A thrown failure (an upload refused, a question with no input); the details are on stderr, ending `Push stopped: the error above has the details.` | Read stderr; see "If the CLI fails" |
+| `0` | files in `keptPlatformOnly` | Pushed; platform-only files were kept | Report the push as done, then **Kept files**, below |
+| `0` | `liveVerified: null` on a publish | Published, but the platform served no content hash, so the live copy could not be checked (`WARNING: Could not verify the live copy …`) | Say it could not be verified; run the which-build check below |
+| `0` | `{"cancelled": true}` | The target-URL question was cancelled | Nothing was pushed; say so |
+| `0` | anything else | Pushed | Report, below |
 
-`b6p --json push …` prints core's `PushResult` — `{"pushed": true, "historyRecorded": true, "typeCheckDiagnostics": 0}` — which tells you which case without parsing prose. One shape to expect: if the user cancelled at a target-URL prompt the CLI prints `{"cancelled": true}` and exits `0` — there is no `pushed` key at all, so test for it rather than assuming it is false.
+`typeCheckDiagnostics` and `liveVerified` are both `null` on a draft-only push (nothing compiles, nothing live to check) — not a warning there; `typeCheckDiagnostics` is `0` on a clean publish. None of the exit-`1` rows is a CLI bug or a reason to switch tools.
+
+**Stop and ask** (exit `1`, `declinedOverwrites` lists files). Nothing was uploaded. stderr ends with the files, the reason for each, and the command that overwrites them:
+
+```
+ERROR: Push stopped before uploading anything: 2 file(s) were not overwritten, because each would overwrite a platform version nobody here has seen:
+
+README.md (changed on the platform since the last push or pull from here)
+scripts/app.ts (changed on the platform since the last push or pull from here)
+
+Pull or audit them to see the platform versions before overwriting them.
+After checking them, overwrite them with your local files with:
+  b6p --yes --json push --file draft/scripts/app.ts --overwrite README.md --overwrite scripts/app.ts
+```
+
+1. This is the push doing its job, not a failure: do not retry, and do not switch tools.
+2. Show the user the listed files with the reason for each. *Changed on the platform since the last push or pull from here* means someone edited it there; *the platform has a different copy, never pulled or pushed from this machine* means this machine has no record to compare with (a fresh clone or a new machine).
+3. Suggest `/b6p-audit` to see the differences, or `/b6p-pull` to take the platform copy. Do not run either unasked.
+4. Ask one structured question, the same way as step 3 — **"These files changed on the platform since your last pull. What should happen?"**:
+   - `Check them first (Recommended)` — "Nothing is uploaded. Look at the differences first, then push again."
+   - `Overwrite them with my local files` — "Replaces the platform copy of every file listed with yours."
+5. Only on *Overwrite*: run the printed command **exactly as printed** — same working directory, nothing edited, added or removed. It repeats this push's own arguments (the publish choice and description included) with one `--overwrite` per file. Then read its result from the top of this step. If it stops again naming other files, the platform moved again: same flow. If the user wants only some of the files overwritten, say the push cannot go out until the rest are settled (pulled, merged, or confirmed) — the CLI uploads all or nothing.
+
+**Kept files** (exit `0`, `keptPlatformOnly` lists files). The push succeeded. stderr ends with the kept files and the command that deletes them:
+
+```
+WARNING: Kept 1 platform-only file(s): they are on the platform but not in your local draft folder, and deleting them was not confirmed.
+…
+To delete it from the platform, run the push again without --yes and answer Yes to the delete question:
+  printf 'Yes\n' | b6p --json push --file draft/scripts/app.ts
+```
+
+1. Report the push as done.
+2. List the kept files: they are on the platform but not in the local `draft/` — someone added them there, or they were deleted here.
+3. Ask one structured question — **"These files are on the platform but not in your copy. What should happen?"**:
+   - `Keep them (Recommended)` — "Leaves them on the platform. Nothing changes."
+   - `Pull them` — "Brings them into your local copy." → `/b6p-pull` for this component.
+   - `Delete them from the platform` — "Removes them from the platform for good." On a publish, add: "This publishes once more, so your history gets a second restore point with the same description."
+4. Only on *Delete*: run the printed command exactly as printed (under PowerShell the CLI prints `'Yes' | b6p …` instead — run what it printed). If that run stops at an overwrite question instead (the platform moved in between), the piped `Yes` is not one of its answers, so it declines and uploads nothing: go back to **Stop and ask**.
+
+**Report.**
 
 - **Publish** runs the TypeScript build in the CLI and uploads the compiled output with the source. The build type-checks `scripts/app.ts` **with** the component's `declarations/` wired in, so it is a real type-check, not a syntax pass. **Save draft only** does not compile at all.
 - **Reading the diagnostics.** A correctly-pulled component reports **zero**. A `Cannot find name` on a **platform global or imported query/field name** (`B`, your query-group consts, …) now means the declaration is genuinely missing — the `declarations/` were not pulled, or the name was never imported into *this* component (rule 8: never fabricate references). Fix it by re-pulling the component, or adding the import on the platform and pulling again — **not** by adding a `/// <reference … />` directive (obsolete now: the build wires declarations in for you). A `Cannot find name` on **one of your own** symbols is an ordinary type error in your source; fix it.
@@ -133,6 +182,8 @@ b6p --yes push <target-url> --root "U######/<ComponentName>" [--snapshot --messa
 - Do NOT invoke `b6p` any way other than the bare `b6p` binary.
 - Do NOT push without showing the user the diff and getting an explicit selection (step 3). Publish is *recommended and pre-selected*, never performed automatically.
 - Do NOT publish silently or automatically. Recommending it is not the same as doing it: the push happens only on the user's explicit selection for *this* push — this skill never publishes on its own (e.g. it does not auto-publish on task completion, and `/spec-execute` offers no publish mid-task).
+- Do NOT overwrite or delete anything on the platform without the user's yes for *this* push. The printed `--overwrite` and delete commands run only after the user picks *Overwrite* or *Delete* in step 5; no answer, or anything short of a clear yes, means no, and a yes given for an earlier push does not carry over.
+- Do NOT edit the command the CLI printed, and do NOT pipe answers into `b6p` yourself: run the printed command exactly as printed, never add an `--overwrite` for a file the user did not confirm, and never write your own `printf … | b6p` line.
 - Do NOT loop on CLI failures — fall back to the VS Code b6p extension.
 
 ## If the CLI fails
@@ -141,7 +192,7 @@ Three distinct failure modes — handle them differently:
 
 - **`command not found` / `b6p` cannot be resolved** — the b6p-cli standalone binary is not installed (or not on `PATH`). Do NOT retry. Tell the user:
   > `b6p` could not be resolved. Install the b6p-cli standalone binary and make sure it is on your `PATH` (see its release/install instructions), then retry `/b6p-push <component>`.
-- **Exit `1` from the push itself** (`pushed: false` / `historyRecorded: false`) — **not** a CLI failure and **not** a reason to change tools. The CLI ran correctly and is telling you the push did not do what was asked; handle it as step 5 describes (fix the `--root` or the empty draft, or re-run the publish to record the missing restore point).
+- **Exit `1` from the push itself** — stopped at the overwrite question (`declinedOverwrites`), nothing uploaded (`pushed: false`), a live copy still wrong (`liveVerified: false`), no restore point (`historyRecorded: false`), or type-check diagnostics — **not** a CLI failure and **not** a reason to change tools. The CLI ran correctly and is telling you what it did not do; handle it by the step-5 table (ask about the overwrite; fix the entrypoint, the `--root` or the empty draft; or re-run the publish).
 - **Exit `1` naming a prompt it could not answer** (`Enter your access token`, or any other prompt) — **not** a tool failure. Same handling as above: relay the message, tell the user to run `b6p auth set`, retry. This is the standard post-0.6.0 upgrade path even when the step-0 preflight printed `OK`, so do **not** send them to the VS Code extension for it.
 - **Any other error** (network, conflict, a real auth *rejection* by the platform, etc.) — the VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Do not retry the CLI in a loop.
 
