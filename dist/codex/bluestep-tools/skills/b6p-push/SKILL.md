@@ -15,7 +15,7 @@ Copy this checklist and tick it off as you go:
 ```
 - [ ] 0. Preflight: CLI 0.8.0 or later, login stored, folder set up
 - [ ] 1. Component identified
-- [ ] 2. Diff scope shown; component was pulled with b6p
+- [ ] 2. Diff scope shown
 - [ ] 3. User chose Publish or Save draft only (and the description)
 - [ ] 4. Push run with --yes --json
 - [ ] 5. Result read from the exit code and --json; any question asked; reported
@@ -46,7 +46,7 @@ If `$ARGUMENTS` contains a component path (relative to the project root), use it
 
 - Run `git status` to surface what changed and flag anything unexpected.
 - Summarise the diff scope in one line: "X files changed in `U######/<Component>/draft/`".
-- Confirm the component was pulled with `b6p` here — its sync metadata is what `--file` uses. If it was never pulled, pull it first, or see `Missing metadata` in step 4.
+- Do not look for the sync metadata yourself: the CLI keeps it outside the component folder. Always run the step-4 `--file` command first — it finds the destination on its own — and use the `--root` fallback only when it answers `Missing metadata`.
 - Know what the CLI checks, by content hash, never by date. Before uploading anything it asks **one question** listing every file whose platform copy changed since the last sync from here, or was never synced from this machine; new files and files equal to the platform copy never ask. After uploading it asks **one more** before deleting platform-only files under `draft/`. `--yes` (step 4) answers **Cancel** and **No**, so the push stops or keeps the files, and step 5 says what to do. When the platform may have moved since the pull (a days-old pull, a component others edit), suggest `/b6p-audit` first.
 
 ### 3. Choose how the change goes out (this also confirms the push)
