@@ -325,9 +325,9 @@ export function checkPluginStructure(tree) {
 // The prose that states the floor keeps the literal version (a skill cannot
 // read another file for free), and this lint fails when any statement of it
 // names another version. To raise the floor: change this, then fix what it
-// flags. Why 0.8.0: docs/decisions/b6p-cli-distribution.md, "Minimum CLI
+// flags. Why 0.8.1: docs/decisions/b6p-cli-distribution.md, "Minimum CLI
 // version".
-export const B6P_CLI_FLOOR = '0.8.0';
+export const B6P_CLI_FLOOR = '0.8.1';
 
 // Repo files outside plugin/** that state the floor.
 const FLOOR_REPO_FILES = ['README.md', 'docs/decisions/b6p-cli-distribution.md'];

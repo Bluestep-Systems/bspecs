@@ -16,7 +16,7 @@ The `b6p` CLI is a **standalone binary** installed separately on the machine —
 
 ### Authenticate the b6p CLI (one-time)
 
-Store the CLI's BlueStep access token once per machine:
+Store your BlueStep platform access token (`b6pt_…`) once per machine:
 
 ```bash
 b6p auth set
@@ -24,7 +24,7 @@ b6p auth set
 
 Without it, the first `b6p pull` prompts for the token interactively, which the agent cannot answer — the call fails with exit `1`. Run `auth set` before invoking `/b6p-pull`. If you used `b6p` before version 0.6.0 you will be asked once more even though you set it up already: bearer auth replaced the old username + password and a token cannot be derived from them.
 
-Once the plugin is installed (Tooling above), the `/b6p-setup` skill checks the rest of the once-per-machine setup — this CLI, its token, and the **optional** `B6PT_TOKEN` that the platform gateway MCP needs for in-session platform authoring — and skips what is done. You will rarely type it: `/b6p-pull` and the other daily skills run it first when something is missing. `B6PT_TOKEN` is a separate credential from the CLI's token above.
+Once the plugin is installed (Tooling above), the `/b6p-setup` skill checks the rest of the once-per-machine setup — this CLI, its token, and the **optional** `B6PT_TOKEN` that the platform gateway MCP needs for in-session platform authoring — and skips what is done. You will rarely type it: `/b6p-pull` and the other daily skills run it first when something is missing. `B6PT_TOKEN` takes the same kind of `b6pt_` token as the CLI, and one token can serve both.
 
 The DAV URL passed to `b6p pull` is copied from the component's page in the BlueStep platform UI; `b6p pull` does **not** accept display names.
 

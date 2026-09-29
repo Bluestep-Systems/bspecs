@@ -2,7 +2,7 @@
 name: b6p-push
 description: Publish a BlueStep (B6P) component's local changes to the platform with the b6p CLI — make it live, deploy it, upload it, ship a fix — or save them as a draft only. Use whenever the user wants local edits of a component on the platform, even without the word "push" ("publish this", "make it live", "deploy my changes", "upload the fix", "put it on the platform"). It shows what changed, asks whether to publish or save a draft, and stops to ask before anything on the platform is overwritten or deleted.
 allowed-tools: Bash(b6p:*) Bash(git:*) Bash(test -f *)
-compatibility: Needs the b6p CLI 0.8.0 or later on PATH and a b6p access token stored with b6p auth set.
+compatibility: Needs the b6p CLI 0.8.1 or later on PATH and a b6p access token stored with b6p auth set.
 ---
 
 # /b6p-push — Publish a component to BlueStep
@@ -14,7 +14,7 @@ compatibility: Needs the b6p CLI 0.8.0 or later on PATH and a b6p access token s
 Copy this checklist and tick it off as you go:
 
 ```
-- [ ] 0. Preflight: CLI 0.8.0 or later, login stored, folder set up
+- [ ] 0. Preflight: CLI 0.8.1 or later, login stored, folder set up
 - [ ] 1. Component identified
 - [ ] 2. Diff scope shown
 - [ ] 3. User chose Publish or Save draft only (and the description)
@@ -24,11 +24,11 @@ Copy this checklist and tick it off as you go:
 
 ### 0. Preflight (before any other `b6p` call)
 
-**CLI version.** Run `b6p --version`; it prints the bare version (e.g. `0.8.0`).
+**CLI version.** Run `b6p --version`; it prints the bare version (e.g. `0.8.1`).
 
-- **0.8.0 or later** → continue.
-- **Older** → STOP. Do **not** run the push: on older versions `--yes` overwrites platform edits and deletes platform-only files without asking — the opposite of what steps 4 and 5 promise. Tell the user:
-  > Your `b6p` CLI is <version>; this skill needs 0.8.0 or later. Update it — installed with npm: `npm i -g @bluestep-systems/b6p-cli@latest`; a downloaded binary: get the new one from https://github.com/Bluestep-Systems/b6p-cli/releases — then retry `/b6p-push <component>`.
+- **0.8.1 or later** → continue.
+- **Older** → STOP. Do **not** run the push: before 0.8.0, `--yes` overwrites platform edits and deletes platform-only files without asking — the opposite of what steps 4 and 5 promise — and 0.8.0 refuses the `b6pt_` token the CLI signs in with. Tell the user:
+  > Your `b6p` CLI is <version>; this skill needs 0.8.1 or later. Update it — installed with npm: `npm i -g @bluestep-systems/b6p-cli@latest`; a downloaded binary: get the new one from https://github.com/Bluestep-Systems/b6p-cli/releases — then retry `/b6p-push <component>`.
 - **Not a version number** (no output, an error, a wrapper's own text) → say so and ask the user which version they have before pushing; do not guess. `command not found` → see "If the CLI fails".
 
 **Login.** With no access token stored in `~/.b6p/`, the push asks for one — a question you cannot answer, and `--yes` does not — and exits `1`. Check first: `test -f ~/.b6p/secrets.enc && echo OK`.
@@ -37,7 +37,7 @@ Copy this checklist and tick it off as you go:
   > `b6p` has no BlueStep platform access token on this machine yet. Run `b6p auth set` once in your own terminal, then retry `/b6p-push <component>`.
 - `OK` → continue. The file can exist without a token in it; then the push stops at `Enter your access token` (exit `1`) — relay it with the same `b6p auth set` instruction; do not retry.
 
-**Setup preflight.** Look at the working directory's rules file. Any of these means the folder is not ready: no `AGENTS.md` at all; an `AGENTS.md` with **no** `<!-- bluestep-tools rules-template N -->` marker (a file from before the marker — version 1); a marker **below** the one in `${CLAUDE_PLUGIN_ROOT}/skills/b6p-setup/templates/AGENTS.md.template`; or a `CLAUDE.md` holding real rules with no `AGENTS.md` beside it. In that case **invoke the `/b6p-setup` skill** (through the Skill tool, so its own tool allowances apply — never re-implement it from memory; its file is `${CLAUDE_PLUGIN_ROOT}/skills/b6p-setup/SKILL.md`) for its step 2, then continue with this request. It performs what has one correct answer and asks only what a file with the user's own lines raises — an old rules file with project rules, a populated `CLAUDE.md`, a folder with no BlueStep signal — and those questions are asked before this request goes on. If `b6p` is missing or older than 0.8.0, or `$B6PT_TOKEN` is unset when a `[PLATFORM]` op needs it, run its step 1 first and hand over the commands only a person can run. Never drop the request: if the user would rather go on without setup, continue and say in the report that `/b6p-setup` is there when they want it. The one exception is the user answering "Not a BlueStep repo" or opting the plugin out — then this request ends with that answer, and say so.
+**Setup preflight.** Look at the working directory's rules file. Any of these means the folder is not ready: no `AGENTS.md` at all; an `AGENTS.md` with **no** `<!-- bluestep-tools rules-template N -->` marker (a file from before the marker — version 1); a marker **below** the one in `${CLAUDE_PLUGIN_ROOT}/skills/b6p-setup/templates/AGENTS.md.template`; or a `CLAUDE.md` holding real rules with no `AGENTS.md` beside it. In that case **invoke the `/b6p-setup` skill** (through the Skill tool, so its own tool allowances apply — never re-implement it from memory; its file is `${CLAUDE_PLUGIN_ROOT}/skills/b6p-setup/SKILL.md`) for its step 2, then continue with this request. It performs what has one correct answer and asks only what a file with the user's own lines raises — an old rules file with project rules, a populated `CLAUDE.md`, a folder with no BlueStep signal — and those questions are asked before this request goes on. If `b6p` is missing or older than 0.8.1, or `$B6PT_TOKEN` is unset when a `[PLATFORM]` op needs it, run its step 1 first and hand over the commands only a person can run. Never drop the request: if the user would rather go on without setup, continue and say in the report that `/b6p-setup` is there when they want it. The one exception is the user answering "Not a BlueStep repo" or opting the plugin out — then this request ends with that answer, and say so.
 
 ### 1. Identify the component
 
@@ -152,7 +152,7 @@ To delete it from the platform, run the push again without --yes and answer Yes 
 ## What this skill must NOT do
 
 - Do NOT invoke `b6p` any way other than the bare `b6p` binary.
-- Do NOT push with a `b6p` CLI older than 0.8.0 (step 0), and do NOT run the update yourself — hand it over.
+- Do NOT push with a `b6p` CLI older than 0.8.1 (step 0), and do NOT run the update yourself — hand it over.
 - Do NOT push without showing the user the diff scope and getting an explicit selection for *this* push (step 3). Publish is recommended and pre-selected, never performed on its own — not on task completion, and `/spec-execute` offers no publish mid-task.
 - Do NOT overwrite or delete anything on the platform without the user's yes for *this* push (step 5): no answer, or anything short of a clear yes, means no, and an earlier yes does not carry over.
 - Do NOT edit the command the CLI printed or pipe answers into `b6p` yourself: run it exactly as printed, and never add an `--overwrite` for a file the user did not confirm.

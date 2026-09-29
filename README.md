@@ -22,7 +22,7 @@ Open your AI coding agent (Claude Code, Cursor or Codex) in any folder, paste th
 >    `https://github.com/Bluestep-Systems/bspecs` → Browse plugins → install bluestep-tools; Cursor:
 >    Plugins → Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bspecs` →
 >    install bluestep-tools).
-> 3. Check whether the `b6p` command is on my PATH and, if it is, that `b6p --version` is 0.8.0 or
+> 3. Check whether the `b6p` command is on my PATH and, if it is, that `b6p --version` is 0.8.1 or
 >    later. If it is missing or older and Node.js is installed, run
 >    `npm i -g @bluestep-systems/b6p-cli@latest` (if my old `b6p` is a downloaded binary, give me
 >    the new download instead); if Node is not installed, give me the download
