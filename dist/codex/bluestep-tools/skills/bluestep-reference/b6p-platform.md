@@ -193,7 +193,7 @@ Before referencing a query/form/field in code:
 
 If N components all need the same new field, each one needs its own import-config update on the platform and a separate pull.
 
-Hallucinated names are **not** caught at publish: the push transpile runs without the component's `declarations/`, so a fabricated name is indistinguishable from the benign `Cannot find name` noise and the broken code ships anyway (see the diagnostics guidance in the `/b6p-push` skill). The only gate is checking `declarations/index.d.ts` before writing the reference.
+Hallucinated names are caught at publish only after they ship: the publish type-check runs with the component's `declarations/`, so a fabricated name shows up as a `Cannot find name` diagnostic and the push exits `1` — but the code is live by then (see the `/b6p-push` skill's `references/type-check-diagnostics.md`). The only gate before that is checking `declarations/index.d.ts` before writing the reference.
 
 ## When the CLI fails
 

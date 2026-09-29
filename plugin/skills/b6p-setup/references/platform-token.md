@@ -1,6 +1,6 @@
 # Platform token `B6PT_TOKEN` — all tools (read by `/b6p-setup` step 1 when the token is absent)
 
-The optional third once-per-machine item. Only platform authoring over the gateway MCP needs it; setup must stay skippable without it.
+The optional third once-per-machine item. Only platform authoring over the gateway MCP needs the `B6PT_TOKEN` variable; setup must stay skippable without it. The token itself is the same kind the b6p CLI signs in with (`b6p auth set`, step 1's login), so a user who already stored one there can reuse it here.
 
 
 The BlueStep platform MCP is reached through a **single bundled gateway** at
@@ -27,7 +27,8 @@ test -n "$B6PT_TOKEN" && echo OK
 
 > **Access reality.** The `b6pt_` token requires super-user access (**Super tab → Global Users → Access
 > Tokens**). If Organization Admin shows **no "Super" tab**, you can't self-create a token — **request a
-> token / MCP enablement from BlueStep** rather than hunting for the screen. (A later 404 for a specific org
+> token / MCP enablement from BlueStep** rather than hunting for the screen. The b6p CLI needs the same
+> token, so this also blocks `b6p auth set`. (A later 404 for a specific org
 > = that org doesn't expose `/mcp`; see `conventions/mcp-platform-authoring.md`, don't retry.)
 
 If you **do** have super-user access, the happy path is:
@@ -62,11 +63,10 @@ across every org. Handle it accordingly, and be honest with the user about its l
 
 - **Not encrypted at rest.** The token lives in plaintext in the `B6PT_TOKEN` env var (shell profile /
   Windows user env). It is user-private and uncommitted, but readable by any process running as the user.
-  No agent tool offers an encrypted-header MCP mechanism, so plaintext-user-private is the floor. This is a
-  **separate credential from the b6p CLI's**, set up independently: the CLI stores its own platform access
-  token, encrypted, in `~/.b6p/` via `b6p auth set` (bearer since b6p-cli 0.6.0), while this one lives in the
-  `B6PT_TOKEN` env var and authenticates the gateway MCP. Both are now bearer tokens, so keep them straight —
-  configuring one does nothing for the other.
+  No agent tool offers an encrypted-header MCP mechanism, so plaintext-user-private is the floor. The b6p
+  CLI keeps its copy of a `b6pt_` token encrypted in `~/.b6p/` (`b6p auth set`); this variable is a second,
+  separate place, and setting one does nothing for the other. After revoking or rotating a token, update
+  every place that holds it.
 - **Recommend an expiry + least-privilege scopes at creation.** The Access Tokens screen has Scopes and
   Expires columns; a never-expiring, unscoped global-super token is the riskiest shape. Setting an expiry
   and scopes — and questioning whether it needs to be a global-super token at all — reduces risk more than

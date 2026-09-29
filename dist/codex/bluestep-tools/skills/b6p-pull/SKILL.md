@@ -1,6 +1,7 @@
 ---
 name: b6p-pull
 description: Pull a B6P component from the BlueStep platform into the local workspace using its DAV URL, and scaffold draft/README.md if missing. Use when the user wants to bring a component down for the first time or re-sync after platform edits.
+compatibility: Needs the b6p CLI on PATH and a b6p access token stored with b6p auth set.
 ---
 
 # /b6p-pull — Pull a component from BlueStep
@@ -17,10 +18,10 @@ The user copies the DAV URL from the component's page in the BlueStep platform U
 
 A first pull creates the `U######/<ComponentName>/` folder (creating the U-folder if it does not exist), populates `declarations/` and `draft/`, and records the component's sync metadata.
 
-Two re-pull behaviors to know (verified 2026-08):
+Two re-pull behaviors to know:
 
 - **A re-pull never renames the local folder.** If the component was renamed on the platform, the CLI keeps pulling into the folder it first created — don't read the folder name as the component's current display name; the platform (or a legacy `draft/info/metadata.json`, when the component still ships one) is authoritative.
-- **A re-pull keeps a file you edited locally rather than overwriting it.** Since b6p-cli 0.6.0, a file whose content differs from *both* the platform copy and the last-synced hash is left on disk untouched, and every kept file is listed in one warning at the end of the pull — read it (step 3). The guard needs a recorded last-sync hash, and that record is **machine-local**: on a fresh clone, a new machine, or after cleared state there is no record, so that first pull writes the platform copy over whatever is there.
+- **A re-pull keeps a file you edited locally rather than overwriting it.** A file whose content differs from *both* the platform copy and the last-synced hash is left on disk untouched, and every kept file is listed in one warning at the end of the pull — read it (step 3). The guard needs a recorded last-sync hash, and that record is **machine-local**: on a fresh clone, a new machine, or after cleared state there is no record, so that first pull writes the platform copy over whatever is there.
 
 ## How to invoke `b6p`
 
@@ -36,17 +37,15 @@ If `b6p` is not found, the user has not installed the b6p-cli binary yet — poi
 
 ### 0. Auth preflight (do this first, before any `b6p` call)
 
-`b6p` stores a BlueStep platform **access token** globally in `~/.b6p/` (since b6p-cli 0.6.0 / core 0.5.0 — bearer auth replaced the old username + password, with **no** migration path, so every pre-0.6.0 user is re-prompted once). Without a stored token the first `pull` prompts for one **interactively** — a prompt you (Claude) cannot answer. The CLI now **fails loudly**: it names the prompt it could not answer and exits `1`. (Before 0.6.0 it hung, then drained and exited `0` having done nothing — so an old "it succeeded" is not evidence the pull happened.) `--yes` does **not** save you here: it guards the *confirmation* prompt, not the *missing-token* one.
-
-Before running the pull, check for the secrets store:
+With no access token stored in `~/.b6p/`, the pull asks for one — a question you cannot answer, and `--yes` does not — and exits `1` naming it. Check first:
 
 ```
 test -f ~/.b6p/secrets.enc && echo OK
 ```
 
 - If it prints nothing (file absent) → STOP. Do **not** run the pull. Tell the user:
-  > `b6p` has no BlueStep platform access token on this machine yet, so the pull would stop at an interactive prompt I can't answer. Run `b6p auth set` once (it stores the token globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-pull <DAV URL>`.
-- If it prints `OK` → continue, but treat this as a **negative check only**. `secrets.enc` holds every secret under its own key, so a machine that authenticated before 0.6.0 has the file *without* an access token in it — the preflight passes and the pull still stops at `Enter your access token` and exits `1`. That failure is self-describing: surface it verbatim and give the user the same `b6p auth set` instruction rather than retrying.
+  > `b6p` has no BlueStep platform access token on this machine yet, so the pull would stop at a question I can't answer. Run `b6p auth set` once in your own terminal (it stores the token in `~/.b6p/`, once per machine), then retry `/b6p-pull <DAV URL>`.
+- If it prints `OK` → continue. This only rules out a missing file: `secrets.enc` holds every secret under its own key, so it can exist without an access token, and then the pull stops at `Enter your access token` and exits `1`. Relay that message and give the same `b6p auth set` instruction; do not retry.
 
 **Setup preflight.** Look at the working directory's rules file. Any of these means the folder is not ready: no `AGENTS.md` at all; an `AGENTS.md` with **no** `<!-- bluestep-tools rules-template N -->` marker (a file from before the marker — version 1); a marker **below** the one in `../b6p-setup/templates/AGENTS.md.template` (relative to this file); or a `CLAUDE.md` holding real rules with no `AGENTS.md` beside it. In that case **invoke the `/b6p-setup` skill** (through the Skill tool, so its own tool allowances apply — never re-implement it from memory; its file is `../b6p-setup/SKILL.md`) for its step 2, then continue with this request. It performs what has one correct answer and asks only what a file with the user's own lines raises — an old rules file with project rules, a populated `CLAUDE.md`, a folder with no BlueStep signal — and those questions are asked before this request goes on. If `b6p` is missing, or `$B6PT_TOKEN` is unset when a `[PLATFORM]` op needs it, run its step 1 first and hand over the commands only a person can run. Never drop the request: if the user would rather go on without setup, continue and say in the report that `/b6p-setup` is there when they want it. The one exception is the user answering "Not a BlueStep repo" or opting the plugin out — then this request ends with that answer, and say so.
 
@@ -63,7 +62,7 @@ test -f ~/.b6p/secrets.enc && echo OK
 b6p --yes pull "<DAV URL>"
 ```
 
-The `--yes` is **required** — without it, b6p may show an interactive confirmation prompt that you (Claude) cannot answer, and the call fails with exit `1` naming that prompt. Always include it.
+The `--yes` is **required** — without it, b6p may ask a question you cannot answer, and the call fails with exit `1` naming that question. Always include it. It prints each question it answered, with the answer, on stderr — those lines are not errors.
 
 Capture the output — it prints the local path where the component landed.
 
@@ -81,7 +80,7 @@ interrupted pull) — NOT synced:
 
 The list is capped at 10 with a trailing `…and N more`; `b6p --json pull …` reports the same set as `{"keptLocalPaths": [...]}`. This is the divergence guard working as designed, so the pull still exits `0` — but **those files are NOT the platform version**, and a reader who assumes a clean pull will be working against stale content. Carry every kept path into the step-6 report.
 
-To actually take the platform copy for a kept file, **delete the file and pull again**. The CLI's own message also suggests an audit pull, but `b6p audit --pull` defaults to *Cancel* since 0.6.0, so under `--yes` it declines — that route needs a human answering the confirmation interactively.
+To actually take the platform copy for a kept file, **delete the file and pull again**. The CLI's own message also suggests an audit pull, but `b6p audit --pull` defaults to *Cancel*, so under `--yes` it declines — that route needs a person answering its question interactively.
 
 Then parse the CLI output, or scan for the most recently modified `U######/<Name>/` directory under the project root. Confirm:
 
@@ -133,7 +132,7 @@ c. **If you cannot infer the Overview with reasonable confidence** (e.g., `app.t
 
 d. **Write** the rendered README to `<Component>/draft/README.md`.
 
-e. **Recommend pushing the scaffolded README, and know what protects it.** Since b6p-cli 0.6.0 a later pull will **keep** the scaffolded README rather than reverting it to the platform stub — it differs from both the platform copy and the last-synced hash, so the divergence guard holds it and lists it in the kept-files warning (step 3). Two things that does *not* mean:
+e. **Recommend pushing the scaffolded README, and know what protects it.** A later pull **keeps** the scaffolded README rather than reverting it to the platform stub — it differs from both the platform copy and the last-synced hash, so the divergence guard holds it and lists it in the kept-files warning (step 3). Two things that does *not* mean:
 
    - **It is not protection on another machine.** The last-sync record is machine-local, so a colleague's fresh clone — or your own after cleared state — has no record and that first pull writes the platform copy straight over it.
    - **Only a push puts the docs where others get them.** `draft/` ships to the platform, so until the README is pushed, nobody who pulls the component sees it.
@@ -167,5 +166,5 @@ Three distinct failure modes — handle them differently:
 
 - **`command not found` / `b6p` cannot be resolved** — the b6p-cli standalone binary is not installed (or not on `PATH`). Do NOT retry, do NOT try alternative invocations. Tell the user:
   > `b6p` could not be resolved. Install the b6p-cli standalone binary and make sure it is on your `PATH` (see its release/install instructions), then retry `/b6p-pull <DAV URL>`.
-- **Exit `1` naming a prompt it could not answer** (`Enter your access token`, or any other prompt) — **not** a tool failure and **not** a reason to switch tools. The CLI ran correctly and is telling you it needed an answer nobody could give. For the token case this is the standard post-0.6.0 upgrade path even when the step-0 preflight printed `OK`: relay the CLI's message and tell the user to run `b6p auth set`, then retry. Do not send them to the VS Code extension for this.
+- **Exit `1` naming a question it could not answer** (`Enter your access token`, or any other) — **not** a tool failure and **not** a reason to switch tools. The CLI ran correctly and is telling you it needed an answer nobody could give. For the token it can happen even when the step-0 check printed `OK`: relay the CLI's message and tell the user to run `b6p auth set`, then retry. Any other question: relay it and ask the user — `b6p auth set` is only for the token. Do not send them to the VS Code extension for this.
 - **Any other error** (network, lock, a real auth *rejection* by the platform, etc.) — `b6p` ran but the call failed. The VS Code b6p extension (`bsjs-push-pull`) is the equivalent fallback. Tell the user to use it via the editor UI rather than retrying the CLI in a loop.

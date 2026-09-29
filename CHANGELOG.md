@@ -8,6 +8,83 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.38.0] — 2026-09-29
+
+> **`/b6p-push` asks before anything on the platform is overwritten or deleted.** It needs the b6p
+> CLI 0.8.1 or later and stops with the update command below that. No hook changes — Codex users do
+> not need to re-trust.
+
+### Changed
+
+- **`/b6p-push` stops and asks when the platform changed.** From b6p CLI 0.8.0, `--yes` takes the
+  safe answer to every question: the push uploads nothing when a file changed on the platform since
+  your last pull or push from this machine, and it keeps files that exist only on the platform. The
+  skill shows you those files and why, suggests `/b6p-audit` to see the differences, and asks what
+  should happen. Only on your yes does it run the command the CLI printed — one `--overwrite` per
+  file, or the delete command — exactly as printed. It also tells you when a listed file has no
+  change of yours, because overwriting it puts your old copy back over the platform edit.
+- **`/b6p-push` reads the whole result.** Success comes from the exit code and the `--json` result,
+  not the output text, and every part of it is handled: a publish that goes live with type-check
+  diagnostics *and* keeps platform-only files gets both. When a file changed on the platform during
+  the push itself, it says that files before it may already be up.
+- **The b6p CLI must be 0.8.1 or later.** Before 0.8.0, `--yes` overwrites platform edits and
+  deletes platform-only files without asking; 0.8.0 refuses the `b6pt_` token the CLI signs in with,
+  which 0.8.1 fixed. `/b6p-push` runs `b6p --version` first and, below 0.8.1, stops and hands you the
+  update (npm, or the new binary from the releases page). `/b6p-setup` checks the version too and
+  hands over the update; the README's first prompt, which you paste yourself, installs it.
+- **`/b6p-push` is shorter and reads the rare cases only when they happen.** The `--root` push for a
+  component never pulled with the CLI, what to do with type-check diagnostics, and how to confirm
+  which build is live moved to reference files. The description now names what people say: publish,
+  make it live, deploy, upload. The warning to do the first publish in the browser editor is gone —
+  a first publish from the CLI goes live.
+- **`/b6p-audit` and `/b6p-pull` match CLI 0.8.0.** The audit says what `/b6p-push` would do with
+  each file it lists: stop and ask, upload, or keep. Both say that `--yes` prints each answer on
+  stderr.
+
+### Fixed
+
+- **The docs said the CLI and the gateway MCP use different tokens.** Both take the same kind of
+  `b6pt_` platform access token, and one token can serve both: `b6p auth set` stores it for the CLI,
+  `B6PT_TOKEN` holds it for the gateway. A `401` means the token expired or its account lost access,
+  not the wrong kind of token. `/b6p-setup`, its token page, the platform authoring page and the
+  project README template now say so.
+- **`/b6p-setup` checked that `b6p` was installed, never which version.** A machine on an old CLI
+  looked ready. It now checks the version (above).
+- **`/b6p-push` and `/b6p-pull` sent you to `b6p auth set` for any question the CLI could not ask**,
+  not only the token one. Now only `Enter your access token` leads there; `/b6p-push` points
+  `Could not determine script URL` at the `--file` path, and any other question is shown to you.
+- **The reference said a publish type-checks without the component's `declarations/`**, so a
+  made-up name would pass unseen. It type-checks with them: a made-up name shows up as a diagnostic
+  and the push exits `1` — after the code is live, so checking `declarations/index.d.ts` first is
+  still the gate.
+
+### Migration
+
+- Update the b6p CLI to 0.8.1 or later: `npm i -g @bluestep-systems/b6p-cli@latest`, or the new
+  binary from the b6p-cli releases page if you installed a binary. `/b6p-push` tells you if you
+  have not.
+- No hook changes: Codex users do not need to re-trust.
+
+### Maintainers
+
+- `gen:check` has a CLI-floor lint: `B6P_CLI_FLOOR` in `tools/gen-cross-tool/lib.mjs` is the one
+  minimum, and a floor statement ("X.Y.Z or later / or higher / +", "older than / below / at least
+  X.Y.Z") that names another version fails. It scans the Markdown and template files under
+  `plugin/`, `README.md` and `docs/decisions/b6p-cli-distribution.md`, and catches a version in
+  backticks or bold, wrapped over two lines or inside a blockquote; it skips code fences and a
+  version right after another tool's name (`Node 20.10.0 or later`). Raise the constant and the text
+  in the same change. The ADR has a "Minimum CLI version" note.
+- Both emitters pass the optional `compatibility` skill field through; `b6p-push`, `b6p-pull` and
+  `b6p-audit` state theirs. Advisory only — `/b6p-push` still checks the version when it runs.
+- Evals run before merge against a test org, each by a fresh agent given only the skill: platform
+  drift (stop and ask) on Haiku, Sonnet and Opus; overwrite, then the kept-files question and the
+  delete; an old CLI on `PATH` (stops before any push); and a live publish (`liveVerified: true`).
+  They ran on CLI 0.8.0; 0.8.1 changes only `b6p auth set`. Two text fixes came out of them (run
+  `--file` first and never look for sync metadata; the overwrite-reverts note and `historyRecorded`
+  on a draft). The overwrite, delete and publish were run by hand: Claude Code's auto-mode
+  classifier blocks a subagent's platform write. An adversarial review then found the 0.8.1 token
+  change and the step-5 and question-handling gaps fixed above.
+
 ## [plugin 0.37.1] — 2026-09-23
 
 > **The 400 K compaction window no longer overrides your own.** No hook changes — Codex users do

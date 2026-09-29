@@ -2,7 +2,7 @@
 // tools/gen-cross-tool/index.mjs — CLI entry for the cross-tool plugin
 // generator. No args: run every registered emitter over plugin/** and write
 // its output tree. --check: structural self-test + the Claude-ism denylist
-// lint (the CI gate); exits non-zero on any finding.
+// lint + the b6p CLI floor lint (the CI gate); exits non-zero on any finding.
 // Invariant: output is a pure function of plugin/** — sorted walks, no
 // timestamps, no environment leakage, LF line endings.
 
@@ -18,7 +18,7 @@ if (nodeMajor < 18) {
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkPluginStructure, lintClaudeIsms, readPluginTree, writeOutputs } from './lib.mjs';
+import { checkPluginStructure, lintClaudeIsms, lintCliFloor, readPluginTree, writeOutputs } from './lib.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..', '..');
@@ -85,7 +85,7 @@ if (!checkMode) {
 if (emitters.length === 0) {
   console.log('gen-cross-tool: no emitters registered yet — running source structure checks + denylist lint only.');
 }
-const problems = [...checkPluginStructure(tree), ...lintClaudeIsms(tree)];
+const problems = [...checkPluginStructure(tree), ...lintClaudeIsms(tree), ...lintCliFloor(tree, REPO_ROOT)];
 for (const emitter of emitters) {
   if (typeof emitter.check === 'function') problems.push(...emitter.check(tree, ctx));
 }
@@ -95,4 +95,4 @@ if (problems.length) {
   console.error(`gen-cross-tool --check: ${problems.length} problem(s).`);
   process.exit(1);
 }
-console.log(`gen-cross-tool --check: OK (${tree.files.length} plugin files; structure + denylist lint clean).`);
+console.log(`gen-cross-tool --check: OK (${tree.files.length} plugin files; structure + denylist + CLI-floor lint clean).`);

@@ -22,9 +22,11 @@ Open your AI coding agent (Claude Code, Cursor or Codex) in any folder, paste th
 >    `https://github.com/Bluestep-Systems/bspecs` → Browse plugins → install bluestep-tools; Cursor:
 >    Plugins → Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bspecs` →
 >    install bluestep-tools).
-> 3. Check whether the `b6p` command is on my PATH. If not and Node.js is installed, run
->    `npm i -g @bluestep-systems/b6p-cli`; if Node is not installed, give me the download link
->    `https://github.com/Bluestep-Systems/b6p-cli/releases` for my OS (binaries exist for macOS
+> 3. Check whether the `b6p` command is on my PATH and, if it is, that `b6p --version` is 0.8.1 or
+>    later. If it is missing or older and Node.js is installed, run
+>    `npm i -g @bluestep-systems/b6p-cli@latest` (if my old `b6p` is a downloaded binary, give me
+>    the new download instead); if Node is not installed, give me the download
+>    link `https://github.com/Bluestep-Systems/b6p-cli/releases` for my OS (binaries exist for macOS
 >    arm64 and Windows x64 — on Linux, WSL or an Intel Mac tell me to install Node first).
 > 4. Tell me to run `b6p auth set` in my own terminal — never ask me for the token.
 > 5. Finish with one line: start a **new** session in the folder where my BlueStep work will live,

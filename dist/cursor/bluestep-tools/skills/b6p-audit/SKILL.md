@@ -1,6 +1,7 @@
 ---
 name: b6p-audit
-description: Compare a local component's state against what lives on the BlueStep platform, listing files that differ. Use when the user wants to know if they (or someone else) changed something on the platform side, or before a push to be sure nothing unexpected will be overwritten.
+description: Compare a local component's state against what lives on the BlueStep platform, listing files that differ. Use when the user wants to know if they (or someone else) changed something on the platform side, or before a push, to see what changed there before the push stops to ask about it.
+compatibility: Needs the b6p CLI on PATH and a b6p access token stored with b6p auth set.
 ---
 
 # /b6p-audit — Compare local vs. platform
@@ -21,23 +22,21 @@ For a push that immediately follows, the user can ask you to chain `/b6p-audit` 
 
 `b6p` is a standalone binary on the system `PATH` (the b6p-cli standalone artifact, installed separately from bspecs). Invoke it directly as `b6p`. If `b6p` is not found, the user has not installed the b6p-cli binary yet — point them at its release/install instructions.
 
-Always pass `--yes` so b6p does not show interactive prompts that Claude cannot answer.
+Always pass `--yes` so b6p does not stop at a question you cannot answer; it prints each question it answered, with the answer, on stderr — those lines are not errors.
 
 ## Steps
 
 ### 0. Auth preflight (do this first, before any `b6p` call)
 
-`b6p` stores a BlueStep platform **access token** globally in `~/.b6p/` (since b6p-cli 0.6.0 / core 0.5.0 — bearer auth replaced the old username + password, with **no** migration path, so every pre-0.6.0 user is re-prompted once). Without a stored token the first `audit` prompts for one **interactively** — a prompt you (Claude) cannot answer. The CLI now **fails loudly**: it names the prompt it could not answer and exits `1`. (Before 0.6.0 it hung, then drained and exited `0` having done nothing — so an old "it succeeded" is not evidence the audit happened.) `--yes` does **not** save you here: it guards the *confirmation* prompt, not the *missing-token* one.
-
-Before running the audit, check for the secrets store:
+With no access token stored in `~/.b6p/`, the audit asks for one — a question you cannot answer, and `--yes` does not — and exits `1` naming it. Check first:
 
 ```
 test -f ~/.b6p/secrets.enc && echo OK
 ```
 
 - If it prints nothing (file absent) → STOP. Do **not** run the audit. Tell the user:
-  > `b6p` has no BlueStep platform access token on this machine yet, so the audit would stop at an interactive prompt I can't answer. Run `b6p auth set` once (it stores the token globally in `~/.b6p/`, so you only do this per machine), then retry `/b6p-audit <component>`.
-- If it prints `OK` → continue, but treat this as a **negative check only**. `secrets.enc` holds every secret under its own key, so a machine that authenticated before 0.6.0 has the file *without* an access token in it — the preflight passes and the audit still stops at `Enter your access token` and exits `1`. That failure is self-describing: surface it verbatim and give the user the same `b6p auth set` instruction rather than retrying.
+  > `b6p` has no BlueStep platform access token on this machine yet, so the audit would stop at a question I can't answer. Run `b6p auth set` once in your own terminal (it stores the token in `~/.b6p/`, once per machine), then retry `/b6p-audit <component>`.
+- If it prints `OK` → continue. This only rules out a missing file: `secrets.enc` holds every secret under its own key, so it can exist without an access token, and then the audit stops at `Enter your access token` and exits `1`. Relay that message and give the same `b6p auth set` instruction; do not retry.
 
 ### 1. Identify the component
 
@@ -68,7 +67,7 @@ Read the JSON output. The shape is:
 
 - If `changedFiles` is empty: tell the user "Local is in sync with the platform."
 - If non-empty: list each path and note which side has the newer version when you can tell (a `(new)` suffix means the file exists on the platform but not locally; otherwise the file exists on both sides with different content).
-- Say what a push would do to each. A file that differs is **overwritten** by the next push — `b6p push` asks first only when run without `--yes`, and `/b6p-push` always passes `--yes`. A `(new)` file is **deleted** by the next push under the same conditions (push asks "Delete them?" and `--yes` answers Yes; verified 2026-09 on b6p-cli 0.7.0). So "I deleted it locally and pushed" is a destructive act, not a test that the file was unused. If the platform copy has to survive, pull it before pushing.
+- Say what `/b6p-push` would do with each. A file that **changed on the platform** since the last push or pull from here (or was never synced from this machine) makes the push **stop before uploading anything** and ask whether to overwrite it. A file changed **only locally** uploads without a question. A `(new)` file is **kept** by the push: it is listed as a platform-only file, and deleting it takes the user's yes to a separate question. So deleting a file locally and pushing does not remove it from the platform.
 
 ### 4. Suggest a next step (do not auto-execute)
 
@@ -77,7 +76,7 @@ Based on the result, suggest:
 - **In sync** → "Local is in sync. You can `/b6p-push <component>` safely if you have local changes."
 - **Platform has changes you don't** → "Platform has changes not present locally. Consider `/b6p-pull` to sync before continuing work, especially if you're about to push."
 - **You have local changes the platform doesn't** → "These changes exist only locally. They'll be pushed when you run `/b6p-push`."
-- **Both sides changed** → "Both sides have diverged. Pulling would overwrite your local changes; pushing would overwrite the platform. You probably want to decide file-by-file — open each one and merge manually before pushing."
+- **Both sides changed** → "Both sides have diverged. `/b6p-push` will stop and ask before overwriting the platform copies, and a pull keeps the files you edited here instead of taking the platform copy (when this machine has a sync record for them) — neither merges. Decide file by file: open each one and merge by hand before pushing."
 
 Never auto-pull or auto-push from inside this skill. The user drives the next step.
 
@@ -89,8 +88,9 @@ Never auto-pull or auto-push from inside this skill. The user drives the next st
 
 ## If the CLI fails
 
-Two distinct failure modes — handle them differently:
+Three distinct failure modes — handle them differently:
 
 - **`command not found` / `b6p` cannot be resolved** — the b6p-cli standalone binary is not installed (or not on `PATH`). Tell the user:
   > `b6p` could not be resolved. Install the b6p-cli standalone binary and make sure it is on your `PATH` (see its release/install instructions).
-- **Any other error** (network, auth, etc.) — the audit command is read-only so failures are usually transient. Surface the raw error to the user; suggest retrying or using `b6p auth set` if it looks like an auth issue.
+- **Exit `1` naming a question it could not answer** (`Enter your access token`) — not a tool failure: relay the message and tell the user to run `b6p auth set`, then retry. It can happen even when the step-0 check printed `OK`.
+- **Any other error** (network, a real auth rejection by the platform, etc.) — the audit is read-only, so failures are usually transient. Surface the raw error to the user and suggest retrying.

@@ -87,10 +87,11 @@ specifically `mcp__plugin_bluestep-tools_bluestep-gateway__available_tenants` an
   Expires and Scopes. **If you can no longer reach that screen, that is itself the confirmation** —
   the access the token depends on is gone. The fix is restoring the account's access or issuing a
   token under an authorized account — not MCP enablement.
-- **Don't mix the two token systems.** The `b6pt_` gateway token never goes into `b6p auth set` —
-  that stores the b6p CLI's own, separate token. The gateway token stores cleanly there and then
-  fails with a `401` from `/gql`, which looks like more platform trouble but is just the wrong
-  credential in the wrong slot (see `/b6p-setup` step 1 for both tokens).
+- **One token, two places.** The b6p CLI signs in with the same kind of `b6pt_` platform access
+  token: `b6p auth set` stores it encrypted in `~/.b6p/`, while the gateway reads it from
+  `$B6PT_TOKEN`, and one token can serve both. A `b6p` call that fails with a `401` means the same as
+  here — the stored token expired or its account lost access — so check the token screen above;
+  after creating a new token, run `b6p auth set` again and update `B6PT_TOKEN`.
 
 ### 3 — Resolve the target org (to a U-number)
 
