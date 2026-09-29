@@ -88,9 +88,12 @@ specifically `mcp__plugin_bluestep-tools_bluestep-gateway__available_tenants` an
   the access the token depends on is gone. The fix is restoring the account's access or issuing a
   token under an authorized account — not MCP enablement.
 - **Don't mix the two token systems.** The `b6pt_` gateway token never goes into `b6p auth set` —
-  that stores the b6p CLI's own, separate token. The gateway token stores cleanly there and then
-  fails with a `401` from `/gql`, which looks like more platform trouble but is just the wrong
-  credential in the wrong slot (see `/b6p-setup` step 1 for both tokens).
+  that stores the b6p CLI's own, separate token. The CLI refuses it there, and at the token question
+  any `b6p` command asks on first use: `That is a gateway token (it starts with b6pt_), used by the
+  BlueStep AI tools. b6p needs a CLI access token instead. Nothing was stored.` (exit `1`). A `b6p`
+  call that fails with a `401` from `/gql` can still mean a gateway token stored by an older CLI —
+  the wrong credential in the wrong slot, not more platform trouble; run `b6p auth set` again with
+  the CLI token (see `/b6p-setup` step 1 for both tokens).
 
 ### 3 — Resolve the target org (to a U-number)
 
