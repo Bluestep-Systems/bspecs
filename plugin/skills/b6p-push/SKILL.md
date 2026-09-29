@@ -103,7 +103,7 @@ Any existing file inside the component works for `--file`; `app.ts` is the usual
 | `0` | `{"cancelled": true}` | Target-URL question cancelled | Nothing pushed; say so |
 | `0` | anything else | Pushed | Report, below |
 
-On a draft-only push `typeCheckDiagnostics` and `liveVerified` are `null` (nothing compiles or goes live) — not a warning. No exit-`1` row is a CLI bug or a reason to switch tools.
+On a draft-only push `typeCheckDiagnostics` and `liveVerified` are `null` (nothing compiles or goes live) — not a warning — and `historyRecorded` is `true` although no restore point is made. No exit-`1` row is a CLI bug or a reason to switch tools.
 
 **Stop and ask** (exit `1`, `declinedOverwrites` lists files). Nothing was uploaded. stderr ends with the files, the reason for each, and the command that overwrites them:
 
@@ -119,7 +119,7 @@ After checking them, overwrite them with your local files with:
 ```
 
 1. This is the push doing its job, not a failure: do not retry, do not switch tools.
-2. Show the user the files and each reason: *changed on the platform since the last push or pull from here* means someone edited it there; *the platform has a different copy, never pulled or pushed from this machine* means this machine has no record to compare with (a fresh clone, a new machine).
+2. Show the user the files and each reason: *changed on the platform since the last push or pull from here* means someone edited it there; *the platform has a different copy, never pulled or pushed from this machine* means this machine has no record to compare with (a fresh clone, a new machine). If a listed file has no local change (step 2's `git status`), say so: overwriting it puts the old local copy back over the platform edit.
 3. Suggest `/b6p-audit` to see the differences, or `/b6p-pull` to take the platform copy. Do not run either unasked.
 4. Ask one structured question, as in step 3 — **"These files changed on the platform since your last pull. What should happen?"**:
    - `Check them first (Recommended)` — "Nothing is uploaded. Look at the differences first, then push again."
