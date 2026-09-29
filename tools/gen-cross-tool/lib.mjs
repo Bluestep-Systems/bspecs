@@ -332,32 +332,50 @@ export const B6P_CLI_FLOOR = '0.8.1';
 // Repo files outside plugin/** that state the floor.
 const FLOOR_REPO_FILES = ['README.md', 'docs/decisions/b6p-cli-distribution.md'];
 
-// A statement of a minimum: "X.Y.Z or later/newer", or "older than / below /
-// lower than / at least X.Y.Z". History ("before 0.6.0", "since 0.6.0",
-// "0.7.0 and older") is deliberately not matched.
-const FLOOR_STATEMENT = /(\d+\.\d+\.\d+) or (?:later|newer)|(?:older than|below|lower than|at least) (\d+\.\d+\.\d+)/gi;
+// A statement of a minimum: "X.Y.Z or later / or newer / or higher / and
+// later / +", or "older than / lower than / below / at least X.Y.Z", with the
+// version optionally in backticks or bold. History ("before 0.6.0", "since
+// 0.6.0", "0.7.0 and older") is deliberately not matched — write history that
+// way.
+const V = '[`*]*(\\d+\\.\\d+\\.\\d+)[`*]*';
+const FLOOR_STATEMENT = new RegExp(
+  `${V}(?:\\s+(?:or|and)\\s+(?:later|newer|higher)|\\+)|(?:older|lower)\\s+than\\s+${V}|(?:below|at\\s+least)\\s+${V}`,
+  'gi'
+);
+// A version right after another tool's name is that tool's, not the CLI's.
+const OTHER_TOOL_BEFORE = /\b(?:node(?:\.js)?|npm|typescript|tsc|python|git|vite|preact|java)\s+v?$/i;
 
-// Every .md under plugin/** (frontmatter included, so `compatibility` is
-// covered) plus FLOOR_REPO_FILES. Each line is scanned joined with the next —
-// minus a blockquote marker — so a statement wrapped across lines still
-// matches; a match counts only on the line it starts on.
+// Every .md and .template file under plugin/** (frontmatter included, so
+// `compatibility` is covered) plus FLOOR_REPO_FILES, fenced code blocks
+// skipped. Each line is scanned joined with the next — minus any blockquote
+// markers — so a statement wrapped across lines still matches; a match counts
+// only on the line it starts on.
 export function lintCliFloor(tree, repoRoot) {
   const findings = [];
   const sources = [
-    ...tree.files.filter((f) => f.rel.endsWith('.md')).map((f) => ({ rel: `plugin/${f.rel}`, text: f.text })),
+    ...tree.files
+      .filter((f) => f.rel.endsWith('.md') || f.rel.endsWith('.template'))
+      .map((f) => ({ rel: `plugin/${f.rel}`, text: f.text })),
     ...FLOOR_REPO_FILES.filter((rel) => existsSync(join(repoRoot, rel))).map((rel) => ({
       rel,
       text: readFileSync(join(repoRoot, rel), 'utf8'),
     })),
   ];
   for (const { rel, text } of sources) {
-    const lines = text.split('\n');
+    const lines = text.split(/\r?\n/).map((l) => l.replace(/\s+$/, ''));
+    let inFence = false;
     for (let i = 0; i < lines.length; i++) {
-      const next = (lines[i + 1] ?? '').replace(/^\s*>?\s*/, '');
+      if (/^\s*(?:>\s*)*(?:```|~~~)/.test(lines[i])) {
+        inFence = !inFence;
+        continue;
+      }
+      if (inFence) continue;
+      const next = (lines[i + 1] ?? '').replace(/^\s*(?:>\s*)*/, '');
       const joined = `${lines[i]} ${next}`;
       for (const m of joined.matchAll(FLOOR_STATEMENT)) {
         if (m.index >= lines[i].length) continue;
-        const version = m[1] ?? m[2];
+        if (OTHER_TOOL_BEFORE.test(joined.slice(0, m.index))) continue;
+        const version = m[1] ?? m[2] ?? m[3];
         if (version !== B6P_CLI_FLOOR) {
           findings.push(
             `${rel}:${i + 1}: b6p CLI floor "${m[0]}" names ${version}, but the floor is ${B6P_CLI_FLOOR} ` +
