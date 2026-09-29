@@ -65,7 +65,9 @@ const OUT_PLUGIN = `dist/cursor/${PLUGIN_NAME}`;
 // Frontmatter keys this emitter understands. Unknown keys pass through to
 // Cursor (it ignores unknown keys per docs) but get a warning, so new Claude
 // Code fields receive a deliberate mapping decision instead of silent drift.
-const KNOWN_SKILL_FM = new Set(['name', 'description', 'allowed-tools']);
+// `compatibility` (Agent Skills spec, optional, advisory environment needs)
+// passes through as-is.
+const KNOWN_SKILL_FM = new Set(['name', 'description', 'allowed-tools', 'compatibility']);
 const KNOWN_AGENT_FM = new Set(['name', 'description', 'tools', 'model']);
 
 const GENERATED_MD = `# Generated tree — do not edit

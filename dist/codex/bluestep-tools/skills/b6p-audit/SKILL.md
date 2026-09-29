@@ -1,6 +1,7 @@
 ---
 name: b6p-audit
 description: Compare a local component's state against what lives on the BlueStep platform, listing files that differ. Use when the user wants to know if they (or someone else) changed something on the platform side, or before a push, to see what changed there before the push stops to ask about it.
+compatibility: Needs the b6p CLI on PATH and a b6p access token stored with b6p auth set.
 ---
 
 # /b6p-audit — Compare local vs. platform

@@ -2,6 +2,7 @@
 name: b6p-pull
 description: Pull a B6P component from the BlueStep platform into the local workspace using its DAV URL, and scaffold draft/README.md if missing. Use when the user wants to bring a component down for the first time or re-sync after platform edits.
 allowed-tools: Bash(b6p:*) Bash(test -f *)
+compatibility: Needs the b6p CLI on PATH and a b6p access token stored with b6p auth set.
 ---
 
 # /b6p-pull — Pull a component from BlueStep

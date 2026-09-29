@@ -2,6 +2,7 @@
 name: b6p-push
 description: Publish a BlueStep (B6P) component's local changes to the platform with the b6p CLI — make it live, deploy it, upload it, ship a fix — or save them as a draft only. Use whenever the user wants local edits of a component on the platform, even without the word "push" ("publish this", "make it live", "deploy my changes", "upload the fix", "put it on the platform"). It shows what changed, asks whether to publish or save a draft, and stops to ask before anything on the platform is overwritten or deleted.
 allowed-tools: Bash(b6p:*) Bash(git:*) Bash(test -f *)
+compatibility: Needs the b6p CLI 0.8.0 or later on PATH and a b6p access token stored with b6p auth set.
 ---
 
 # /b6p-push — Publish a component to BlueStep

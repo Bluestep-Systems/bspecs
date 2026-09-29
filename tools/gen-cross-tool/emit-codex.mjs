@@ -92,7 +92,9 @@ const MANIFEST_PATH_FIELDS = ['skills', 'hooks', 'mcpServers'];
 // Frontmatter keys this emitter understands. Unknown keys pass through (Codex
 // tolerates unknown frontmatter — LIVE, prove-out X2) but get a warning, so a
 // new Claude Code field receives a deliberate mapping decision.
-const KNOWN_SKILL_FM = new Set(['name', 'description', 'allowed-tools']);
+// `compatibility` (Agent Skills spec, optional, advisory environment needs)
+// passes through as-is.
+const KNOWN_SKILL_FM = new Set(['name', 'description', 'allowed-tools', 'compatibility']);
 
 // Agent frontmatter keys this emitter understands. `tools`/`model` are dropped
 // (the Codex TOML carries name/description/developer_instructions only);
