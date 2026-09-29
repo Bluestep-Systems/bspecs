@@ -8,6 +8,67 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.38.0] — 2026-09-29
+
+> **`/b6p-push` asks before anything on the platform is overwritten or deleted.** It needs the b6p
+> CLI 0.8.0 or later and stops with the update command below that. No hook changes — Codex users do
+> not need to re-trust.
+
+### Changed
+
+- **`/b6p-push` stops and asks when the platform changed.** With b6p CLI 0.8.0, `--yes` takes the
+  safe answer to every question: the push uploads nothing when a file changed on the platform since
+  your last pull or push from this machine, and it keeps files that exist only on the platform. The
+  skill shows you those files and why, suggests `/b6p-audit` to see the differences, and asks what
+  should happen. Only on your yes does it run the command the CLI printed — one `--overwrite` per
+  file, or the delete command — exactly as printed. It also tells you when a listed file has no
+  change of yours, because overwriting it puts your old copy back over the platform edit. Success
+  is read from the exit code and the `--json` result, not from the output text.
+- **The b6p CLI must be 0.8.0 or later.** On older versions `--yes` overwrites platform edits and
+  deletes platform-only files without asking, so `/b6p-push` runs `b6p --version` first and, below
+  0.8.0, stops and hands you the update (npm, or the new binary from the releases page). `/b6p-setup`
+  and the README's first prompt check the version too and hand over the update; neither runs it.
+- **`/b6p-push` is shorter and reads the rare cases only when they happen.** The `--root` push for a
+  component never pulled with the CLI, what to do with type-check diagnostics, and how to confirm
+  which build is live moved to reference files. The description now names what people say: publish,
+  make it live, deploy, upload. The warning to do the first publish in the browser editor is gone —
+  a first publish from the CLI goes live.
+- **`/b6p-audit` and `/b6p-pull` match CLI 0.8.0.** The audit says what `/b6p-push` would do with
+  each file it lists: stop and ask, upload, or keep. Both say that `--yes` prints each answer on
+  stderr.
+
+### Fixed
+
+- **`/b6p-setup` checked that `b6p` was installed, never which version.** A machine on an old CLI
+  looked ready. It now checks the version (above).
+- **The reference said a gateway `b6pt_` token stores fine in `b6p auth set` and then fails with a
+  401.** CLI 0.8.0 refuses it ("That is a gateway token … Nothing was stored."). The platform
+  authoring page and the setup skill's token page say so, and keep the 401 as the sign of a gateway
+  token stored by an older CLI.
+
+### Migration
+
+- Update the b6p CLI to 0.8.0 or later: `npm i -g @bluestep-systems/b6p-cli@latest`, or the new
+  binary from the b6p-cli releases page if you installed a binary. `/b6p-push` tells you if you
+  have not.
+- No hook changes: Codex users do not need to re-trust.
+
+### Maintainers
+
+- `gen:check` has a CLI-floor lint: `B6P_CLI_FLOOR` in `tools/gen-cross-tool/lib.mjs` is the one
+  minimum, and any "X.Y.Z or later" / "older than X.Y.Z" statement in `plugin/**`, `README.md` or
+  `docs/decisions/b6p-cli-distribution.md` that names another version fails (a statement wrapped
+  over two lines counts). Raise the constant and the text in the same change. The ADR has a
+  "Minimum CLI version" note.
+- Both emitters pass the optional `compatibility` skill field through; `b6p-push`, `b6p-pull` and
+  `b6p-audit` state theirs. Advisory only — `/b6p-push` still checks the version when it runs.
+- Evals run before merge against a test org, each by a fresh agent given only the skill: platform
+  drift (stop and ask) on Haiku, Sonnet and Opus; overwrite, then the kept-files question and the
+  delete; an old CLI on `PATH` (stops before any push); and a live publish (`liveVerified: true`).
+  Two text fixes came out of them (run `--file` first and never look for sync metadata; the
+  overwrite-reverts note and `historyRecorded` on a draft). The overwrite, delete and publish were
+  run by hand: Claude Code's auto-mode classifier blocks a subagent's platform write.
+
 ## [plugin 0.37.1] — 2026-09-23
 
 > **The 400 K compaction window no longer overrides your own.** No hook changes — Codex users do
