@@ -11,10 +11,12 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 ### Fixed
 
 - **The reference said to set a field's `formulaId` with a `field` UPDATE, with no check first.**
-  On a field that already has one, the UPDATE swaps the name without updating the formulas that
-  use it, so they break silently. The reference now says to read the field back and confirm
-  `formulaId` is null before the UPDATE, and to use the platform UI Rename to change an existing
-  identifier. A matching quirk sits under "Forms & fields" in the MCP authoring conventions.
+  On a field that already has one, the UPDATE swaps the name with no warning and leaves every
+  reference to the old name in place, so field formulas and BsJs code that use it break silently.
+  The reference now says to confirm the field has no `formulaId` first (`list_applicable_fields`
+  shows it; `describe_form` does not), and to change an existing one with the platform UI Rename —
+  which updates field formulas but not BsJs code, so scripts that use the old name still need a hand
+  edit. A matching quirk sits under "Forms & fields" in the MCP authoring conventions.
 
 ## [plugin 0.38.0] — 2026-09-29
 
