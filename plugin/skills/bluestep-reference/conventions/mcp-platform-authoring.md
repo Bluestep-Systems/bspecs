@@ -480,23 +480,31 @@ The declaration read-back of step 6 has a twin for **query / view creation**, an
 mandatory**: a create call's **success response is not proof the object is complete**. Several inputs are
 accepted, reported as success, and then **silently stored as empty**. After creating a query or view —
 on any path (`view`, `create_mefr`, `createRelateQuery`, `graphql_mutation`) — **read the object back**
-and assert all four:
+and check each row below. `get_view` does not return a query's categories or the unit it runs in,
+so those two rows are checked with `graphql_query` on the query's `remoteObject` instead. (verified
+2026-10)
 
-| Read back | Assert | Why it can be silently empty |
-| --- | --- | --- |
-| `displayFields` | non-empty — and for a MEFR, that the **seeded column is the intended field** | display columns are dropped unless passed at CREATE (above); a query with none renders **blank**. `create_mefr` always seeds one column (never empty), so its check is *which* field got seeded — the base form's first field, per the exemption above |
-| `searchComponents` | non-empty | an empty criteria set **fails open** — the backing DSG matches **every** record that passes the category filter |
-| `recordTypes` | expected type(s) | categories are categories **of** a base record type; without it the filter has nothing to hang on |
-| `mustHaveCategories` / `mustNotHaveCategories` | expected sets | accepted on create, **stored neither** |
+| Check | Expect | Read with | Why it can go wrong silently |
+| --- | --- | --- | --- |
+| `displayFields` | non-empty — and for a MEFR, that the **seeded column is the intended field** | `get_view` | display columns are dropped unless passed at CREATE (above); a query with none renders **blank**. `create_mefr` always seeds one column (never empty), so its check is *which* field got seeded — the base form's first field, per the exemption above |
+| `recordTypes` | expected type(s) | `get_view` | categories are categories **of** a base record type; without it the filter has nothing to hang on |
+| `searchComponents` | non-empty, **unless** the query is meant to filter by category only | `get_view` | empty criteria and no category filter **fails open** — the query matches **every** record of its record type. A category-only query (record type + must-have category, no criteria) is correct with none |
+| `mustHaveCategories` / `mustNotHaveCategories` | expected sets | `graphql_query`: `remoteObject(id) { ... on RelateQuery { mustHaveCategories { displayName } mustNotHaveCategories { displayName } } }` | accepted on create, **stored neither**; `get_view` shows neither a stored filter nor a dropped one |
+| run unit | for a lookup, a fixed unit that holds every record the code must find | `graphql_query`: `unitKey` on the same `RelateQuery` | `unitKey` set = the query runs there, whatever unit it is called from. `unitKey` null = it runs in the caller's unit, so records outside that unit are silently not found. The `unit` field is the unit that **owns** the query, not where it runs (verified 2026-10) |
 
 Repairing dropped categories: a follow-up `updateRelateQuery` **also** drops them **unless
 `recordTypes` is sent in the same mutation** — the repair call must carry the record types alongside
-the categories, not the categories alone.
+the categories, not the categories alone. Confirm the repair with the `mustHaveCategories` read above.
 
-The `searchComponents` one is a **security** failure, not a cosmetic one: an empty criteria set on a
-permission query does not deny, it **admits everyone** who clears the category filter. Never conclude a
-permission query works because the create returned success — assert the read-back, exactly as step 6
-requires for declarations.
+A criterion **with a blank value** is not the same as an empty criteria set: it is applied. `<>` blank
+means "is not empty" and `=` blank means "is empty", so a leftover blank criterion silently hides every
+record that does (or does not) have a value in that field. It does not fail open, and it is not a
+half-made criterion to ignore. (verified 2026-10)
+
+The `searchComponents` one is a **security** failure, not a cosmetic one: a permission query with no
+criteria and no category filter does not deny, it **admits everyone** of its record type. Never conclude
+a permission query works because the create returned success — check the read-back, exactly as step 6
+requires for declarations, including the categories `get_view` cannot show.
 
 ## See also
 

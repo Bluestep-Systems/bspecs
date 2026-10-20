@@ -17,6 +17,17 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   shows it; `describe_form` does not), and to change an existing one with the platform UI Rename —
   which updates field formulas but not BsJs code, so scripts that use the old name still need a hand
   edit. A matching quirk sits under "Forms & fields" in the MCP authoring conventions.
+- **The query read-back asked for checks `get_view` cannot do.** It said to confirm the categories
+  on the read-back, but `get_view` does not return them, and it called every query with no criteria
+  a fail-open, which a category-only permission query is not. The read-back table now says what
+  `get_view` shows and reads the rest with `graphql_query`: `mustHaveCategories` /
+  `mustNotHaveCategories`, and `unitKey` for the unit a query runs in (the `unit` field is the owner
+  unit). It also says a criterion with a blank value is applied (`<>` blank is "is not empty"), not
+  ignored.
+- **The staff-query permission pattern did not say the query must run in a fixed unit.** A query
+  with no fixed run unit only returns records in the unit it is called from, so staff outside the
+  page's unit are silently not found. The pattern now says to check `unitKey` before reusing a query,
+  and to test with non-super users.
 
 ## [plugin 0.38.0] — 2026-09-29
 
