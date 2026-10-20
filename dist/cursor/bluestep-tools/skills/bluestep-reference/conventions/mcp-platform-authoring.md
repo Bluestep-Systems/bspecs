@@ -343,7 +343,10 @@ verified — the dating key at the top of this page says how to read the markers
 - **Set `formulaId` at field CREATE** — it is what makes the field appear in the generated BSJS
   declarations. An `altIds FID=` entry is **not** `formulaId`: a field created with only altIds gets
   `formulaId: null`, does not appear in declarations, and the tool warns about it. Repair: a `field`
-  **UPDATE** setting `formulaId`. (verified 2026-08)
+  **UPDATE** setting `formulaId`, only after reading the field back. (verified 2026-08)
+- **A `field` / `batch_fields` UPDATE of `formulaId` overwrites an existing identifier without a
+  warning and without the cascade the UI Rename runs** — confirm `formulaId` is null first; see
+  [reference/fid-alternate-identifier.md](../reference/fid-alternate-identifier.md). (verified 2026-10-08)
 - **`altIds` is not a general field-setter.** It writes key/value alternate-id entries and nothing
   else: a plausible-looking key (e.g. `uniqueId`) "succeeds" by appending an alt-id entry while the
   platform field it resembles stays unset — a success response proves no specific platform field

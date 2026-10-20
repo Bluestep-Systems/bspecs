@@ -8,6 +8,14 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+### Fixed
+
+- **The reference said to set a field's `formulaId` with a `field` UPDATE, with no check first.**
+  On a field that already has one, the UPDATE swaps the name without updating the formulas that
+  use it, so they break silently. The reference now says to read the field back and confirm
+  `formulaId` is null before the UPDATE, and to use the platform UI Rename to change an existing
+  identifier. A matching quirk sits under "Forms & fields" in the MCP authoring conventions.
+
 ## [plugin 0.38.0] — 2026-09-29
 
 > **`/b6p-push` asks before anything on the platform is overwritten or deleted.** It needs the b6p
