@@ -122,14 +122,21 @@ Locked by the task-1 live prove-out (`prove-out.md` has the full failure ladders
   `afterFileEdit` as warn-only advisories, because Cursor had no blocking pre-edit event). Cursor's
   `preToolUse` runs before any tool and carries `{tool_name, tool_input}` like Claude Code's
   `PreToolUse`, so the wrapper passes stdin to the shared script untouched and maps its exit-2
-  block to `{"permission":"deny"}`. No parser in the wrapper: the shared script owns parsing and
-  fails closed. What is still unproven live is the path key Cursor's Write tool sends
+  block to `{"permission":"deny"}`; any other failure it can see (no input, script missing or not
+  starting, lost exec bit) also denies. No parser in the wrapper: the shared script owns parsing
+  and fails closed. A `matcher` keeps the hook off Read/Grep/Shell/MCP calls (on Windows each
+  start pops a git-bash window and the wrapper never runs, so there the hook falls open), and the
+  wrapper repeats the same filter on `tool_name` so a matcher read differently cannot let an edit
+  through. Not yet confirmed on a live Cursor seat: the path key Cursor's Write tool sends
   (`dist/cursor/.../hooks/README.md`, "Not yet proven live").
 - **Cursor's marketplace entry carries no `version`**: the importer's schema sets
   `additionalProperties:false` on a plugin entry (`name`, `source`, `description`,
   `minClientVersions` only), so the mirrored `version` made the import add 0 plugins (#238). The
   version lives in the plugin manifest; the entry reaches the plugin dir as `metadata.pluginRoot`
-  + bare source name, the form the official marketplace uses, not `./dist/...`.
+  (a documented marketplace field) + bare source name (the form the official marketplace uses,
+  with its plugins at the repo root). The `./dist/...` form is what #238 reports the importer no
+  longer resolves; the schema itself only says "relative to the marketplace root". The import has
+  not been re-run since.
 - **MCP env syntax differs per tool**: Cursor interpolates `${env:B6PT_TOKEN}` in a bundled
   `mcp.json`; Codex does **not** interpolate `${VAR}` in headers — its config uses
   `bearer_token_env_var: "B6PT_TOKEN"`.

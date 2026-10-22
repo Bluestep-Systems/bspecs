@@ -92,9 +92,35 @@ process.stdin.on("data", d => s += d).on("end", () => {
   esac
 }
 
-# A parser exists but choked on the payload: also block. Same reasoning.
+# A parser exists but the payload is not JSON with a tool_input object: also block. Same
+# reasoning. This parses for real — a grep for the "tool_input" string let a truncated payload
+# through (hook_field came back empty, nothing matched, exit 0: the fail-open shape again).
 hook_require_parse() {
-  printf '%s' "$HOOK_INPUT" | grep -q '"tool_input"' && return 0
+  case "$_hook_parser" in
+    jq)
+      printf '%s' "$HOOK_INPUT" | jq -e '.tool_input | type == "object"' >/dev/null 2>&1 && return 0
+      ;;
+    python3 | python)
+      printf '%s' "$HOOK_INPUT" | "$_hook_parser" -c '
+import json, sys
+try:
+    d = json.load(sys.stdin)
+except Exception:
+    sys.exit(1)
+sys.exit(0 if isinstance(d, dict) and isinstance(d.get("tool_input"), dict) else 1)
+' 2>/dev/null && return 0
+      ;;
+    node)
+      printf '%s' "$HOOK_INPUT" | node -e '
+let s = "";
+process.stdin.on("data", d => s += d).on("end", () => {
+  let d;
+  try { d = JSON.parse(s); } catch (e) { process.exit(1); }
+  process.exit(d && typeof d === "object" && d.tool_input && typeof d.tool_input === "object" ? 0 : 1);
+});
+' 2>/dev/null && return 0
+      ;;
+  esac
   echo "BLOCKED: the ${HOOK_NAME:-BlueStep} guardrail hook received input it could not recognise, so it cannot tell whether this call is safe. It blocks rather than allow an unchecked call. Report this with the tool you were running." >&2
   exit 2
 }

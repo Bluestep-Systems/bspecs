@@ -114,7 +114,7 @@ Once `bluestep-tools` is enabled:
 - **Setup** — `/b6p-setup` (machine, project and update in one run) and `/bluestep-vite-report` (scaffold an off-platform Vite/Preact merge report).
 - **Platform authoring** — the bundled `bluestep-gateway` MCP server (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set) lets the agent create and wire platform objects in-session.
 - **Subagents** — `b6p-task-implementer` (isolated task execution), `b6p-commenter` (component README), `b6p-code-review` (report-only review).
-- **Guardrail hook** — blocks hand-edits to platform-generated files (`declarations/`, `B.d.ts`, …). Claude Code and Cursor block before the edit; Codex runs it only once trusted. On Claude Code a session canary warns once if no JSON parser is on PATH and offers setup in a folder that holds components but no rules file.
+- **Guardrail hook** — blocks hand-edits to platform-generated files (`declarations/`, `B.d.ts`, …). Claude Code blocks; Cursor is wired to block too (`preToolUse`, not yet confirmed on a live seat, and not on Windows); Codex runs it only once trusted. On Claude Code a session canary warns once if no JSON parser is on PATH and offers setup in a folder that holds components but no rules file.
 - **On-demand reference** — `bluestep-reference`, a BsJs/RelateScript/platform reference the agent reads one file at a time, only when a task calls for it.
 - **Feedback** — `/task-comment` (ClickUp implementation comment), `/bspecs-feedback` (propose a plugin change upstream; you get an email when it is closed).
 
@@ -164,7 +164,8 @@ Marketplaces → add `Bluestep-Systems/bspecs` → Plugins → install **blueste
 **Cursor.** Plugins → **Add Marketplace → Import from Repo** → `https://github.com/Bluestep-Systems/bspecs`
 → install **bluestep-tools** (enable it on the Manage screen if it is off). Open your project folder
 first — skills and hooks are workspace-coupled. Updates arrive on their own. The edit guardrail runs
-on Cursor's `preToolUse` event and blocks before the edit lands. Do not judge the install by
+on Cursor's `preToolUse` event, wired to block before the edit lands (not yet confirmed on a live
+seat; on Windows the `.sh` wrapper does not run under PowerShell, so there it does not protect). Do not judge the install by
 the plugin page's skill count; the composer's slash menu with your project open is the truth.
 
 **Codex.** `codex plugin marketplace add Bluestep-Systems/bspecs`, install **bluestep-tools** from it,

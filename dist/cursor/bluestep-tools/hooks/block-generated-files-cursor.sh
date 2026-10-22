@@ -8,13 +8,16 @@
 # shape the shared script already reads, so it goes through untouched. The
 # shared script parses it with jq, python3, python or node — whichever is on
 # PATH — and BLOCKS when none is (lib/hook-input.sh), so this wrapper needs
-# no parser of its own. Exit 2 from the shared script becomes Cursor's
-# {"permission":"deny"} with the script's message; anything else allows.
+# no parser of its own. Exit 0 from the shared script allows; exit 2 becomes
+# Cursor's {"permission":"deny"} with the script's message; ANY other outcome
+# (script missing, bash missing, exec bit lost, crash) also denies — a
+# guardrail that cannot run must not pretend the call is safe.
 #
-# Only tool names matching the filter below are checked; every other tool
-# call is allowed untouched.
+# Only tool names matching the filter below are checked (the same regex is
+# the hooks.json matcher); every other tool call is allowed untouched.
 
-TOOL_FILTER='[Ww]rite|[Ee]dit|[Rr]eplace|[Dd]elete'
+TOOL_FILTER='[Ww]rite|[Ee]dit|[Rr]eplace|[Pp]atch|[Dd]elete'
+HOOK="BlueStep guardrail hook (block-generated-files.sh)"
 
 allow() {
   printf '{"permission":"allow"}\n'
@@ -22,23 +25,38 @@ allow() {
 }
 
 # Print a deny with the message JSON-escaped (no parser: tr + sed), exit 0.
+# Control characters are dropped so the JSON stays valid and Cursor shows the
+# message instead of a schema error.
 deny() {
-  MSG=$(printf '%s' "$1" | tr '\n\r\t' '   ' | sed 's/\\/\\\\/g; s/"/\\"/g')
+  MSG=$(printf '%s' "$1" | tr '\n\r\t' '   ' | tr -d '\000-\010\013\014\016-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
   [ -n "$MSG" ] || MSG='BLOCKED by the BlueStep guardrail hook (the message could not be formatted: tr or sed missing).'
   printf '{"permission":"deny","user_message":"%s","agent_message":"%s"}\n' "$MSG" "$MSG"
   exit 0
 }
 
-INPUT=$(cat 2>/dev/null) || deny "BLOCKED: the BlueStep guardrail hook (block-generated-files.sh) could not read its input, so it cannot tell whether this call is safe."
-printf '%s' "$INPUT" | grep -Eq '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*('"$TOOL_FILTER"')' || allow
+INPUT=$(cat 2>/dev/null) || deny "BLOCKED: the $HOOK could not read its input, so it cannot tell whether this call is safe."
+[ -n "$INPUT" ] || deny "BLOCKED: the $HOOK received no input, so it cannot tell whether this call is safe."
+
+# Tool-name filter. Newlines are flattened first so a pretty-printed payload
+# cannot slip past a line-based grep. grep exit 1 = not an edit tool; any
+# other failure (grep or tr missing) is unknown territory, so deny.
+FLAT=$(printf '%s' "$INPUT" | tr -d '\n\r') || deny "BLOCKED: the $HOOK cannot inspect the tool name (tr failed), so it cannot tell whether this call is safe."
+printf '%s' "$FLAT" | grep -Eqi '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*('"$TOOL_FILTER"')'
+case $? in
+  0) ;;
+  1) allow ;;
+  *) deny "BLOCKED: the $HOOK cannot inspect the tool name (grep failed), so it cannot tell whether this call is safe." ;;
+esac
 
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
 SHARED="$DIR/shared/block-generated-files.sh"
-[ -f "$SHARED" ] || deny "BLOCKED: the BlueStep guardrail hook cannot find its script ($SHARED), so it cannot check this call. Reinstall or update the bluestep-tools plugin."
+[ -f "$SHARED" ] || deny "BLOCKED: the $HOOK cannot find its script ($SHARED), so it cannot check this call. Reinstall or update the bluestep-tools plugin."
 
-OUT=$(printf '%s' "$INPUT" | "$SHARED" 2>&1 >/dev/null)
+# Run through bash explicitly: a lost exec bit must not turn into an allow.
+OUT=$(printf '%s' "$INPUT" | bash "$SHARED" 2>&1 >/dev/null)
 STATUS=$?
-if [ "$STATUS" -eq 2 ]; then
-  deny "$OUT"
-fi
-allow
+case "$STATUS" in
+  0) allow ;;
+  2) deny "$OUT" ;;
+  *) deny "BLOCKED: the $HOOK failed to run (exit $STATUS: $OUT), so it cannot tell whether this call is safe. Reinstall or update the bluestep-tools plugin." ;;
+esac

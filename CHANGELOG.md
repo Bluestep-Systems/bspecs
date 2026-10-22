@@ -13,24 +13,39 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 - **Importing the repo as a Cursor team marketplace added nothing** (#238). The generated
   `.cursor-plugin/marketplace.json` carried a `version` on the plugin entry, which Cursor's
   marketplace schema rejects (`additionalProperties: false` on an entry), and a `./dist/...`
-  source, which the importer no longer resolves. The entry now holds only name, source and
-  description, reaches the plugin through `metadata.pluginRoot` + a bare source name, and the
-  version lives only in the plugin manifest. `gen:check` fails on any extra entry key or a
-  prefixed source.
+  source, which the report says the importer no longer resolves. The entry now holds only name,
+  source and description, reaches the plugin through `metadata.pluginRoot` + a bare source name,
+  and the version lives only in the plugin manifest. `gen:check` fails on any extra entry key, a
+  prefixed source, or a pluginRoot + source that does not land on the emitted plugin manifest.
+  The import has not been re-run yet.
 - **The Cursor hook wrapper bailed when `jq` was missing, allowing everything.** The shared
   guardrail script already falls back to python or node and blocks when no parser is on PATH; a
   `command -v jq || allow` in the wrapper disarmed that. The wrapper is now parser-free and
-  `gen:check` fails on a wrapper that checks for a parser itself.
+  denies on every failure it can see: no input, `tr` or `grep` missing, the shared script missing
+  or not starting (it runs the script through `bash`, so a lost exec bit cannot turn into an
+  allow), any exit other than 0 or 2. `gen:check` fails on a wrapper that checks for a parser
+  itself and on a source hook script without its exec bit; `test:hooks` now runs the generated
+  wrapper through those cases.
+- **A truncated hook payload was allowed.** The guardrail's input check only looked for the
+  string `"tool_input"`, so JSON that was cut off after it parsed to nothing, matched nothing and
+  exited 0. It now parses the payload for real (jq, python or node) and blocks unless `tool_input`
+  is an object. Applies on Claude Code, Cursor and Codex alike.
+- **`declarations/x.d.ts` relative to the workspace root was not blocked.** The guardrail only
+  matched `/declarations/` with a leading slash, so a path relative to the workspace root (what a
+  Cursor workspace opened on the component folder sends) went through. It now matches both.
 
 ### Changed
 
-- **The Cursor edit guardrail blocks before the edit.** It now runs on Cursor's `preToolUse`
-  event, which carries `{tool_name, tool_input}` like Claude Code's `PreToolUse`, instead of the
-  warn-only `afterFileEdit`. The wrapper filters on tool name (Write / Edit / Replace / Delete) and
-  turns the script's exit-2 block into `{"permission": "deny"}`. The shared script also reads
-  `target_file` and `relative_workspace_path`, the names Cursor's tools have used for a path, since
-  the docs do not show the Write tool's input. The hooks README under `dist/cursor/` lists what is
-  still unproven on a real Cursor seat: that path key, and `.sh` hooks on Windows.
+- **The Cursor edit guardrail is wired to block before the edit.** It now runs on Cursor's
+  `preToolUse` event, which carries `{tool_name, tool_input}` like Claude Code's `PreToolUse`,
+  instead of the warn-only `afterFileEdit`. A `matcher` (Write / Edit / Replace / Patch / Delete,
+  letter-case tolerant) keeps the hook off Read, Grep, Shell and MCP calls; the wrapper repeats the
+  same filter on `tool_name` and turns the script's exit-2 block into `{"permission": "deny"}`.
+  The shared script also reads `target_file` and `relative_workspace_path`, the names Cursor's
+  tools have used for a path, since the docs do not show the Write tool's input. The hooks README
+  under `dist/cursor/` lists what is still unproven on a real Cursor seat: that path key, and
+  whether an `allow` from the hook skips Cursor's own approval. On Windows the `.sh` wrapper does
+  not run under PowerShell, so the hook falls open there.
 
 - **The reference said to set a field's `formulaId` with a `field` UPDATE, with no check first.**
   On a field that already has one, the UPDATE swaps the name with no warning and leaves every

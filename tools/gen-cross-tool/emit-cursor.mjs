@@ -111,15 +111,21 @@ function readManifest(tree) {
 
 // ---------- hook wiring (task 9) ----------
 
-// Map a source (Claude-schema) PreToolUse matcher to the ERE the Cursor
-// wrapper applies to tool_name (every group lands on Cursor's preToolUse).
+// Map a source (Claude-schema) PreToolUse matcher to the tool-name regex used
+// twice on Cursor: as the hooks.json `matcher` (so the hook is not even
+// started for Read/Grep/Shell/MCP calls — on Windows each start would pop a
+// git-bash window, and an `allow` answered to a Shell call might skip the
+// user's own approval) and as the wrapper's own grep (so a matcher Cursor
+// evaluates differently than expected still cannot let an edit through).
+// Substring, letter-case tolerant without (?i) — the matcher is a JS regex
+// and Cursor documents `Write` and `Delete` but not its edit tool's name.
 // Anything unrecognized fails loudly — a new kind of hook needs a deliberate
 // wiring decision, not a silent guess.
 function cursorToolFilterFor(matcher) {
   const parts = String(matcher ?? '').split('|').map((s) => s.trim()).filter(Boolean);
   if (parts.length && parts.every((p) => p === 'Bash')) return '[Ss]hell|[Bb]ash';
   if (parts.length && parts.every((p) => ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(p))) {
-    return '[Ww]rite|[Ee]dit|[Rr]eplace|[Dd]elete';
+    return '[Ww]rite|[Ee]dit|[Rr]eplace|[Pp]atch|[Dd]elete';
   }
   throw new Error(`emit-cursor: hooks/hooks.json: no Cursor tool filter for matcher "${matcher}" — refusing to emit`);
 }
@@ -167,10 +173,13 @@ function readHookWiring(tree) {
 //
 // preToolUse is a permission hook: Cursor blocks on invalid or missing JSON,
 // so every path prints one well-formed {"permission":...} line. The tool-name
-// filter is a plain grep on the raw input (no matcher in hooks.json — the
-// prove-out showed matchers are the fragile part), case-tolerant on purpose:
-// Cursor documents `Write` and `Delete`, and its edit tool's exact name is
-// not documented.
+// filter is a plain grep on the raw input, case-insensitive, duplicating the
+// hooks.json matcher on purpose (see cursorToolFilterFor).
+//
+// Fail closed everywhere the wrapper itself can tell something is wrong: no
+// input, a tool helper missing, the shared script missing or not starting
+// (bash absent, exec bit lost — the latter has happened in this repo), or
+// any exit other than 0/2. Only a wrapper Cursor never starts falls open.
 //
 // String.raw: the body is shell, keep its backslashes as written.
 function preToolUseWrapper(script, toolFilter) {
@@ -184,13 +193,16 @@ function preToolUseWrapper(script, toolFilter) {
 # shape the shared script already reads, so it goes through untouched. The
 # shared script parses it with jq, python3, python or node — whichever is on
 # PATH — and BLOCKS when none is (lib/hook-input.sh), so this wrapper needs
-# no parser of its own. Exit 2 from the shared script becomes Cursor's
-# {"permission":"deny"} with the script's message; anything else allows.
+# no parser of its own. Exit 0 from the shared script allows; exit 2 becomes
+# Cursor's {"permission":"deny"} with the script's message; ANY other outcome
+# (script missing, bash missing, exec bit lost, crash) also denies — a
+# guardrail that cannot run must not pretend the call is safe.
 #
-# Only tool names matching the filter below are checked; every other tool
-# call is allowed untouched.
+# Only tool names matching the filter below are checked (the same regex is
+# the hooks.json matcher); every other tool call is allowed untouched.
 
 TOOL_FILTER='${toolFilter}'
+HOOK="BlueStep guardrail hook (${script})"
 
 allow() {
   printf '{"permission":"allow"}\n'
@@ -198,26 +210,41 @@ allow() {
 }
 
 # Print a deny with the message JSON-escaped (no parser: tr + sed), exit 0.
+# Control characters are dropped so the JSON stays valid and Cursor shows the
+# message instead of a schema error.
 deny() {
-  MSG=$(printf '%s' "$1" | tr '\n\r\t' '   ' | sed 's/\\/\\\\/g; s/"/\\"/g')
+  MSG=$(printf '%s' "$1" | tr '\n\r\t' '   ' | tr -d '\000-\010\013\014\016-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
   [ -n "$MSG" ] || MSG='BLOCKED by the BlueStep guardrail hook (the message could not be formatted: tr or sed missing).'
   printf '{"permission":"deny","user_message":"%s","agent_message":"%s"}\n' "$MSG" "$MSG"
   exit 0
 }
 
-INPUT=$(cat 2>/dev/null) || deny "BLOCKED: the BlueStep guardrail hook (${script}) could not read its input, so it cannot tell whether this call is safe."
-printf '%s' "$INPUT" | grep -Eq '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*('"$TOOL_FILTER"')' || allow
+INPUT=$(cat 2>/dev/null) || deny "BLOCKED: the $HOOK could not read its input, so it cannot tell whether this call is safe."
+[ -n "$INPUT" ] || deny "BLOCKED: the $HOOK received no input, so it cannot tell whether this call is safe."
+
+# Tool-name filter. Newlines are flattened first so a pretty-printed payload
+# cannot slip past a line-based grep. grep exit 1 = not an edit tool; any
+# other failure (grep or tr missing) is unknown territory, so deny.
+FLAT=$(printf '%s' "$INPUT" | tr -d '\n\r') || deny "BLOCKED: the $HOOK cannot inspect the tool name (tr failed), so it cannot tell whether this call is safe."
+printf '%s' "$FLAT" | grep -Eqi '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*('"$TOOL_FILTER"')'
+case $? in
+  0) ;;
+  1) allow ;;
+  *) deny "BLOCKED: the $HOOK cannot inspect the tool name (grep failed), so it cannot tell whether this call is safe." ;;
+esac
 
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
 SHARED="$DIR/shared/${script}"
-[ -f "$SHARED" ] || deny "BLOCKED: the BlueStep guardrail hook cannot find its script ($SHARED), so it cannot check this call. Reinstall or update the bluestep-tools plugin."
+[ -f "$SHARED" ] || deny "BLOCKED: the $HOOK cannot find its script ($SHARED), so it cannot check this call. Reinstall or update the bluestep-tools plugin."
 
-OUT=$(printf '%s' "$INPUT" | "$SHARED" 2>&1 >/dev/null)
+# Run through bash explicitly: a lost exec bit must not turn into an allow.
+OUT=$(printf '%s' "$INPUT" | bash "$SHARED" 2>&1 >/dev/null)
 STATUS=$?
-if [ "$STATUS" -eq 2 ]; then
-  deny "$OUT"
-fi
-allow
+case "$STATUS" in
+  0) allow ;;
+  2) deny "$OUT" ;;
+  *) deny "BLOCKED: the $HOOK failed to run (exit $STATUS: $OUT), so it cannot tell whether this call is safe. Reinstall or update the bluestep-tools plugin." ;;
+esac
 `;
 }
 
@@ -240,7 +267,7 @@ Generated by \`tools/gen-cross-tool\` from \`plugin/hooks/\` (see
 
 | Guardrail | Cursor event | Tools checked | Behavior |
 |---|---|---|---|
-| block-generated-files | \`preToolUse\` | names containing Write / Edit / Replace / Delete | **Blocks** before the edit lands |
+| block-generated-files | \`preToolUse\` | names containing Write / Edit / Replace / Patch / Delete | **Blocks** before the edit lands (pending the live check below) |
 | canary | *(not wired)* | — | Claude Code-only SessionStart check; \`shared/canary.sh\` ships but nothing runs it on Cursor |
 
 \`preToolUse\` runs before any tool and carries \`{tool_name, tool_input}\`, the
@@ -256,24 +283,38 @@ exactly as it does on Claude Code. The earlier wiring used \`afterFileEdit\`
   Cursor's edit tool uses another key the check matches nothing and the edit
   goes through. First thing to confirm on a real Cursor seat: hand-edit a
   \`declarations/\` file through the agent and expect a deny.
-- **Windows.** Cursor runs hook commands through PowerShell on Windows; a
-  \`.sh\` wrapper only runs there if \`.sh\` is associated with a POSIX shell.
-  Untested.
+- **Windows.** Cursor runs hook commands through PowerShell on Windows. With
+  the usual Git for Windows setup, PowerShell hands a \`.sh\` file to a separate
+  git-bash window, drops stdin and reports exit 0 with no output — so the
+  wrapper never really runs there and the hook falls open (no output with
+  \`failClosed\` unset is an allow). Not tested inside Cursor itself. The
+  \`matcher\` keeps that from happening on every Read/Grep/Shell call.
+- **Whether an \`allow\` from this hook skips Cursor's own approval** for a
+  tool. The docs do not say. The \`matcher\` keeps the hook off Shell and MCP
+  calls, so the question only matters for edit tools.
 
 ## Deliberate choices
 
-- **No matchers in hooks.json** — the task-1 prove-out showed matchers are the
-  fragile part (tool names are surface-specific); each wrapper greps
-  \`tool_name\` itself, case-tolerant, because Cursor documents \`Write\` and
-  \`Delete\` but not the exact name of its edit tool.
+- **A \`matcher\` in hooks.json AND the same filter in the wrapper.** The
+  task-1 prove-out showed matchers are the fragile part (tool names are
+  surface-specific), which argued for none — but a hook that starts on every
+  tool call pops a git-bash window per call on Windows and answers \`allow\` to
+  Shell calls it knows nothing about. So the matcher limits where the hook
+  starts, and the wrapper's own case-insensitive grep on \`tool_name\` decides
+  independently; a matcher Cursor reads differently than expected still
+  cannot let an edit through.
 - **No parser in the wrapper** — the shared script already falls back
   jq → python3 → python → node and blocks when none is on PATH. A wrapper
   that bails on a missing \`jq\` would silently disarm that (the same shape
   as the 77-day fail-open bug), so the wrapper is plain POSIX sh.
-- **\`failClosed\` left unset** — Cursor's own fail-closed would turn a wrapper
-  that cannot start at all (the Windows case above) into "every edit
-  blocked". The wrapper itself does deny when its script is missing or its
-  input is unreadable; only a wrapper that never runs falls open.
+- **The wrapper denies on every failure it can see** — no input, \`tr\` or
+  \`grep\` missing, the shared script missing, \`bash\` missing, a lost exec bit
+  (it runs the script through \`bash\` explicitly; this repo has lost that bit
+  once already), any exit other than 0 or 2. Only a wrapper Cursor never
+  starts falls open.
+- **\`failClosed\` left unset** — Cursor's own fail-closed would turn the
+  Windows case above into "every edit blocked" with no message. The wrapper's
+  own denies cover everything else.
 - **Relative command paths** — \`./hooks/*-cursor.sh\`, resolved by Cursor
   from the plugin's install directory (documented; \`CURSOR_PLUGIN_ROOT\`
   points there).
@@ -311,7 +352,7 @@ function emit(tree) {
   for (const { script, tools } of wiring) {
     const wrapper = script.replace(/\.sh$/, '-cursor.sh');
     files[`${OUT_PLUGIN}/hooks/${wrapper}`] = { text: preToolUseWrapper(script, tools), mode: 0o755 };
-    (hooksConfig.hooks.preToolUse ??= []).push({ type: 'command', command: `./hooks/${wrapper}` });
+    (hooksConfig.hooks.preToolUse ??= []).push({ type: 'command', command: `./hooks/${wrapper}`, matcher: tools });
   }
   files[`${OUT_PLUGIN}/hooks/hooks.json`] = `${JSON.stringify(hooksConfig, null, 2)}\n`;
   files[`${OUT_PLUGIN}/hooks/README.md`] = HOOKS_README;
@@ -450,6 +491,12 @@ function check(tree, ctx) {
     if (parsed.metadata?.pluginRoot !== 'dist/cursor') {
       problems.push(`cursor: ${marketRel}: metadata.pluginRoot must be "dist/cursor"`);
     }
+    // pluginRoot + source must land on the emitted plugin manifest — two
+    // wrong values that agree with each other must not pass.
+    const resolved = `${parsed.metadata?.pluginRoot}/${entry.source}/.cursor-plugin/plugin.json`;
+    if (!(resolved in files)) {
+      problems.push(`cursor: ${marketRel}: pluginRoot + source resolve to ${resolved}, which is not an emitted file`);
+    }
     if (entry.name !== PLUGIN_NAME) {
       problems.push(`cursor: ${marketRel}: entry name "${entry.name}" must match the plugin manifest name "${PLUGIN_NAME}"`);
     }
@@ -482,6 +529,9 @@ function check(tree, ctx) {
     }
     for (const entries of Object.values(cfg.hooks ?? {})) {
       for (const entry of entries) {
+        if (typeof entry.matcher !== 'string' || !entry.matcher.trim()) {
+          problems.push(`cursor: ${hooksRel}: command "${entry.command}" has no matcher — it would start on every tool call`);
+        }
         const cmd = String(entry.command ?? '');
         if (!cmd.startsWith('./')) {
           problems.push(`cursor: ${hooksRel}: command "${cmd}" is not plugin-relative (./…)`);
@@ -502,8 +552,18 @@ function check(tree, ctx) {
   // No wrapper may bail on a missing parser: the shared script owns parsing
   // and fails closed; a `command -v jq || allow` in front of it disarms that.
   for (const [rel, content] of Object.entries(files)) {
-    if (rel.startsWith(`${OUT_PLUGIN}/hooks/`) && rel.endsWith('-cursor.sh') && /command -v (jq|python3?|node)/.test(contentText(content))) {
+    if (rel.startsWith(`${OUT_PLUGIN}/hooks/`) && rel.endsWith('-cursor.sh') && /\b(command -v|which|type|hash)\s+(jq|python3?|node)\b/.test(contentText(content))) {
       problems.push(`cursor: ${rel}: wrapper checks for a parser itself — the shared script owns that and fails closed`);
+    }
+  }
+
+  // The SOURCE scripts keep their exec bit too (an edit from Windows over a
+  // UNC path has reset one before; Claude Code runs them directly).
+  if (canCheckMode) {
+    for (const f of tree.files) {
+      if (f.rel.startsWith('hooks/') && f.rel.endsWith('.sh') && !executableOnDisk(`plugin/${f.rel}`)) {
+        problems.push(`cursor: plugin/${f.rel}: source hook script is not executable — git update-index --chmod=+x`);
+      }
     }
   }
 
