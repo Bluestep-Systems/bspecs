@@ -8,6 +8,16 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.38.1] — 2026-10-22
+
+> **Cursor: the marketplace imports again and the edit guardrail blocks before the edit.**
+> Importing the repo as a Cursor team marketplace added nothing (#238); the entry is fixed. The
+> Cursor hook moves to `preToolUse` with a matcher, its wrapper no longer needs `jq` and fails
+> closed, and the shared guardrail blocks `declarations/` relative paths and truncated payloads.
+> **This release changes hook definitions: Codex users must re-trust the plugin's hooks** after
+> updating (plugin page → Review → trust, or `/hooks` in the CLI), or the guardrail silently stops
+> running. Also three reference fixes (`formulaId`, the `get_view` read-back, staff-query unit).
+
 ### Fixed
 
 - **Importing the repo as a Cursor team marketplace added nothing** (#238). The generated
