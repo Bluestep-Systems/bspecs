@@ -19,9 +19,19 @@ The runtime docs consume FIDs everywhere — `entry.fields.<name>`, the bare que
 Three consequences of "three different things":
 
 - An `altIds` `FID=` entry on a **field** does **not** set `formulaId` — the field stays out of the
-  declarations (`formulaId: null`) and the tool warns about it. Repair: a `field` UPDATE setting
-  `formulaId`. (verified 2026-08 — see the quirks in
+  declarations (`formulaId: null`) and the tool warns about it. (verified 2026-08 — see the quirks in
   [conventions/mcp-platform-authoring.md](../conventions/mcp-platform-authoring.md))
+- **Before any `field` / `batch_fields` UPDATE that sets `formulaId`, confirm the field has none.**
+  `list_applicable_fields` lists only the fields that have a `formulaId`, with its value — a field
+  missing from that list has none. `describe_form` and `get_form` do not return it. Only on a field
+  with none is the UPDATE safe: it adds a name where there was none. If the field already has one,
+  stop — do not UPDATE it. The UPDATE swaps the value with no warning and leaves every reference to
+  the old name in place: field formulas on forms and BsJs code both still use it and break silently.
+  Changing an existing identifier is the platform UI **Rename** (the field's Advanced Options) — hand
+  it to the user. The Rename updates the field formulas that use the name, but **not** BsJs code:
+  every script that uses the old name still has to be edited by hand. A field missing from the
+  declarations while it already has a `formulaId` has a different cause (access grant, stale pull) —
+  look there instead. (verified 2026-10)
 - An `altIds` entry keyed `uniqueId` does **not** set the ON_DEMAND `Identifier` — it just appends
   an unrelated alt-id while the required field stays blank (false success; same quirks list).
   Setting the Identifier is a UI step.

@@ -1,10 +1,11 @@
 {
   "version": 1,
   "hooks": {
-    "afterFileEdit": [
+    "preToolUse": [
       {
         "type": "command",
-        "command": "./hooks/block-generated-files-cursor.sh"
+        "command": "./hooks/block-generated-files-cursor.sh",
+        "matcher": "[Ww]rite|[Ee]dit|[Rr]eplace|[Pp]atch|[Dd]elete"
       }
     ]
   }

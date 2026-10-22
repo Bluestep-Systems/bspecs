@@ -25,6 +25,9 @@ t "blocks UNC wsl path with backslashes" block-generated-files.sh file_path '\\w
 t "blocks B.d.ts" block-generated-files.sh file_path 'C:\x\B.d.ts' 2
 t "blocks scriptlibrary.d.ts" block-generated-files.sh file_path '/x/scriptlibrary.d.ts' 2
 t "blocks Globals.d.ts" block-generated-files.sh file_path '/x/Globals.d.ts' 2
+t "blocks declarations/ relative to the workspace root" block-generated-files.sh file_path 'declarations/index.d.ts' 2
+t "blocks declarations/ via target_file (Cursor key)" block-generated-files.sh target_file 'src/declarations/Foo.d.ts' 2
+t "blocks declarations/ via relative_workspace_path (Cursor key)" block-generated-files.sh relative_workspace_path 'declarations/Foo.d.ts' 2
 t "allows app.ts (backslashes)" block-generated-files.sh file_path 'C:\x\U129161\Comp\draft\scripts\app.ts' 0
 t "allows README" block-generated-files.sh file_path '/x/draft/README.md' 0
 t "allows a path with 'declarations' as a filename part" block-generated-files.sh file_path '/x/draft/scripts/declarations-helper.ts' 0
@@ -33,6 +36,12 @@ echo "=== fail closed ==="
 out=$(printf '%s' 'not json at all' | bash "$H/block-generated-files.sh" 2>&1); rc=$?
 if [ "$rc" = 2 ]; then echo "  PASS  unparseable input blocks"; pass=$((pass+1));
 else echo "  FAIL  unparseable input gave exit $rc"; fail=$((fail+1)); fi
+out=$(printf '%s' '{"tool_name":"Write","tool_input":{"file_path":"src/app.ts"' | bash "$H/block-generated-files.sh" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then echo "  PASS  truncated JSON that still contains \"tool_input\" blocks"; pass=$((pass+1));
+else echo "  FAIL  truncated JSON gave exit $rc"; fail=$((fail+1)); fi
+out=$(printf '%s' '{"tool_name":"Write","tool_input":"not an object"}' | bash "$H/block-generated-files.sh" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then echo "  PASS  tool_input that is not an object blocks"; pass=$((pass+1));
+else echo "  FAIL  non-object tool_input gave exit $rc"; fail=$((fail+1)); fi
 
 # no parser on PATH: keep bash reachable by absolute path, empty the rest
 BASH_BIN=$(command -v bash)
@@ -45,6 +54,50 @@ else
   echo "  FAIL  no parser gave exit $rc (want 2)"; echo "        ${out:0:120}"; fail=$((fail+1))
 fi
 rmdir "$TMPD" 2>/dev/null
+
+echo "=== exec bits in the index ==="
+# Claude Code runs the source scripts directly; an edit from Windows over a UNC path has reset
+# a mode to 100644 before. core.fileMode may be off, so ask the index, not the filesystem.
+for f in $(cd "$H/.." && git ls-files hooks | grep '\.sh$'); do
+  mode=$(cd "$H/.." && git ls-files -s "$f" | cut -c1-6)
+  if [ "$mode" = 100755 ]; then echo "  PASS  plugin/$f is 100755"; pass=$((pass+1));
+  else echo "  FAIL  plugin/$f is $mode in the index — git update-index --chmod=+x"; fail=$((fail+1)); fi
+done
+
+echo "=== Cursor preToolUse wrapper (generated) ==="
+# The wrapper is generated into dist/cursor by npm run gen; these cases pin its contract:
+# tool-name filter, deny JSON, and fail-closed on everything it can see.
+W="$H/../../dist/cursor/bluestep-tools/hooks/block-generated-files-cursor.sh"
+jc() { "$PY" -c 'import json,sys; print(json.dumps({"tool_name":sys.argv[1],"tool_input":{sys.argv[2]:sys.argv[3]}}))' "$1" "$2" "$3"; }
+perm() { "$PY" -c 'import json,sys; print(json.load(sys.stdin)["permission"])' 2>/dev/null || echo INVALID_JSON; }
+c() { # name expected_permission output
+  if [ "$3" = "$2" ]; then echo "  PASS  $1"; pass=$((pass+1)); else echo "  FAIL  $1 — expected $2, got $3"; fail=$((fail+1)); fi
+}
+if [ ! -f "$W" ]; then
+  echo "  FAIL  $W missing — run npm run gen"; fail=$((fail+1))
+else
+  c "Write declarations (backslashes) → deny" deny "$(jc Write path 'C:\p\declarations\B.d.ts' | sh "$W" | perm)"
+  c "Write target_file declarations → deny" deny "$(jc Write target_file 'src/declarations/Foo.d.ts' | sh "$W" | perm)"
+  c "StrReplace Globals.d.ts → deny" deny "$(jc StrReplace file_path '/p/Globals.d.ts' | sh "$W" | perm)"
+  c "apply_patch declarations → deny (filter is case-insensitive)" deny "$(jc apply_patch path 'declarations/x.ts' | sh "$W" | perm)"
+  c "Delete B.d.ts → deny" deny "$(jc Delete path '/p/B.d.ts' | sh "$W" | perm)"
+  c "Write app.ts → allow" allow "$(jc Write path 'src/app.ts' | sh "$W" | perm)"
+  c "Read declarations → allow (not an edit tool)" allow "$(jc Read path 'declarations/B.d.ts' | sh "$W" | perm)"
+  c "Shell → allow" allow "$(jc Shell command 'rm declarations/B.d.ts' | sh "$W" | perm)"
+  c "pretty-printed payload (newline after the colon) → deny" deny "$(printf '{"tool_name":\n  "Write",\n  "tool_input": {"path": "x/declarations/a.ts"}}' | sh "$W" | perm)"
+  c "quote in the path → deny, valid JSON" deny "$(jc Write path 'x/declarations/a "q".ts' | sh "$W" | perm)"
+  c "control char in the path → deny, valid JSON" deny "$(jc Write path "$(printf 'x/declarations/a\001b.ts')" | sh "$W" | perm)"
+  c "invalid JSON on an edit → deny" deny "$(printf '{"tool_name":"Write","tool_input":{"path":"src/app.ts"' | sh "$W" | perm)"
+  c "empty stdin → deny" deny "$(: | sh "$W" | perm)"
+  WT=$(mktemp -d); cp -r "$(dirname "$W")"/. "$WT/"
+  chmod -x "$WT/shared/block-generated-files.sh"
+  c "shared script without exec bit → still deny on declarations" deny "$(jc Write path '/p/declarations/x.ts' | sh "$WT/block-generated-files-cursor.sh" | perm)"
+  rm -f "$WT/shared/block-generated-files.sh"
+  c "shared script missing → deny" deny "$(jc Write path 'src/app.ts' | sh "$WT/block-generated-files-cursor.sh" | perm)"
+  rm -rf "$WT"
+  out=$(jc Write path 'src/app.ts' | env -i PATH="$TMPD" "$(command -v sh)" "$W" 2>/dev/null); rc=$?
+  c "no tools on PATH → deny (not allow)" deny "$(printf '%s' "$out" | "$PY" -c 'import json,sys; print(json.load(sys.stdin)["permission"])' 2>/dev/null || echo "INVALID_JSON_or_rc=$rc")"
+fi
 
 echo "=== canary.sh (SessionStart) ==="
 NUDGE=$(mktemp -d); mkdir -p "$NUDGE/U123456"

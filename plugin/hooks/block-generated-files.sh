@@ -16,9 +16,15 @@ source "${BASH_SOURCE[0]%/*}/lib/hook-input.sh" || {
 }
 hook_require_parse
 
-FILE=$(hook_field_path file_path path)
+# file_path / path: Claude Code and Codex. target_file / relative_workspace_path: the names
+# Cursor's agent tools have used; its preToolUse docs do not show the Write tool's input, so
+# all four are tried (see dist/cursor/bluestep-tools/hooks/README.md, "Not yet proven live").
+FILE=$(hook_field_path file_path path target_file relative_workspace_path)
 
+# Both forms: anywhere in an absolute path, and at the start of a workspace-relative one (a
+# Cursor workspace opened on the component folder sends "declarations/x.d.ts").
 if [[ "$FILE" == *"/declarations/"* ]] \
+   || [[ "$FILE" == "declarations/"* ]] \
    || [[ "$FILE" == *"B.d.ts" ]] \
    || [[ "$FILE" == *"scriptlibrary.d.ts" ]] \
    || [[ "$FILE" == *"Globals.d.ts" ]]; then

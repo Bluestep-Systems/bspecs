@@ -18,28 +18,39 @@
 //   dist/cursor/bluestep-tools/hooks/shared/*.sh  (byte-identical copies of
 //       plugin/hooks/*.sh — the logic lives ONCE there, never forked)
 //   dist/cursor/bluestep-tools/hooks/*-cursor.sh  (generated thin wrappers:
-//       map Cursor hook stdin → Claude-style JSON → run the shared script →
-//       map the result back; POSIX sh, fail open on any wrapper error)
+//       pass Cursor's preToolUse stdin straight to the shared script — it is
+//       already {tool_name, tool_input} shaped — and map its exit-2 block to
+//       Cursor's {"permission":"deny"} JSON; POSIX sh, no jq needed)
 //   dist/cursor/bluestep-tools/hooks/hooks.json   (Cursor schema, version 1;
 //       matcher-less on purpose — prove-out lesson: matchers are the fragile
-//       part, the scripts themselves decide)
-//   dist/cursor/bluestep-tools/hooks/README.md    (wiring + the documented
-//       degradation: the two edit guardrails are post-hoc/advisory on Cursor)
+//       part; each wrapper filters on tool_name itself)
+//   dist/cursor/bluestep-tools/hooks/README.md    (wiring + what each
+//       guardrail does on Cursor, and what is still unproven live)
 //   dist/cursor/bluestep-tools/mcp.json    (plugin/.mcp.json with
 //       ${B6PT_TOKEN} → ${env:B6PT_TOKEN} — Cursor's interpolation syntax,
 //       proven live in prove-out C6)
-//   .cursor-plugin/marketplace.json        (root marketplace; nested ./-source
-//       layout proven live in the task-1 prove-out, C1/G1)
+//   .cursor-plugin/marketplace.json        (root marketplace; the plugin entry
+//       carries only name/source/description — Cursor's marketplace schema
+//       sets additionalProperties:false on an entry and rejects `version`
+//       (issue #238: the whole import came back with 0 plugins). The plugin
+//       dir is reached through metadata.pluginRoot + a bare source name, the
+//       documented form; a "./"-prefixed source is not.)
 //
 // Hook wiring strategy: derived from plugin/hooks/hooks.json (discovered, not
-// hardcoded — a 4th hook wired there is picked up automatically). Cursor has
-// no blocking pre-edit event that carries the new content (prove-out C5,
-// parked runtime question), so:
-//   matcher "Bash"       → beforeShellExecution (blocking: deny JSON, exit 0)
-//   matcher "Edit|Write" → afterFileEdit (fire-and-forget: POST-HOC/ADVISORY —
-//       stdout is ignored, violations go to stderr → Cursor's hook logs; the
-//       wrapper headers and hooks/README.md say so plainly, no pretend-block)
+// hardcoded — a 4th hook wired there is picked up automatically). Cursor's
+// preToolUse event runs BEFORE any tool (Shell, Read, Write, Delete, MCP, …),
+// carries {tool_name, tool_input} like Claude Code's PreToolUse, and blocks
+// on {"permission":"deny"} (or exit 2). So every source PreToolUse group maps
+// to preToolUse; the matcher only picks the tool-name filter the wrapper
+// applies:
+//   matcher "Bash"       → tools whose name contains Shell/Bash
+//   matcher "Edit|Write" → tools whose name contains Write/Edit/Replace/Delete
 // Any other source event/matcher fails the run loudly.
+//
+// Still unproven live (see hooks/README.md): the key Cursor's Write tool uses
+// for the path inside tool_input. The shared scripts read file_path, path,
+// target_file and relative_workspace_path; if Cursor uses yet another name
+// the check matches nothing and the edit goes through unblocked.
 //
 // ${CLAUDE_PLUGIN_ROOT} rewrite strategy: Cursor exposes no plugin-root
 // variable usable in prose, but every ref lives in a file whose own installed
@@ -100,19 +111,26 @@ function readManifest(tree) {
 
 // ---------- hook wiring (task 9) ----------
 
-// Map a source (Claude-schema) PreToolUse matcher to the Cursor event that
-// carries the equivalent moment. Anything unrecognized fails loudly — a new
-// kind of hook needs a deliberate wiring decision, not a silent guess.
-function cursorEventFor(matcher) {
+// Map a source (Claude-schema) PreToolUse matcher to the tool-name regex used
+// twice on Cursor: as the hooks.json `matcher` (so the hook is not even
+// started for Read/Grep/Shell/MCP calls — on Windows each start would pop a
+// git-bash window, and an `allow` answered to a Shell call might skip the
+// user's own approval) and as the wrapper's own grep (so a matcher Cursor
+// evaluates differently than expected still cannot let an edit through).
+// Substring, letter-case tolerant without (?i) — the matcher is a JS regex
+// and Cursor documents `Write` and `Delete` but not its edit tool's name.
+// Anything unrecognized fails loudly — a new kind of hook needs a deliberate
+// wiring decision, not a silent guess.
+function cursorToolFilterFor(matcher) {
   const parts = String(matcher ?? '').split('|').map((s) => s.trim()).filter(Boolean);
-  if (parts.length && parts.every((p) => p === 'Bash')) return 'beforeShellExecution';
+  if (parts.length && parts.every((p) => p === 'Bash')) return '[Ss]hell|[Bb]ash';
   if (parts.length && parts.every((p) => ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(p))) {
-    return 'afterFileEdit';
+    return '[Ww]rite|[Ee]dit|[Rr]eplace|[Pp]atch|[Dd]elete';
   }
-  throw new Error(`emit-cursor: hooks/hooks.json: no Cursor event mapping for matcher "${matcher}" — refusing to emit`);
+  throw new Error(`emit-cursor: hooks/hooks.json: no Cursor tool filter for matcher "${matcher}" — refusing to emit`);
 }
 
-// Read plugin/hooks/hooks.json and derive [{ script, event }] — discovered,
+// Read plugin/hooks/hooks.json and derive [{ script, tools }] — discovered,
 // not hardcoded, so a future 4th hook wired at the source is picked up here
 // with zero emitter changes.
 function readHookWiring(tree) {
@@ -129,7 +147,7 @@ function readHookWiring(tree) {
       throw new Error(`emit-cursor: hooks/hooks.json: unmapped source hook event "${event}" — give it a Cursor wiring`);
     }
     for (const group of groups) {
-      const cursorEvent = cursorEventFor(group.matcher);
+      const tools = cursorToolFilterFor(group.matcher);
       for (const h of group.hooks ?? []) {
         const m = String(h.command ?? '').match(/\/hooks\/([A-Za-z0-9_.-]+\.sh)$/);
         if (!m) {
@@ -138,7 +156,7 @@ function readHookWiring(tree) {
         if (!tree.files.some((f) => f.rel === `hooks/${m[1]}`)) {
           throw new Error(`emit-cursor: hooks/hooks.json references hooks/${m[1]}, which does not exist`);
         }
-        wiring.push({ script: m[1], event: cursorEvent });
+        wiring.push({ script: m[1], tools });
       }
     }
   }
@@ -146,96 +164,87 @@ function readHookWiring(tree) {
   return wiring;
 }
 
-// Thin wrapper for a blocking shell hook (beforeShellExecution). Cursor stdin
-// carries {command, cwd, ...}; the shared script expects Claude-style
-// {tool_name, tool_input.command} and blocks with exit 2 + stderr; Cursor
-// blocks on stdout {"permission":"deny",...} with exit 0. jq is fair game:
-// the shared scripts already require it.
-function shellWrapper(script) {
-  return `#!/bin/sh
+// Thin wrapper for a preToolUse hook. Cursor's preToolUse stdin is already
+// {tool_name, tool_input, ...} — the same shape Claude Code's PreToolUse sends
+// — so the wrapper passes it to the shared script untouched. The shared
+// script parses it with its own jq → python3 → python → node chain and fails
+// closed when it cannot (lib/hook-input.sh); the wrapper must not re-add a
+// hard jq dependency in front of that, which is why it is parser-free.
+//
+// preToolUse is a permission hook: Cursor blocks on invalid or missing JSON,
+// so every path prints one well-formed {"permission":...} line. The tool-name
+// filter is a plain grep on the raw input, case-insensitive, duplicating the
+// hooks.json matcher on purpose (see cursorToolFilterFor).
+//
+// Fail closed everywhere the wrapper itself can tell something is wrong: no
+// input, a tool helper missing, the shared script missing or not starting
+// (bash absent, exec bit lost — the latter has happened in this repo), or
+// any exit other than 0/2. Only a wrapper Cursor never starts falls open.
+//
+// String.raw: the body is shell, keep its backslashes as written.
+function preToolUseWrapper(script, toolFilter) {
+  return String.raw`#!/bin/sh
 # Generated by tools/gen-cross-tool (emit-cursor) — do not edit; see
-# dist/cursor/GENERATED.md. Cursor beforeShellExecution wrapper around
-# shared/${script}, a byte-identical copy of plugin/hooks/${script} —
-# the blocking logic lives ONCE there, never forked.
-#
-# Maps Cursor's stdin ({"command":...,"cwd":...}) to the Claude-style JSON
-# the shared script expects ({"tool_name":"Bash","tool_input":{"command":..}}),
-# runs it, and maps its exit-2 block to Cursor's deny JSON (exit 0).
-# No matcher in hooks.json on purpose — the script itself decides (prove-out
-# lesson: matchers are the fragile part).
-#
-# Defensive by design: Cursor hooks fail open, so ANY wrapper error must end
-# in {"permission":"allow"} — a crashing wrapper is a silently dead guardrail,
-# and a wrapper bug must never hard-block the user.
-
-allow() {
-  printf '{"permission":"allow"}\\n'
-  exit 0
-}
-
-INPUT=$(cat 2>/dev/null) || allow
-command -v jq >/dev/null 2>&1 || allow
-DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd) || allow
-SHARED="$DIR/shared/${script}"
-[ -f "$SHARED" ] || allow
-
-CLAUDE_INPUT=$(printf '%s' "$INPUT" \\
-  | jq -c '{tool_name:"Bash",tool_input:{command:(.command // "")}}' 2>/dev/null) || allow
-[ -n "$CLAUDE_INPUT" ] || allow
-
-MSG=$(printf '%s' "$CLAUDE_INPUT" | "$SHARED" 2>&1 >/dev/null)
-STATUS=$?
-if [ "$STATUS" -eq 2 ]; then
-  printf '%s' "$MSG" | jq -Rsc '{permission:"deny",user_message:.,agent_message:.}'
-  exit 0
-fi
-allow
-`;
-}
-
-// Thin wrapper for an edit hook, degraded on Cursor (afterFileEdit). Cursor
-// has no blocking pre-edit event carrying the new content (prove-out C5), so
-// this fires AFTER the edit: it cannot block, and it says so — violations go
-// to stderr (Cursor's hook logs); stdout is ignored for afterFileEdit.
-function editWrapper(script) {
-  return `#!/bin/sh
-# Generated by tools/gen-cross-tool (emit-cursor) — do not edit; see
-# dist/cursor/GENERATED.md. Cursor afterFileEdit wrapper around
+# dist/cursor/GENERATED.md. Cursor preToolUse wrapper around
 # shared/${script}, a byte-identical copy of plugin/hooks/${script} —
 # the guardrail logic lives ONCE there, never forked.
 #
-# DEGRADED ON CURSOR — POST-HOC / ADVISORY ONLY. Cursor has no blocking
-# pre-edit hook event that carries the new content (prove-out C5,
-# .claude/specs/cross-tool-plugin-output/prove-out.md), so this runs AFTER
-# the edit already landed and cannot block or undo it. On a violation the
-# shared script's message goes to stderr, which lands in Cursor's hook logs
-# (afterFileEdit stdout is ignored). Until Cursor ships a blocking pre-edit
-# event, this guardrail is advisory on Cursor — it does not pretend to block.
-# See hooks/README.md.
+# Cursor's preToolUse stdin ({"tool_name":...,"tool_input":{...}}) is the
+# shape the shared script already reads, so it goes through untouched. The
+# shared script parses it with jq, python3, python or node — whichever is on
+# PATH — and BLOCKS when none is (lib/hook-input.sh), so this wrapper needs
+# no parser of its own. Exit 0 from the shared script allows; exit 2 becomes
+# Cursor's {"permission":"deny"} with the script's message; ANY other outcome
+# (script missing, bash missing, exec bit lost, crash) also denies — a
+# guardrail that cannot run must not pretend the call is safe.
 #
-# Maps Cursor's stdin ({"file_path":...,"edits":[{"old_string","new_string"}]})
-# to the Claude-style JSON the shared script expects, joining the edits'
-# new_strings as the incoming content.
-#
-# Defensive by design: Cursor hooks fail open, so ANY wrapper error exits 0
-# silently — a crashing wrapper is a silently dead guardrail.
+# Only tool names matching the filter below are checked (the same regex is
+# the hooks.json matcher); every other tool call is allowed untouched.
 
-INPUT=$(cat 2>/dev/null) || exit 0
-command -v jq >/dev/null 2>&1 || exit 0
-DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd) || exit 0
+TOOL_FILTER='${toolFilter}'
+HOOK="BlueStep guardrail hook (${script})"
+
+allow() {
+  printf '{"permission":"allow"}\n'
+  exit 0
+}
+
+# Print a deny with the message JSON-escaped (no parser: tr + sed), exit 0.
+# Control characters are dropped so the JSON stays valid and Cursor shows the
+# message instead of a schema error.
+deny() {
+  MSG=$(printf '%s' "$1" | tr '\n\r\t' '   ' | tr -d '\000-\010\013\014\016-\037' | sed 's/\\/\\\\/g; s/"/\\"/g')
+  [ -n "$MSG" ] || MSG='BLOCKED by the BlueStep guardrail hook (the message could not be formatted: tr or sed missing).'
+  printf '{"permission":"deny","user_message":"%s","agent_message":"%s"}\n' "$MSG" "$MSG"
+  exit 0
+}
+
+INPUT=$(cat 2>/dev/null) || deny "BLOCKED: the $HOOK could not read its input, so it cannot tell whether this call is safe."
+[ -n "$INPUT" ] || deny "BLOCKED: the $HOOK received no input, so it cannot tell whether this call is safe."
+
+# Tool-name filter. Newlines are flattened first so a pretty-printed payload
+# cannot slip past a line-based grep. grep exit 1 = not an edit tool; any
+# other failure (grep or tr missing) is unknown territory, so deny.
+FLAT=$(printf '%s' "$INPUT" | tr -d '\n\r') || deny "BLOCKED: the $HOOK cannot inspect the tool name (tr failed), so it cannot tell whether this call is safe."
+printf '%s' "$FLAT" | grep -Eqi '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*('"$TOOL_FILTER"')'
+case $? in
+  0) ;;
+  1) allow ;;
+  *) deny "BLOCKED: the $HOOK cannot inspect the tool name (grep failed), so it cannot tell whether this call is safe." ;;
+esac
+
+DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
 SHARED="$DIR/shared/${script}"
-[ -f "$SHARED" ] || exit 0
+[ -f "$SHARED" ] || deny "BLOCKED: the $HOOK cannot find its script ($SHARED), so it cannot check this call. Reinstall or update the bluestep-tools plugin."
 
-CLAUDE_INPUT=$(printf '%s' "$INPUT" \\
-  | jq -c '{tool_name:"Edit",tool_input:{file_path:(.file_path // ""),new_string:([.edits[]?.new_string // empty] | join("\\n"))}}' 2>/dev/null) || exit 0
-[ -n "$CLAUDE_INPUT" ] || exit 0
-
-MSG=$(printf '%s' "$CLAUDE_INPUT" | "$SHARED" 2>&1 >/dev/null)
+# Run through bash explicitly: a lost exec bit must not turn into an allow.
+OUT=$(printf '%s' "$INPUT" | bash "$SHARED" 2>&1 >/dev/null)
 STATUS=$?
-if [ "$STATUS" -eq 2 ]; then
-  printf '%s\\n' "POST-HOC on Cursor (edit already applied, cannot block): $MSG" >&2
-fi
-exit 0
+case "$STATUS" in
+  0) allow ;;
+  2) deny "$OUT" ;;
+  *) deny "BLOCKED: the $HOOK failed to run (exit $STATUS: $OUT), so it cannot tell whether this call is safe. Reinstall or update the bluestep-tools plugin." ;;
+esac
 `;
 }
 
@@ -244,42 +253,71 @@ const HOOKS_README = `# Cursor hook wiring — generated, do not edit
 Generated by \`tools/gen-cross-tool\` from \`plugin/hooks/\` (see
 \`../../GENERATED.md\`); regenerate with \`npm run gen\`. Layout:
 
-- \`shared/\` — byte-identical copies of \`plugin/hooks/*.sh\`. The guardrail
-  logic lives ONCE, in those sources; never fork or edit the copies.
-- \`*-cursor.sh\` — generated thin wrappers. Each maps Cursor's hook stdin to
-  the Claude-style JSON its shared script expects, runs it, and maps the
-  result back to what the Cursor event supports. Wrappers locate \`shared/\`
-  via their own \`$0\` directory, so they work regardless of the process cwd.
+- \`shared/\` — byte-identical copies of \`plugin/hooks/*.sh\` (and
+  \`shared/lib/\` of their helper). The guardrail logic lives ONCE, in those
+  sources; never fork or edit the copies.
+- \`*-cursor.sh\` — generated thin wrappers, one per guardrail. Each filters
+  on \`tool_name\`, hands Cursor's \`preToolUse\` stdin to its shared script
+  unchanged, and turns the script's exit-2 block into Cursor's
+  \`{"permission":"deny"}\`. Wrappers locate \`shared/\` via their own \`$0\`
+  directory; Cursor runs plugin hooks from the plugin's install directory.
 - \`hooks.json\` — the Cursor-schema hook config the plugin manifest points at.
 
-## What blocks and what does not (documented degradation)
+## What each guardrail does on Cursor
 
-| Guardrail | Cursor event | Behavior on Cursor |
-|---|---|---|
-| block-generated-files | \`afterFileEdit\` | **Post-hoc / advisory only** |
-| canary | *(not wired)* | Claude Code-only SessionStart check; \`shared/canary.sh\` ships but nothing runs it on Cursor |
+| Guardrail | Cursor event | Tools checked | Behavior |
+|---|---|---|---|
+| block-generated-files | \`preToolUse\` | names containing Write / Edit / Replace / Patch / Delete | **Blocks** before the edit lands (pending the live check below) |
+| canary | *(not wired)* | — | Claude Code-only SessionStart check; \`shared/canary.sh\` ships but nothing runs it on Cursor |
 
-Cursor has no blocking pre-edit hook event that carries the new file content
-(prove-out C5, \`.claude/specs/cross-tool-plugin-output/prove-out.md\`), so the
-two edit guardrails run AFTER the edit has landed and cannot block or undo
-it. On a violation they write the shared script's message to stderr, which
-lands in Cursor's hook logs. Until Cursor ships a blocking pre-edit event,
-treat these two as advisory on Cursor — they do not pretend to block.
+\`preToolUse\` runs before any tool and carries \`{tool_name, tool_input}\`, the
+same shape Claude Code's \`PreToolUse\` sends, so the shared script decides
+exactly as it does on Claude Code. The earlier wiring used \`afterFileEdit\`
+(post-hoc, warn only) because \`preToolUse\` did not exist yet.
+
+## Not yet proven live
+
+- **The path key Cursor's Write tool sends.** The docs show \`tool_input\` only
+  for \`Shell\` (\`command\`, \`working_directory\`). The shared script reads
+  \`file_path\`, \`path\`, \`target_file\` and \`relative_workspace_path\`; if
+  Cursor's edit tool uses another key the check matches nothing and the edit
+  goes through. First thing to confirm on a real Cursor seat: hand-edit a
+  \`declarations/\` file through the agent and expect a deny.
+- **Windows.** Cursor runs hook commands through PowerShell on Windows. With
+  the usual Git for Windows setup, PowerShell hands a \`.sh\` file to a separate
+  git-bash window, drops stdin and reports exit 0 with no output — so the
+  wrapper never really runs there and the hook falls open (no output with
+  \`failClosed\` unset is an allow). Not tested inside Cursor itself. The
+  \`matcher\` keeps that from happening on every Read/Grep/Shell call.
+- **Whether an \`allow\` from this hook skips Cursor's own approval** for a
+  tool. The docs do not say. The \`matcher\` keeps the hook off Shell and MCP
+  calls, so the question only matters for edit tools.
 
 ## Deliberate choices
 
-- **No matchers in hooks.json** — the task-1 prove-out showed matchers are the
-  fragile part (tool names are surface-specific); the scripts themselves
-  decide whether to act.
-- **Fail open on wrapper error** — Cursor hooks fail open anyway, so a
-  crashing wrapper is a silently dead guardrail; every wrapper error path
-  ends in \`{"permission":"allow"}\` (shell) or a silent \`exit 0\` (edit).
-  A wrapper bug must never hard-block the user.
-- **Relative command paths** — \`./hooks/*-cursor.sh\` matches the
-  registration-proven prove-out plugin. Whether Cursor resolves these against
-  the plugin root at *runtime* is still an open question for the task-14
-  smoke test; the wrappers' \`$0\`-based resolution of \`shared/\` keeps them
-  cwd-independent either way.
+- **A \`matcher\` in hooks.json AND the same filter in the wrapper.** The
+  task-1 prove-out showed matchers are the fragile part (tool names are
+  surface-specific), which argued for none — but a hook that starts on every
+  tool call pops a git-bash window per call on Windows and answers \`allow\` to
+  Shell calls it knows nothing about. So the matcher limits where the hook
+  starts, and the wrapper's own case-insensitive grep on \`tool_name\` decides
+  independently; a matcher Cursor reads differently than expected still
+  cannot let an edit through.
+- **No parser in the wrapper** — the shared script already falls back
+  jq → python3 → python → node and blocks when none is on PATH. A wrapper
+  that bails on a missing \`jq\` would silently disarm that (the same shape
+  as the 77-day fail-open bug), so the wrapper is plain POSIX sh.
+- **The wrapper denies on every failure it can see** — no input, \`tr\` or
+  \`grep\` missing, the shared script missing, \`bash\` missing, a lost exec bit
+  (it runs the script through \`bash\` explicitly; this repo has lost that bit
+  once already), any exit other than 0 or 2. Only a wrapper Cursor never
+  starts falls open.
+- **\`failClosed\` left unset** — Cursor's own fail-closed would turn the
+  Windows case above into "every edit blocked" with no message. The wrapper's
+  own denies cover everything else.
+- **Relative command paths** — \`./hooks/*-cursor.sh\`, resolved by Cursor
+  from the plugin's install directory (documented; \`CURSOR_PLUGIN_ROOT\`
+  points there).
 `;
 
 function emit(tree) {
@@ -311,13 +349,10 @@ function emit(tree) {
   }
   const wiring = readHookWiring(tree);
   const hooksConfig = { version: 1, hooks: {} };
-  for (const { script, event } of wiring) {
+  for (const { script, tools } of wiring) {
     const wrapper = script.replace(/\.sh$/, '-cursor.sh');
-    files[`${OUT_PLUGIN}/hooks/${wrapper}`] = {
-      text: event === 'beforeShellExecution' ? shellWrapper(script) : editWrapper(script),
-      mode: 0o755,
-    };
-    (hooksConfig.hooks[event] ??= []).push({ type: 'command', command: `./hooks/${wrapper}` });
+    files[`${OUT_PLUGIN}/hooks/${wrapper}`] = { text: preToolUseWrapper(script, tools), mode: 0o755 };
+    (hooksConfig.hooks.preToolUse ??= []).push({ type: 'command', command: `./hooks/${wrapper}`, matcher: tools });
   }
   files[`${OUT_PLUGIN}/hooks/hooks.json`] = `${JSON.stringify(hooksConfig, null, 2)}\n`;
   files[`${OUT_PLUGIN}/hooks/README.md`] = HOOKS_README;
@@ -352,16 +387,22 @@ function emit(tree) {
 
   files['dist/cursor/GENERATED.md'] = GENERATED_MD;
 
-  // Root Cursor marketplace — nested ./-prefixed source proven in the prove-out.
+  // Root Cursor marketplace. The entry carries ONLY name/source/description:
+  // Cursor's marketplace schema (cursor/plugins, schemas/marketplace.schema.json)
+  // sets additionalProperties:false on a plugin entry, so a `version` key
+  // makes the importer reject it and the import adds 0 plugins (issue #238).
+  // The version lives in the plugin manifest above, where Cursor reads it.
+  // The plugin dir is reached as metadata.pluginRoot + bare source name, the
+  // form the official marketplace and the docs use; "./dist/..." is not.
   files['.cursor-plugin/marketplace.json'] = `${JSON.stringify({
     name: 'bluestep',
     owner: { name: 'BlueStep Systems' },
+    metadata: { pluginRoot: 'dist/cursor' },
     plugins: [
       {
         name: PLUGIN_NAME,
+        source: PLUGIN_NAME,
         description: manifest.description,
-        version: manifest.version,
-        source: `./${OUT_PLUGIN}`,
       },
     ],
   }, null, 2)}\n`;
@@ -422,16 +463,45 @@ function check(tree, ctx) {
       if (fm && 'allowed-tools' in fm.data) problems.push(`cursor: ${rel}: allowed-tools survived in frontmatter`);
     }
   }
-  for (const rel of [`${OUT_PLUGIN}/.cursor-plugin/plugin.json`, '.cursor-plugin/marketplace.json']) {
-    try {
-      const parsed = JSON.parse(contentText(files[rel]));
-      const version = rel.endsWith('marketplace.json') ? parsed.plugins?.[0]?.version : parsed.version;
-      if (version !== ctx.version) {
-        problems.push(`cursor: ${rel}: version "${version}" does not mirror the Claude manifest ("${ctx.version}")`);
-      }
-    } catch (err) {
-      problems.push(`cursor: ${rel}: invalid JSON — ${err.message}`);
+  // The plugin manifest mirrors the Claude version; the marketplace entry must
+  // NOT carry one (issue #238: Cursor's importer rejects the entry and the
+  // import adds nothing), and its source must be the documented bare form.
+  const manifestRel = `${OUT_PLUGIN}/.cursor-plugin/plugin.json`;
+  try {
+    const parsed = JSON.parse(contentText(files[manifestRel]));
+    if (parsed.version !== ctx.version) {
+      problems.push(`cursor: ${manifestRel}: version "${parsed.version}" does not mirror the Claude manifest ("${ctx.version}")`);
     }
+  } catch (err) {
+    problems.push(`cursor: ${manifestRel}: invalid JSON — ${err.message}`);
+  }
+  const marketRel = '.cursor-plugin/marketplace.json';
+  try {
+    const parsed = JSON.parse(contentText(files[marketRel]));
+    const entry = parsed.plugins?.[0] ?? {};
+    const allowed = new Set(['name', 'source', 'description', 'minClientVersions']);
+    for (const key of Object.keys(entry)) {
+      if (!allowed.has(key)) {
+        problems.push(`cursor: ${marketRel}: plugin entry key "${key}" is not in Cursor's marketplace schema (additionalProperties:false) — the importer rejects the entry (#238)`);
+      }
+    }
+    if (typeof entry.source !== 'string' || entry.source.startsWith('./') || entry.source.includes('/')) {
+      problems.push(`cursor: ${marketRel}: source "${entry.source}" must be a bare plugin dir name under metadata.pluginRoot`);
+    }
+    if (parsed.metadata?.pluginRoot !== 'dist/cursor') {
+      problems.push(`cursor: ${marketRel}: metadata.pluginRoot must be "dist/cursor"`);
+    }
+    // pluginRoot + source must land on the emitted plugin manifest — two
+    // wrong values that agree with each other must not pass.
+    const resolved = `${parsed.metadata?.pluginRoot}/${entry.source}/.cursor-plugin/plugin.json`;
+    if (!(resolved in files)) {
+      problems.push(`cursor: ${marketRel}: pluginRoot + source resolve to ${resolved}, which is not an emitted file`);
+    }
+    if (entry.name !== PLUGIN_NAME) {
+      problems.push(`cursor: ${marketRel}: entry name "${entry.name}" must match the plugin manifest name "${PLUGIN_NAME}"`);
+    }
+  } catch (err) {
+    problems.push(`cursor: ${marketRel}: invalid JSON — ${err.message}`);
   }
 
   // ---- task-9 wiring assertions ----
@@ -447,12 +517,21 @@ function check(tree, ctx) {
     }
   };
 
-  // hooks.json parses; every command it references exists and is executable.
+  // hooks.json parses; every hook sits on preToolUse (the blocking event);
+  // every command it references exists and is executable.
   const hooksRel = `${OUT_PLUGIN}/hooks/hooks.json`;
   try {
     const cfg = JSON.parse(contentText(files[hooksRel] ?? ''));
+    for (const event of Object.keys(cfg.hooks ?? {})) {
+      if (event !== 'preToolUse') {
+        problems.push(`cursor: ${hooksRel}: hook event "${event}" — guardrails must sit on preToolUse, the blocking event`);
+      }
+    }
     for (const entries of Object.values(cfg.hooks ?? {})) {
       for (const entry of entries) {
+        if (typeof entry.matcher !== 'string' || !entry.matcher.trim()) {
+          problems.push(`cursor: ${hooksRel}: command "${entry.command}" has no matcher — it would start on every tool call`);
+        }
         const cmd = String(entry.command ?? '');
         if (!cmd.startsWith('./')) {
           problems.push(`cursor: ${hooksRel}: command "${cmd}" is not plugin-relative (./…)`);
@@ -468,6 +547,24 @@ function check(tree, ctx) {
     }
   } catch (err) {
     problems.push(`cursor: ${hooksRel}: invalid JSON — ${err.message}`);
+  }
+
+  // No wrapper may bail on a missing parser: the shared script owns parsing
+  // and fails closed; a `command -v jq || allow` in front of it disarms that.
+  for (const [rel, content] of Object.entries(files)) {
+    if (rel.startsWith(`${OUT_PLUGIN}/hooks/`) && rel.endsWith('-cursor.sh') && /\b(command -v|which|type|hash)\s+(jq|python3?|node)\b/.test(contentText(content))) {
+      problems.push(`cursor: ${rel}: wrapper checks for a parser itself — the shared script owns that and fails closed`);
+    }
+  }
+
+  // The SOURCE scripts keep their exec bit too (an edit from Windows over a
+  // UNC path has reset one before; Claude Code runs them directly).
+  if (canCheckMode) {
+    for (const f of tree.files) {
+      if (f.rel.startsWith('hooks/') && f.rel.endsWith('.sh') && !executableOnDisk(`plugin/${f.rel}`)) {
+        problems.push(`cursor: plugin/${f.rel}: source hook script is not executable — git update-index --chmod=+x`);
+      }
+    }
   }
 
   // Every emitted .sh (wrappers + shared copies) carries the exec bit.

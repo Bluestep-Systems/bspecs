@@ -8,6 +8,74 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.38.1] — 2026-10-22
+
+> **Cursor: the marketplace imports again and the edit guardrail blocks before the edit.**
+> Importing the repo as a Cursor team marketplace added nothing (#238); the entry is fixed. The
+> Cursor hook moves to `preToolUse` with a matcher, its wrapper no longer needs `jq` and fails
+> closed, and the shared guardrail blocks `declarations/` relative paths and truncated payloads.
+> **This release changes hook definitions: Codex users must re-trust the plugin's hooks** after
+> updating (plugin page → Review → trust, or `/hooks` in the CLI), or the guardrail silently stops
+> running. Also three reference fixes (`formulaId`, the `get_view` read-back, staff-query unit).
+
+### Fixed
+
+- **Importing the repo as a Cursor team marketplace added nothing** (#238). The generated
+  `.cursor-plugin/marketplace.json` carried a `version` on the plugin entry, which Cursor's
+  marketplace schema rejects (`additionalProperties: false` on an entry), and a `./dist/...`
+  source, which the report says the importer no longer resolves. The entry now holds only name,
+  source and description, reaches the plugin through `metadata.pluginRoot` + a bare source name,
+  and the version lives only in the plugin manifest. `gen:check` fails on any extra entry key, a
+  prefixed source, or a pluginRoot + source that does not land on the emitted plugin manifest.
+  The import has not been re-run yet.
+- **The Cursor hook wrapper bailed when `jq` was missing, allowing everything.** The shared
+  guardrail script already falls back to python or node and blocks when no parser is on PATH; a
+  `command -v jq || allow` in the wrapper disarmed that. The wrapper is now parser-free and
+  denies on every failure it can see: no input, `tr` or `grep` missing, the shared script missing
+  or not starting (it runs the script through `bash`, so a lost exec bit cannot turn into an
+  allow), any exit other than 0 or 2. `gen:check` fails on a wrapper that checks for a parser
+  itself and on a source hook script without its exec bit; `test:hooks` now runs the generated
+  wrapper through those cases.
+- **A truncated hook payload was allowed.** The guardrail's input check only looked for the
+  string `"tool_input"`, so JSON that was cut off after it parsed to nothing, matched nothing and
+  exited 0. It now parses the payload for real (jq, python or node) and blocks unless `tool_input`
+  is an object. Applies on Claude Code, Cursor and Codex alike.
+- **`declarations/x.d.ts` relative to the workspace root was not blocked.** The guardrail only
+  matched `/declarations/` with a leading slash, so a path relative to the workspace root (what a
+  Cursor workspace opened on the component folder sends) went through. It now matches both.
+
+### Changed
+
+- **The Cursor edit guardrail is wired to block before the edit.** It now runs on Cursor's
+  `preToolUse` event, which carries `{tool_name, tool_input}` like Claude Code's `PreToolUse`,
+  instead of the warn-only `afterFileEdit`. A `matcher` (Write / Edit / Replace / Patch / Delete,
+  letter-case tolerant) keeps the hook off Read, Grep, Shell and MCP calls; the wrapper repeats the
+  same filter on `tool_name` and turns the script's exit-2 block into `{"permission": "deny"}`.
+  The shared script also reads `target_file` and `relative_workspace_path`, the names Cursor's
+  tools have used for a path, since the docs do not show the Write tool's input. The hooks README
+  under `dist/cursor/` lists what is still unproven on a real Cursor seat: that path key, and
+  whether an `allow` from the hook skips Cursor's own approval. On Windows the `.sh` wrapper does
+  not run under PowerShell, so the hook falls open there.
+
+- **The reference said to set a field's `formulaId` with a `field` UPDATE, with no check first.**
+  On a field that already has one, the UPDATE swaps the name with no warning and leaves every
+  reference to the old name in place, so field formulas and BsJs code that use it break silently.
+  The reference now says to confirm the field has no `formulaId` first (`list_applicable_fields`
+  shows it; `describe_form` does not), and to change an existing one with the platform UI Rename —
+  which updates field formulas but not BsJs code, so scripts that use the old name still need a hand
+  edit. A matching quirk sits under "Forms & fields" in the MCP authoring conventions.
+- **The query read-back asked for checks `get_view` cannot do.** It said to confirm the categories
+  on the read-back, but `get_view` does not return them, and it called every query with no criteria
+  a fail-open, which a category-only permission query is not. The read-back table now says what
+  `get_view` shows and reads the rest with `graphql_query`: `mustHaveCategories` /
+  `mustNotHaveCategories`, and `unitKey` for the unit a query runs in (the `unit` field is the owner
+  unit). It also says a criterion with a blank value is applied (`<>` blank is "is not empty"), not
+  ignored.
+- **The staff-query permission pattern did not say the query must run in a fixed unit.** A query
+  with no fixed run unit only returns records in the unit it is called from, so staff outside the
+  page's unit are silently not found. The pattern now says to check `unitKey` before reusing a query,
+  and to test with non-super users.
+
 ## [plugin 0.38.0] — 2026-09-29
 
 > **`/b6p-push` asks before anything on the platform is overwritten or deleted.** It needs the b6p

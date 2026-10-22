@@ -6,11 +6,25 @@ Reusable **permission-gating framework** for merge-report widgets ([merge report
 
 **Setup:** A query of staff (e.g. `allStaffFormerAndActive`, "All Staff Former and Active, Top Level Down") whose records carry a **SingleSelect permission field** on a Permissions form. For example the field might be `permissions.someCapability` with option labels: **`No Access`**, **`Reader Access`**, **`Author Access`**, **`Editor Access`** (labels matter exactly — match the option *displayName*, not a guessed word).
 
+**The staff query must run in a fixed unit that holds every staff record** — like the example's top
+unit, with sub-units. A query with no fixed run unit returns only the records in the unit it is called
+from, so a staff record outside the page's unit is not found: the lookup in step 3 comes back empty,
+with no error, and that user gets `none`. Users whose record sits in the page's unit are found, so a
+test with them passes. Check before reusing any other query (a group's own security query, for
+example): read its `unitKey` with `graphql_query` — null means it has no fixed run unit. `get_view`
+does not show it, and the GraphQL `unit` field is the owner unit, not the run unit; see the read-back
+table in [../conventions/mcp-platform-authoring.md](../conventions/mcp-platform-authoring.md).
+(verified 2026-10)
+
 **Server resolution (fail-closed), order matters:**
 1. `!B.optUser.isPresent()` → `none` (hidden).
 2. `u.isGlobalSuper()` → full (Editor) — **checked FIRST**, because super users have no BaseRecord and would otherwise fail the staff lookup. ("Super user" = BlueStep global super, not an option value.)
 3. Match user→staff: `const id = u.primaryId();` then guard `allStaffFormerAndActive.meetsCriteria(id)` (optById THROWS if criteria fails) → `const f = allStaffFormerAndActive.optById(id); if (f.isPresent()) staff = f.get();`. Not found → `none`.
 4. Read label: `staff.forms.permissions.<field>.opt().map(o => o.displayName()).orElse('')`, then `switch`: `Reader Access`→reader, `Author Access`→author, `Editor Access`→editor; **`No Access` / null / anything unmatched → `none`** (fail closed).
+
+**Test with non-super users.** A super returns at step 2 and never reaches the lookup, so a super test
+proves nothing here. Test with one non-super user whose staff record sits in the page's unit and one
+whose record sits above it.
 
 Server emits capability flags, not raw data: `{ canView, canAdd, canEditDelete, currentUser }`. Mapping: reader→view only; author→view+add; editor/super→view+add+edit/delete. Even the top-level catch emits a safe no-access payload.
 
@@ -46,10 +60,12 @@ displayColumns: [{ formId: "<staff form topId>", fieldId: "<Full Name field topI
 
 **Set it at CREATE.** Column edits on an existing view/query cannot be made through MCP at all — they
 die on the AI-tools DELETE guard and can only be fixed by hand in the platform UI. Then **read the
-created query back** and assert it is complete: non-empty `displayFields` **and** non-empty
-`searchComponents`, plus the expected `recordTypes` and `mustHave`/`mustNotHaveCategories`. An empty
-`searchComponents` on a permission query **fails open** — it admits every record passing the category
-filter, i.e. everyone. Full rules, quirks and the `DisplayColumnInput` field list:
+created query back** with `get_view`: non-empty `displayFields`, the expected `recordTypes`, and
+non-empty `searchComponents` unless the query filters by category only. `get_view` does **not** show
+`mustHave`/`mustNotHaveCategories` or the run unit, so `get_view` alone cannot prove the query is
+safe: read `mustHaveCategories`, `mustNotHaveCategories` and `unitKey` with `graphql_query`. A
+permission query with no criteria **and** no category filter **fails open** — it admits everyone. Full
+rules, quirks and the `DisplayColumnInput` field list:
 [../conventions/mcp-platform-authoring.md](../conventions/mcp-platform-authoring.md).
 
 **Caveat (always flag this):** this gates the UI only. The memo is a real field on the form, so a No-Access/Reader user could still see/alter it via the form or devtools unless that field's own BlueStep view/edit permissions are locked. True data security needs form-level field permissions, not just the merge report.
