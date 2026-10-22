@@ -16,7 +16,10 @@ source "${BASH_SOURCE[0]%/*}/lib/hook-input.sh" || {
 }
 hook_require_parse
 
-FILE=$(hook_field_path file_path path)
+# file_path / path: Claude Code and Codex. target_file / relative_workspace_path: the names
+# Cursor's agent tools have used; its preToolUse docs do not show the Write tool's input, so
+# all four are tried (see dist/cursor/bluestep-tools/hooks/README.md, "Not yet proven live").
+FILE=$(hook_field_path file_path path target_file relative_workspace_path)
 
 if [[ "$FILE" == *"/declarations/"* ]] \
    || [[ "$FILE" == *"B.d.ts" ]] \

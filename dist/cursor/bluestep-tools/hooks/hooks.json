@@ -1,7 +1,7 @@
 {
   "version": 1,
   "hooks": {
-    "afterFileEdit": [
+    "preToolUse": [
       {
         "type": "command",
         "command": "./hooks/block-generated-files-cursor.sh"

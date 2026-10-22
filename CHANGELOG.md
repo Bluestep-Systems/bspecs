@@ -10,6 +10,28 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ### Fixed
 
+- **Importing the repo as a Cursor team marketplace added nothing** (#238). The generated
+  `.cursor-plugin/marketplace.json` carried a `version` on the plugin entry, which Cursor's
+  marketplace schema rejects (`additionalProperties: false` on an entry), and a `./dist/...`
+  source, which the importer no longer resolves. The entry now holds only name, source and
+  description, reaches the plugin through `metadata.pluginRoot` + a bare source name, and the
+  version lives only in the plugin manifest. `gen:check` fails on any extra entry key or a
+  prefixed source.
+- **The Cursor hook wrapper bailed when `jq` was missing, allowing everything.** The shared
+  guardrail script already falls back to python or node and blocks when no parser is on PATH; a
+  `command -v jq || allow` in the wrapper disarmed that. The wrapper is now parser-free and
+  `gen:check` fails on a wrapper that checks for a parser itself.
+
+### Changed
+
+- **The Cursor edit guardrail blocks before the edit.** It now runs on Cursor's `preToolUse`
+  event, which carries `{tool_name, tool_input}` like Claude Code's `PreToolUse`, instead of the
+  warn-only `afterFileEdit`. The wrapper filters on tool name (Write / Edit / Replace / Delete) and
+  turns the script's exit-2 block into `{"permission": "deny"}`. The shared script also reads
+  `target_file` and `relative_workspace_path`, the names Cursor's tools have used for a path, since
+  the docs do not show the Write tool's input. The hooks README under `dist/cursor/` lists what is
+  still unproven on a real Cursor seat: that path key, and `.sh` hooks on Windows.
+
 - **The reference said to set a field's `formulaId` with a `field` UPDATE, with no check first.**
   On a field that already has one, the UPDATE swaps the name with no warning and leaves every
   reference to the old name in place, so field formulas and BsJs code that use it break silently.

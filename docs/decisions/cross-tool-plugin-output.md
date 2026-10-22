@@ -118,9 +118,18 @@ Locked by the task-1 live prove-out (`prove-out.md` has the full failure ladders
 - **Codex agents ship via enablement, not the plugin**: bundled agent files are cached but never
   registered, so the TOML agents are delivered by the enablement step; Codex agent names allow
   only lowercase/digits/underscores (`b6p_task_implementer`, …).
-- **Cursor edit hooks are post-hoc advisories**: Cursor has no blocking pre-edit event carrying
-  the new content, so `block-generated-files` and `block-inline-frontend` run on `afterFileEdit`
-  as documented degradation — they warn, they don't block (`dist/cursor/.../hooks/README.md`).
+- **Cursor guardrails sit on `preToolUse`** (since 2026-10-22; before that they ran on
+  `afterFileEdit` as warn-only advisories, because Cursor had no blocking pre-edit event). Cursor's
+  `preToolUse` runs before any tool and carries `{tool_name, tool_input}` like Claude Code's
+  `PreToolUse`, so the wrapper passes stdin to the shared script untouched and maps its exit-2
+  block to `{"permission":"deny"}`. No parser in the wrapper: the shared script owns parsing and
+  fails closed. What is still unproven live is the path key Cursor's Write tool sends
+  (`dist/cursor/.../hooks/README.md`, "Not yet proven live").
+- **Cursor's marketplace entry carries no `version`**: the importer's schema sets
+  `additionalProperties:false` on a plugin entry (`name`, `source`, `description`,
+  `minClientVersions` only), so the mirrored `version` made the import add 0 plugins (#238). The
+  version lives in the plugin manifest; the entry reaches the plugin dir as `metadata.pluginRoot`
+  + bare source name, the form the official marketplace uses, not `./dist/...`.
 - **MCP env syntax differs per tool**: Cursor interpolates `${env:B6PT_TOKEN}` in a bundled
   `mcp.json`; Codex does **not** interpolate `${VAR}` in headers — its config uses
   `bearer_token_env_var: "B6PT_TOKEN"`.
