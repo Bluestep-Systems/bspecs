@@ -55,6 +55,47 @@ else
 fi
 rmdir "$TMPD" 2>/dev/null
 
+# Windows Store aliases (#243): python3/python are on PATH but only print "Python was not found"
+# and exit non-zero. Detection must skip them and land on the working node, not pick a dead one.
+# The stubs go in front of the real tool folder rather than into an `env -i` PATH of symlinks:
+# Git Bash copies on `ln -s`, and a copied cat.exe cannot find msys-2.0.dll.
+TOOLD=$(dirname "$BASH_BIN")
+NODE_BIN=$(command -v node)
+STUBD=$(mktemp -d)
+for s in jq python3 python; do printf '#!/bin/sh\necho "Python was not found" >&2\nexit 9\n' > "$STUBD/$s"; chmod +x "$STUBD/$s"; done
+# The no-node cases need a tool folder without node. Git Bash's /usr/bin has none; on Linux,
+# where /usr/bin may hold node, a folder with a symlinked cat (the one tool the hook needs) does.
+NONODE="$TOOLD"
+if [ -x "$TOOLD/node" ] || [ -x "$TOOLD/node.exe" ]; then
+  NONODE=$(mktemp -d); ln -s "$(command -v cat)" "$NONODE/cat"
+fi
+if [ -x "$NONODE/node" ] || [ -x "$NONODE/node.exe" ]; then
+  echo "  SKIP  only dead aliases, no node (could not build a folder without node)"
+else
+  out=$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | PATH="$STUBD:$NONODE" "$BASH_BIN" "$H/canary.sh" 2>&1); rc=$?
+  if [ "$rc" = 1 ]; then echo "  PASS  only dead aliases, no node: canary reports no working parser (exit 1)"; pass=$((pass+1));
+  else echo "  FAIL  only dead aliases, no node: canary gave exit $rc (want 1): ${out:0:100}"; fail=$((fail+1)); fi
+  out=$(j file_path 'C:\x\draft\app.ts' | PATH="$STUBD:$NONODE" "$BASH_BIN" "$H/block-generated-files.sh" 2>&1); rc=$?
+  if [ "$rc" = 2 ] && [[ "$out" == *"App execution aliases"* ]]; then echo "  PASS  only dead aliases, no node: blocks and names the alias workaround"; pass=$((pass+1));
+  else echo "  FAIL  only dead aliases, no node: expected the no-parser block, got $rc: ${out:0:100}"; fail=$((fail+1)); fi
+fi
+if [ -n "$NODE_BIN" ]; then
+  SP="$STUBD:$TOOLD:$(dirname "$NODE_BIN")"
+  out=$(j file_path 'C:\x\U1\C\declarations\index.d.ts' | PATH="$SP" "$BASH_BIN" "$H/block-generated-files.sh" 2>&1); rc=$?
+  if [ "$rc" = 2 ] && [[ "$out" == *declarations* ]]; then echo "  PASS  dead aliases + node: falls through to node, still blocks declarations"; pass=$((pass+1));
+  else echo "  FAIL  dead aliases + node: expected the declarations block (exit 2), got $rc: ${out:0:100}"; fail=$((fail+1)); fi
+  out=$(j file_path 'C:\x\draft\app.ts' | PATH="$SP" "$BASH_BIN" "$H/block-generated-files.sh" 2>&1); rc=$?
+  if [ "$rc" = 0 ]; then echo "  PASS  dead aliases + node: app.ts allowed via node"; pass=$((pass+1));
+  else echo "  FAIL  dead aliases + node: app.ts gave exit $rc: ${out:0:100}"; fail=$((fail+1)); fi
+  out=$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | PATH="$SP" "$BASH_BIN" "$H/canary.sh" 2>&1); rc=$?
+  if [ "$rc" = 0 ] && [ -z "$out" ]; then echo "  PASS  dead aliases + node: canary finds node, silent"; pass=$((pass+1));
+  else echo "  FAIL  dead aliases + node: canary gave exit $rc: ${out:0:100}"; fail=$((fail+1)); fi
+else
+  echo "  SKIP  dead aliases + node (no node on PATH)"
+fi
+[ "$NONODE" != "$TOOLD" ] && rm -rf "$NONODE"
+rm -rf "$STUBD"
+
 echo "=== exec bits in the index ==="
 # Claude Code runs the source scripts directly; an edit from Windows over a UNC path has reset
 # a mode to 100644 before. core.fileMode may be off, so ask the index, not the filesystem.

@@ -6,8 +6,8 @@
 #
 # Cursor's preToolUse stdin ({"tool_name":...,"tool_input":{...}}) is the
 # shape the shared script already reads, so it goes through untouched. The
-# shared script parses it with jq, python3, python or node — whichever is on
-# PATH — and BLOCKS when none is (lib/hook-input.sh), so this wrapper needs
+# shared script parses it with jq, python3, python or node — the first that
+# actually reads it — and BLOCKS when none does (lib/hook-input.sh), so this wrapper needs
 # no parser of its own. Exit 0 from the shared script allows; exit 2 becomes
 # Cursor's {"permission":"deny"} with the script's message; ANY other outcome
 # (script missing, bash missing, exec bit lost, crash) also denies — a
