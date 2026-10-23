@@ -22,14 +22,20 @@ if [ -z "${HOOK_DETECT_ONLY:-}" ]; then
   HOOK_INPUT=$(cat)
 fi
 
+# Probe each parser by running it, not with `command -v`. On Windows, python3.exe and python.exe
+# exist in WindowsApps as Microsoft Store app execution aliases even when no Python is installed:
+# `command -v` finds them, running them prints "Python was not found" and exits non-zero, and a
+# guardrail that picked one blocked every Edit and Write while a working node sat unused (#243).
 _hook_parser=""
-for _c in jq python3 python node; do
-  if command -v "$_c" >/dev/null 2>&1; then _hook_parser="$_c"; break; fi
-done
+if jq -n 1 >/dev/null 2>&1; then _hook_parser=jq
+elif python3 -c "import json" >/dev/null 2>&1; then _hook_parser=python3
+elif python -c "import json" >/dev/null 2>&1; then _hook_parser=python
+elif node -e 0 >/dev/null 2>&1; then _hook_parser=node
+fi
 
 # No parser at all: block, loudly, once, with the fix.
 if [ -z "$_hook_parser" ] && [ -z "${HOOK_DETECT_ONLY:-}" ]; then
-  echo "BLOCKED: the ${HOOK_NAME:-BlueStep} guardrail hook cannot read its input — none of jq, python3, python or node is on PATH, so it cannot tell whether this call is safe. It blocks rather than allow an unchecked call. Install any one of them (jq is smallest) and retry, or disable the bluestep-tools hooks if you accept losing the guardrails." >&2
+  echo "BLOCKED: the ${HOOK_NAME:-BlueStep} guardrail hook cannot read its input — none of jq, python3, python or node runs from PATH, so it cannot tell whether this call is safe. It blocks rather than allow an unchecked call. Install any one of them (jq is smallest) and retry, or disable the bluestep-tools hooks if you accept losing the guardrails." >&2
   exit 2
 fi
 

@@ -26,7 +26,7 @@ source "${BASH_SOURCE[0]%/*}/lib/hook-input.sh" || {
 }
 
 if [ -z "$_hook_parser" ]; then
-  echo "bluestep-tools: no JSON parser on PATH (looked for jq, python3, python, node). The guardrail hooks will BLOCK every Edit and Write call in this session until one is installed — jq is the smallest." >&2
+  echo "bluestep-tools: no working JSON parser on PATH (tried running jq, python3, python, node; on Windows a python.exe that only opens the Microsoft Store does not count). The guardrail hooks will BLOCK every Edit and Write call in this session until one is installed — jq is the smallest." >&2
   exit 1
 fi
 

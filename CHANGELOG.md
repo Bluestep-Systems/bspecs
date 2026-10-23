@@ -8,6 +8,25 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.39.2] — 2026-10-23
+
+> **Windows: the guardrail no longer blocks every edit on a machine with only Store Python
+> aliases.** The hooks now pick their JSON parser by running it, not by finding it on PATH (#243).
+> No hook definitions change, so nobody has to re-trust hooks.
+
+### Fixed
+
+- **Every Edit and Write was blocked on Windows machines with no jq and no real Python** (#243).
+  `hooks/lib/hook-input.sh` chose its parser with `command -v`, and on Windows `python3.exe` and
+  `python.exe` exist as Microsoft Store app execution aliases even when Python is not installed. The
+  hook picked `python3`, which only prints "Python was not found", so it could not read its input
+  and blocked every call, while a working `node` was never tried. It now runs each candidate
+  (`jq -n 1`, `python3 -c "import json"`, `python -c "import json"`, `node -e 0`) and uses the first
+  that works. `canary.sh` shares that detection, so it now also reports when only dead aliases are on
+  PATH. `npm run test:hooks` covers both cases with stub aliases. Workaround on older versions:
+  Settings > Apps > Advanced app settings > App execution aliases, turn off python.exe and
+  python3.exe.
+
 ## [plugin 0.39.1] — 2026-10-23
 
 > **Docs: Git is a prerequisite.** A user without Git saw `spawn git ENOENT` on the Cursor plugin

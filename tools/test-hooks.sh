@@ -55,6 +55,28 @@ else
 fi
 rmdir "$TMPD" 2>/dev/null
 
+# Windows Store aliases (#243): python3/python are on PATH but only print "Python was not found"
+# and exit non-zero. Detection must skip them and land on the working node, not pick a dead one.
+NODE_BIN=$(command -v node)
+if [ -n "$NODE_BIN" ]; then
+  STUBD=$(mktemp -d)
+  for s in jq python3 python; do printf '#!/bin/sh\necho "Python was not found" >&2\nexit 9\n' > "$STUBD/$s"; chmod +x "$STUBD/$s"; done
+  for b in cat sed grep tr; do ln -s "$(command -v "$b")" "$STUBD/$b"; done
+  out=$(printf '{"hook_event_name":"SessionStart","source":"startup"}' | env -i PATH="$STUBD" "$BASH_BIN" "$H/canary.sh" 2>&1); rc=$?
+  if [ "$rc" = 1 ]; then echo "  PASS  only dead aliases, no node: canary reports no working parser (exit 1)"; pass=$((pass+1));
+  else echo "  FAIL  only dead aliases, no node: canary gave exit $rc (want 1): ${out:0:100}"; fail=$((fail+1)); fi
+  ln -s "$NODE_BIN" "$STUBD/node"
+  out=$(j file_path 'C:\x\U1\C\declarations\index.d.ts' | env -i PATH="$STUBD" "$BASH_BIN" "$H/block-generated-files.sh" 2>&1); rc=$?
+  if [ "$rc" = 2 ] && [[ "$out" == *declarations* ]]; then echo "  PASS  dead python aliases on PATH: falls through to node, still blocks declarations"; pass=$((pass+1));
+  else echo "  FAIL  dead python aliases: expected the declarations block (exit 2), got $rc: ${out:0:100}"; fail=$((fail+1)); fi
+  out=$(j file_path 'C:\x\draft\app.ts' | env -i PATH="$STUBD" "$BASH_BIN" "$H/block-generated-files.sh" 2>&1); rc=$?
+  if [ "$rc" = 0 ]; then echo "  PASS  dead python aliases on PATH: app.ts allowed via node"; pass=$((pass+1));
+  else echo "  FAIL  dead python aliases: app.ts gave exit $rc: ${out:0:100}"; fail=$((fail+1)); fi
+  rm -rf "$STUBD"
+else
+  echo "  SKIP  dead python aliases (no node on PATH)"
+fi
+
 echo "=== exec bits in the index ==="
 # Claude Code runs the source scripts directly; an edit from Windows over a UNC path has reset
 # a mode to 100644 before. core.fileMode may be off, so ask the index, not the filesystem.
