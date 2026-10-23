@@ -8,6 +8,18 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.39.1] — 2026-10-23
+
+> **Docs: Git is a prerequisite.** A user without Git saw `spawn git ENOENT` on the Cursor plugin
+> page. The setup prompt and the Cursor steps now check for Git first. No hook changes.
+
+### Fixed
+
+- **Installing without Git failed with `spawn git ENOENT`.** Cursor downloads the marketplace with
+  git, and on Windows the plugin's hooks run in Git Bash, but no setup step said Git was needed. The
+  README's machine-setup prompt now checks `git --version` and hands over the install, and the README
+  and `/b6p-setup` Cursor steps list Git first, with the error text a user would see.
+
 ## [plugin 0.39.0] — 2026-10-23
 
 > **The platform token is required, and setup proves the gateway answers.** The gateway MCP is the
