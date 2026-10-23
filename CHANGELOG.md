@@ -11,8 +11,9 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 ## [plugin 0.39.2] — 2026-10-23
 
 > **Windows: the guardrail no longer blocks every edit on a machine with only Store Python
-> aliases.** The hooks now pick their JSON parser by running it, not by finding it on PATH (#243).
-> No hook definitions change, so nobody has to re-trust hooks.
+> aliases.** The Claude Code and Cursor hooks now keep the first JSON parser that actually reads
+> the input, not the first one found on PATH (#243). No hook definitions change, so nobody has to
+> re-trust hooks. The Codex wrapper still needs jq and is not covered yet.
 
 ### Fixed
 
@@ -20,12 +21,22 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   `hooks/lib/hook-input.sh` chose its parser with `command -v`, and on Windows `python3.exe` and
   `python.exe` exist as Microsoft Store app execution aliases even when Python is not installed. The
   hook picked `python3`, which only prints "Python was not found", so it could not read its input
-  and blocked every call, while a working `node` was never tried. It now runs each candidate
-  (`jq -n 1`, `python3 -c "import json"`, `python -c "import json"`, `node -e 0`) and uses the first
-  that works. `canary.sh` shares that detection, so it now also reports when only dead aliases are on
-  PATH. `npm run test:hooks` covers both cases with stub aliases. Workaround on older versions:
-  Settings > Apps > Advanced app settings > App execution aliases, turn off python.exe and
-  python3.exe.
+  and blocked every call, while a working `node` was never tried. It now tries each parser on PATH
+  (jq, python3, python, node) on the real input and keeps the first that reads it, so a healthy
+  machine pays nothing extra. Only when none can does it run each one bare to tell "no working
+  parser" (whose message now names the alias workaround) from "bad input". `canary.sh` runs that
+  check once per session, so it now also warns when only dead aliases are on PATH. Python runs
+  with `-I`, so a `json.py` in the project cannot stand in for the real module. `npm run
+  test:hooks` covers both cases with stub aliases, under WSL and Git Bash. Workaround on older
+  versions: Settings > Apps > Advanced app settings > App execution aliases, turn off python.exe
+  and python3.exe.
+
+### Known gap
+
+- **Codex: the guardrail is still off without jq.** The generated Codex wrapper checks
+  `command -v jq` and allows the call when jq is missing or broken, before the shared script runs,
+  and it builds its own deny output with jq. On a machine with only node, Codex edits are not
+  checked. A follow-up will give the wrapper a non-jq path.
 
 ## [plugin 0.39.1] — 2026-10-23
 
