@@ -1,6 +1,6 @@
-# Platform token `B6PT_TOKEN` — all tools (read by `/b6p-setup` step 1 when the token is absent)
+# Platform token `B6PT_TOKEN` — all tools (read by `/b6p-setup` step 1 when the gateway does not answer)
 
-The optional third once-per-machine item. Only platform authoring over the gateway MCP needs the `B6PT_TOKEN` variable; setup must stay skippable without it. The token itself is the same kind the b6p CLI signs in with (`b6p auth set`, step 1's login), so a user who already stored one there can reuse it here.
+The third once-per-machine item, and a required one: the gateway MCP is how the agent reads and builds on the platform, and it does not start without the `B6PT_TOKEN` variable. The token itself is the same kind the b6p CLI signs in with (`b6p auth set`, step 1's login), so a user who already stored one there can reuse it here.
 
 
 The BlueStep platform MCP is reached through a **single bundled gateway** at
@@ -14,16 +14,25 @@ flow and no hand-edited MCP config**. The only thing a user does is set the toke
 > plugin or setting the token, the gateway tools appear only in a **new** session — and for a GUI-launched
 > app that means quitting and reopening the app entirely, not just opening a new tab or window.
 
-This step is **optional and non-destructive** — a project is often created before the token exists, so it
-must be skippable. **First check whether the token is already set:**
+**First check whether the gateway already answers.** If the `bluestep-gateway` server's
+`available_tenants` tool is loaded in this session, call it:
+
+- It lists orgs → the token works; say so and move on.
+- It fails → the token is wrong, expired or revoked. Create a new one (step 1 below) and replace the old
+  value everywhere it is stored.
+
+If the tool is not loaded, check the variable:
 
 ```
 test -n "$B6PT_TOKEN" && echo OK
 ```
 
-- Prints `OK` → the token is already set; say so and move on. Note that the bundled gateway will register
-  in the next fresh session; nothing more to do here.
-- Prints nothing → offer the two one-time setup steps below (do not force them).
+- Prints `OK` → the token is set, but the app started before it was. Fully restart the app, open a new
+  session, and run `/b6p-setup` again so the gateway check can run.
+- Prints nothing → walk the user through the two one-time steps below.
+
+The project files do not depend on the token, so the rest of the setup still runs, but the setup is
+**not complete** until `available_tenants` answers.
 
 > **Access reality.** The `b6pt_` token requires super-user access (**Super tab → Global Users → Access
 > Tokens**). If Organization Admin shows **no "Super" tab**, you can't self-create a token — **request a
@@ -51,7 +60,8 @@ BlueStep UI → **Tools → Organization Admin → Super tab → Global Users �
   tool reads (Claude Code: the `env` block of `~/.claude/settings.json` in your home dir, never committed —
   or a gitignored `.claude/settings.local.json`; **never** the committed project settings file).
 
-Then start a fresh session — the bundled gateway picks up the token automatically.
+Then start a fresh session — the bundled gateway picks up the token automatically — and run
+`/b6p-setup` again: it calls `available_tenants` to confirm the gateway answers.
 
 **Never** ask the user to paste the token into the chat, and never write the literal token into a file. The
 bundled MCP config references the `B6PT_TOKEN` env var — never the literal value.

@@ -8,6 +8,29 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.39.0] — 2026-10-23
+
+> **The platform token is required, and setup proves the gateway answers.** The gateway MCP is the
+> plugin's main tool, so `/b6p-setup` and the README's setup prompt now treat `B6PT_TOKEN` as part of
+> a working install and call the gateway to confirm it. Also: Cursor imports this marketplace only
+> once GitHub is connected to Cursor, and the docs now say so. No hook changes.
+
+### Changed
+
+- **The platform token is required now.** The gateway MCP is the plugin's main tool for reading and
+  building on the platform, and it does not start without `B6PT_TOKEN`. `/b6p-setup` stops calling the
+  token optional: it calls the gateway's `available_tenants` to prove the token works (the old check
+  only looked at whether the variable existed), tells the user to restart the app when the token is set
+  but the session started before it, and lists a missing or failing gateway first in its report. The
+  project files are still written without it. The README's machine-setup prompt now covers the token.
+
+### Fixed
+
+- **Cursor: the marketplace import does nothing until GitHub is connected.** On a Cursor account with
+  no GitHub connection, Import from Repo adds nothing and shows no error, even for this public repo.
+  The README and the `/b6p-setup` Cursor steps now say to connect GitHub first. This, not the manifest
+  fields, was what blocked the import that 0.38.1 set out to fix.
+
 ## [plugin 0.38.1] — 2026-10-22
 
 > **Cursor: the marketplace imports again and the edit guardrail blocks before the edit.**

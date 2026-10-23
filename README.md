@@ -20,7 +20,7 @@ Open your AI coding agent (Claude Code, Cursor or Codex) in any folder, paste th
 >    into `~/.codex/agents/`. On the Claude desktop app or Cursor you cannot install it yourself: give
 >    me the exact clicks (desktop app: Customize → Plugins → + → Add marketplace → From repository
 >    `https://github.com/Bluestep-Systems/bspecs` → Browse plugins → install bluestep-tools; Cursor:
->    Plugins → Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bspecs` →
+>    Connect GitHub first (without it the import silently adds nothing) → Plugins → Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bspecs` →
 >    install bluestep-tools).
 > 3. Check whether the `b6p` command is on my PATH and, if it is, that `b6p --version` is 0.8.1 or
 >    later. If it is missing or older and Node.js is installed, run
@@ -29,8 +29,14 @@ Open your AI coding agent (Claude Code, Cursor or Codex) in any folder, paste th
 >    link `https://github.com/Bluestep-Systems/b6p-cli/releases` for my OS (binaries exist for macOS
 >    arm64 and Windows x64 — on Linux, WSL or an Intel Mac tell me to install Node first).
 > 4. Tell me to run `b6p auth set` in my own terminal — never ask me for the token.
-> 5. Finish with one line: start a **new** session in the folder where my BlueStep work will live,
->    and there type `/b6p-setup`.
+> 5. Check whether `B6PT_TOKEN` is set (`test -n "$B6PT_TOKEN" && echo OK`). The plugin's gateway MCP
+>    needs it. If it is missing, tell me where to create my `b6pt_` token (BlueStep → Tools →
+>    Organization Admin → Super tab → Global Users → my account → Access Tokens; if I have no Super
+>    tab, I ask BlueStep for one) and how to set it for my OS (Windows: `setx B6PT_TOKEN "b6pt_…"`;
+>    macOS/Linux: my shell profile). The same token works for `b6p auth set`. Never ask me for it.
+> 6. Finish with one line: fully quit and reopen the app, start a **new** session in the folder
+>    where my BlueStep work will live, and there type `/b6p-setup` — it checks that the gateway
+>    answers.
 
 What the agent will hand back to you, and why:
 
@@ -38,7 +44,11 @@ What the agent will hand back to you, and why:
   screen the agent cannot reach. On the Claude Code CLI and Codex it runs the commands itself.
 - **`b6p auth set`** — the BlueStep access token for the `b6p` CLI is typed by a person, once per
   machine. The agent never sees it.
-- **A new session** — a plugin's skills only exist in sessions started after the install.
+- **The platform token** — `B6PT_TOKEN`, set once per machine in your environment. The bundled
+  gateway MCP, the plugin's main tool for reading and building on the platform, does not start
+  without it. The agent never sees it.
+- **A new session** — a plugin's skills and its gateway only exist in sessions started after the
+  install (and, for a GUI app, after the token is set and the app is reopened).
 
 Then, in the folder where your BlueStep work will live (an empty folder is fine):
 
@@ -49,7 +59,7 @@ Then, in the folder where your BlueStep work will live (an empty folder is fine)
 ```
 
 One run does everything that is done once: checks the machine (the `b6p` CLI and its login, the
-plugin for the tool you are in, the optional platform token), writes the project files that are
+plugin for the tool you are in, the platform token and a live call to the gateway MCP), writes the project files that are
 missing (a short `AGENTS.md` with the always-on platform rules, a one-line `CLAUDE.md` bridge for
 Claude Code, `README.md`, `package.json`, `.gitignore`, `.prettierrc`, and on Claude Code the project
 settings), and brings a project set up by an older release up to date, keeping every rule of yours.
@@ -61,8 +71,8 @@ If you want it to get on with it, paste this instead:
 > Run /b6p-setup for this folder. Decide everything the skill says you can decide, and ask me only
 > what it says is mine — a rules file with my own lines in it, a populated CLAUDE.md, a settings
 > value that differs, a folder that is not clearly a BlueStep workspace. For anything only I can run
-> (`b6p auth set`), give me the exact command and carry on with the rest; the platform token is
-> optional, skip it unless I ask. Finish by telling me how to pull my first component.
+> (`b6p auth set`, setting `B6PT_TOKEN`), give me the exact command and carry on with the rest. Tell
+> me plainly if the gateway MCP did not answer. Finish by telling me how to pull my first component.
 
 **You will rarely need to type it.** The first time you ask the agent to pull a component, plan a
 feature or fix a bug in a folder that is not set up — no rules file, a rules file from before the
@@ -70,9 +80,10 @@ version marker, or one on an older template — the skill you asked for runs the
 step and then does what you asked. On Claude Code, a session opened in a folder that holds components
 but no rules file at all starts with a one-line offer to set it up.
 
-The platform token (`B6PT_TOKEN`) is **optional**: only platform authoring over the bundled gateway
-MCP needs it, and it is a separate credential from the `b6p` CLI's. `/b6p-setup` walks you through it
-when you want it. Windows: `setx B6PT_TOKEN "b6pt_…"` at User scope, then fully restart the app — a
+The platform token (`B6PT_TOKEN`) is **required**: the bundled gateway MCP, the plugin's main tool
+for reading and building on the platform, does not start without it. The CLI stores its own copy
+(`b6p auth set`), but the same `b6pt_` token works for both. `/b6p-setup` walks you through it and
+calls the gateway to prove it answers. Windows: `setx B6PT_TOKEN "b6pt_…"` at User scope, then fully restart the app — a
 variable exported in a shell never reaches a GUI-launched app.
 
 ## Keeping it updated
@@ -161,7 +172,8 @@ your claude.ai account, not by local files.
 Marketplaces → add `Bluestep-Systems/bspecs` → Plugins → install **bluestep-tools** → restart or
 `/reload-plugins`. JetBrains has no plugin GUI: use the CLI in its terminal.
 
-**Cursor.** Plugins → **Add Marketplace → Import from Repo** → `https://github.com/Bluestep-Systems/bspecs`
+**Cursor.** Connect GitHub to Cursor first (the **Connect GitHub** button in the sidebar): without
+it the import adds nothing and shows no error, even though the repo is public. Then Plugins → **Add Marketplace → Import from Repo** → `https://github.com/Bluestep-Systems/bspecs`
 → install **bluestep-tools** (enable it on the Manage screen if it is off). Open your project folder
 first — skills and hooks are workspace-coupled. Updates arrive on their own. The edit guardrail runs
 on Cursor's `preToolUse` event, wired to block before the edit lands (not yet confirmed on a live

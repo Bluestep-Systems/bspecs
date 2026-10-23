@@ -273,6 +273,17 @@ two-credential design (the CLI's encrypted `~/.b6p/secrets.enc` WebDAV creds vs 
 holds. **Security posture is unchanged** — still a plaintext, user-private global-super `b6pt_` token, with
 the same broad blast radius; the *Security & token handling* section above still governs.
 
+## 2026-10-23 required-token addendum
+
+**The token is no longer optional.** The gateway MCP grew into the plugin's main tool for reading and
+building on the platform, so a machine without `B6PT_TOKEN` is a half-installed plugin, not a lighter
+setup. `/b6p-setup` now treats it as required: it calls the gateway's `available_tenants` to prove the
+token works (checking only that the variable exists let a wrong or expired token pass), and its report
+puts a missing or failing gateway first and says the setup is not complete. It still writes the project
+files without the token, because they do not depend on it and the token can take days when a user has to
+ask BlueStep for one. The README's machine-setup prompt walks the user through the token too. The
+credential rules above are unchanged: the user types it, the agent never sees it.
+
 ## References
 
 - Connection probe: this session (handshake `200`, `tools/list` inventory of ~80 tools against a test org).
