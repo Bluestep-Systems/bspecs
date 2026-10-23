@@ -12,7 +12,9 @@ Open your AI coding agent (Claude Code, Cursor or Codex) in any folder, paste th
 > Set up the BlueStep developer tooling on this machine. Work it out by checking, not by asking me.
 > 1. Find out which agent tool you are running in (Claude Code CLI, the Claude desktop app, Cursor,
 >    or Codex) and whether the `bluestep-tools` plugin from the `Bluestep-Systems/bspecs` marketplace
->    is already installed.
+>    is already installed. Check `git --version` too: the tools download the plugin with git, and on
+>    Windows its hooks run in Git Bash. If git is missing, tell me to install it (Windows: Git for
+>    Windows from `https://git-scm.com/download/win`, default options) and fully restart the app.
 > 2. If it is not: on the Claude Code CLI run `claude plugin marketplace add Bluestep-Systems/bspecs`
 >    and then `claude plugin install bluestep-tools@bluestep --scope user`. On Codex run
 >    `codex plugin marketplace add Bluestep-Systems/bspecs` and tell me to install bluestep-tools from
@@ -172,8 +174,10 @@ your claude.ai account, not by local files.
 Marketplaces → add `Bluestep-Systems/bspecs` → Plugins → install **bluestep-tools** → restart or
 `/reload-plugins`. JetBrains has no plugin GUI: use the CLI in its terminal.
 
-**Cursor.** Connect GitHub to Cursor first (the **Connect GitHub** button in the sidebar): without
-it the import adds nothing and shows no error, even though the repo is public. Then Plugins → **Add Marketplace → Import from Repo** → `https://github.com/Bluestep-Systems/bspecs`
+**Cursor.** Git must be installed first: without it the plugin page shows `Failed to resolve git ref
+"main" … spawn git ENOENT` (install Git, then fully restart Cursor). Connect GitHub to Cursor too (the
+**Connect GitHub** button in the sidebar): without it the import adds nothing and shows no error, even
+though the repo is public. Then Plugins → **Add Marketplace → Import from Repo** → `https://github.com/Bluestep-Systems/bspecs`
 → install **bluestep-tools** (enable it on the Manage screen if it is off). Open your project folder
 first — skills and hooks are workspace-coupled. Updates arrive on their own. The edit guardrail runs
 on Cursor's `preToolUse` event, wired to block before the edit lands (not yet confirmed on a live
