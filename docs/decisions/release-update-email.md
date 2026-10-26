@@ -250,3 +250,35 @@ tell them apart; the real send is unchanged. The skill's gateway calls moved int
 `scripts/outbox.mjs`, whose ids come from a gitignored `ids.local.json` that lists only the fields
 it may touch — so the script has no way to read the recipient memos or the signature. First send
 on this path: 2026-09-23, 35 sent, 0 failed.
+
+
+---
+
+## Addendum (2026-10-26): GraphQL from a signed-in tab
+
+**What changed.** The outbox org moved to the BlueStep release that no longer serves
+`graphql_query` / `graphql_mutation` to MCP clients (Bluestep-Systems/web#1675), so
+`scripts/outbox.mjs` could no longer read the watermarks or queue an entry. The same queries now
+run as POSTs to `/gql` from a browser tab signed in to the org, the route
+`bluestep-reference` `reference/gql-in-a-tab.md` describes for every org.
+
+**Decision.** The GraphQL moved into three tab scripts (`tab-read.js`, `tab-queue.js`,
+`tab-rewrite.js`) that run through the browser tool's `javascript_tool`, each with its mutation
+written out, so the plugin's `tab-guard` hook and the human see exactly what runs. `outbox.mjs`
+no longer calls the platform: it checks the draft locally and passes the ids and the draft (about
+43 KB) to the tab in the URL hash of a one-time bridge page on `127.0.0.1`. Only data travels that
+way, never code. The tab cannot fetch from loopback, so the hash carries it in, and the results
+come back small enough for the browser tool's answer.
+
+**Rejected.** Pasting the 25 KB body into each tool call: it costs tokens on every queue and
+re-check, and a copy slip would only show up at the byte compare. Running the mutations from code
+taken out of the hash (the one-tools probe bridge's pattern): no hook could read what runs.
+
+**The security boundary moved.** The gateway token could not sign the Approval field; a tab acts as
+the signed-in human, who can. What now keeps the agent from sending is that `ids.local.json`
+names no signature or recipient field, so no tab script can address them, and that every script
+with a mutation stops at the `tab-guard` prompt. "Signed = armed" is unchanged.
+
+**Not yet proven live** (watch the first run): that the org's site keeps the hash through any
+redirect on the way in, and whether a write from a signed-in session fires the outbox post-save
+(gateway writes did not; ours set neither the test checkbox nor the signature).

@@ -1,6 +1,7 @@
 {
   "_comment": "Copy to ids.local.json (gitignored) and fill in. Platform ids scripts/outbox.mjs uses. List ONLY these fields: the script can read or write nothing else, so it can never touch the recipient memos or the Approval signature.",
   "org": "U<number>",
+  "host": "<the outbox org site, e.g. www.example.net>",
   "record": "<the office record the config and outbox forms live on>",
   "outboxForm": "<outbox form id>",
   "outbox": {

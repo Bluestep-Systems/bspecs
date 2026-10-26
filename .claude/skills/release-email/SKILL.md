@@ -1,6 +1,6 @@
 ---
 name: release-email
-description: Draft and queue a BlueStep-branded release-update email across three products (the bluestep-tools plugin, the b6p CLI, and the gateway MCP) since the last-sent watermarks. Maintainer-only, repo-local, manual — reads watermarks over the gateway MCP, collects changes (CHANGELOG / gh / ClickUp), renders the email-safe template, queues an entry on the BlueHQ outbox form behind an in-session approval gate, drives the test send, and hands the human the signature step that performs the real send on the platform. Never automatic; the agent can never send.
+description: Draft and queue a BlueStep-branded release-update email across three products (the bluestep-tools plugin, the b6p CLI, and the gateway MCP) since the last-sent watermarks. Maintainer-only, repo-local, manual — reads watermarks from a browser tab signed in to the outbox org, collects changes (CHANGELOG / gh / ClickUp), renders the email-safe template, queues an entry on the BlueHQ outbox form behind an in-session approval gate, drives the test send, and hands the human the signature step that performs the real send on the platform. Never automatic; the agent can never send.
 ---
 
 # /release-email — Draft and queue the release-update digest
@@ -13,9 +13,13 @@ test checkbox is saved, and sends the **real** email when — and only when — 
 Approval signature field** on the entry.
 
 **Manual only.** No release hook, cron, or polling — run this by hand when a digest is worth
-sending. **The agent cannot send at all**: MCP writes don't fire the platform's save formulas
-(verified), so even the test send needs a human Save in the UI, and the real send needs a human
-signature. Nothing in this skill can reach the real recipient list.
+sending. **The agent never sends**: the test send needs a human Save in the UI and the real send
+needs a human signature, and nothing in this skill names the signature or the recipient fields.
+The outbox org no longer serves GraphQL to MCP clients, so every read and write runs from a browser
+tab signed in to that org (`bluestep-reference` `reference/gql-in-a-tab.md`). **That tab acts as the
+signed-in person**, so the platform no longer refuses a signature write on its own: the guard is
+that `ids.local.json` has no id for those fields, and that the `tab-guard` hook asks before any
+script with a mutation runs.
 
 Read the governing ADR [`docs/decisions/release-update-email.md`](../../../docs/decisions/release-update-email.md)
 (especially its 2026-08-27 and 2026-09-23 addenda) for *why* this shape, and
@@ -29,10 +33,16 @@ for what exists on the platform.
   the platform's Send post-save and Preview merge report; keep the three copies identical.
 - `scripts/draft.mjs` — `writeDraft(dir, base, { html, text, subject, payload })`: cuts the stored
   body out of the rendered email and proves the shell rebuilds it byte for byte.
-- `scripts/outbox.mjs` — every gateway call the run makes: `watermarks`, `list`, `check` (read
-  only); `queue`, `rewrite` (writes). Run it with **Git Bash** `node` — `$B6PT_TOKEN` is set there,
-  not in WSL.
-- `ids.local.json` (gitignored; copy `ids.example.json`) — the org, record, form and field ids.
+- `scripts/outbox.mjs` — hands one step to the browser tab: `read`, `check` (read only); `queue`,
+  `rewrite` (writes). It never calls the platform. It packs the ids (and the draft, for `check` /
+  `queue` / `rewrite`) into the hash of a one-time bridge page on `127.0.0.1`, which sends the tab
+  to the org's site; then the matching tab script runs there. Run it with **Git Bash** `node`, in
+  the background (it waits for the bridge to be opened).
+- `scripts/tab-read.js`, `scripts/tab-queue.js`, `scripts/tab-rewrite.js` — the GraphQL, run in
+  the tab with the browser tool's `javascript_tool` (pass the file's text). Each mutation is
+  written out in its script; only data comes through the hash.
+- `ids.local.json` (gitignored; copy `ids.example.json`) — the org, its site (`host`), the record,
+  form and field ids.
   It lists only the fields the script may touch, so the script *cannot* read the recipient memos
   or read/write the signature.
 - `assets.local.json` (gitignored; copy `assets.example.json`) — `logoUrl`, `releaseUrl`.
@@ -46,9 +56,10 @@ for what exists on the platform.
   platform action. (The platform refuses such writes anyway; do not attempt them.)
 - **Never read the signature field either** — the platform crashed server-side serializing it
   (2026-08); leave it out of every query. `ids.local.json` has no entry for it on purpose.
-- **Every MCP write is echoed and approval-gated in-session** (tool + target + a content summary),
-  per the `bluestep-reference` `mcp-platform-authoring` procedure. Each `outbox.mjs queue` /
-  `rewrite` run is one such write.
+- **Every write is approval-gated in-session**: say in one plain sentence what it writes, to which
+  entry, and wait for a yes. Each `tab-queue.js` / `tab-rewrite.js` run is one such write, and the
+  `tab-guard` hook asks again before it runs. Never run a tab script you changed by hand, and never
+  add a field id to `ids.local.json` for the signature or the recipient memos.
 - **"Signed = armed."** Any UI save of a signed, not-yet-sent entry performs the real send — not
   just the signing save. Warn the human whenever a signed-or-stale unsent entry exists, and never
   leave scratch/abandoned entries around unsigned cleanup.
@@ -67,14 +78,22 @@ change nothing. **Fail closed — never draft a digest that silently drops a pro
 - **`$CLICKUP_TOKEN` works** — the MCP product depends on it. Verify with a cheap authorized call
   (e.g. `curl -s -o /dev/null -w '%{http_code}' -H "Authorization: $CLICKUP_TOKEN" https://api.clickup.com/api/v2/user`
   → expect `200`). Note the WSL/`~/.profile` sourcing gotcha if it comes back empty.
-- **The gateway answers for the owning org** — `node scripts/outbox.mjs watermarks` (Git Bash)
-  prints the three watermarks. If it fails, fix `$B6PT_TOKEN` or `ids.local.json` first.
+- **A browser tool can reach the owning org** — the Claude desktop app's browser pane (not
+  Chrome). Run the `read` step (step 2): it prints who is signed in and the three watermarks. On
+  `NOT SIGNED IN`, ask the human to sign in on the page that is open, then run `read` again. Note
+  the user id; if a later step answers another id, stop (a *Temporary Login* switched the tab).
+  If `outbox.mjs` fails, fix `ids.local.json` first.
   **There is no manual fallback for queuing** — the `emailHtml` field is hidden on purpose, and
   hand-pasting HTML through the form editor mangles it, so never instruct the human to complete an
   entry by hand. On failure: keep the draft in the scratch dir (nothing is lost), fix the
   connection, resume at the queue step.
-- **Shell note:** `gh` and `$CLICKUP_TOKEN` live in WSL, `$B6PT_TOKEN` lives in Git Bash — run
-  `gh`/`curl` via `wsl -e bash -lc '…'` and `outbox.mjs` with Git Bash `node`.
+- **Shell note:** `gh` and `$CLICKUP_TOKEN` live in WSL — run `gh`/`curl` via
+  `wsl -e bash -lc '…'`. Run `outbox.mjs` with Git Bash `node`, so the bridge port is on the same
+  machine as the browser pane.
+- **Every platform step is three moves:** start `node scripts/outbox.mjs <step> …` in the
+  background; open the printed `http://127.0.0.1:<port>/bridge.html` in the browser pane (it moves
+  on to the org's site by itself); run the step's tab script in that tab. A tab script that answers
+  `NO PAYLOAD` was run without the bridge, or twice: open the bridge again.
 - **`assets.local.json` and `ids.local.json` exist.** If `logoUrl` is unset, drop the logo `<img>`
   tags; if `releaseUrl` is a placeholder, flag it.
 
@@ -82,11 +101,11 @@ Work in a gitignored scratch dir (`.release-email/`) so nothing intermediate is 
 
 ### 2. Read the watermarks and the outbox
 
-`node scripts/outbox.mjs watermarks` reads `lastPluginVersion`, `lastCliVersion`, `lastMcpSent`
+`node scripts/outbox.mjs read` + `tab-read.js` reads `lastPluginVersion`, `lastCliVersion`, `lastMcpSent`
 from the config form (GraphQL `singleEntryFieldData`, one field each). Empty watermarks mean
 "first run covers everything" — surface that loudly before drafting.
 
-`node scripts/outbox.mjs list` lists every outbox entry with `sentAt`/`sendResult`. **Warn about
+The same `read` step lists every outbox entry with `sentAt`/`sendResult`. **Warn about
 any unsent entry** — a queued-but-unsigned entry means a previous run is still pending: its version
 ranges go stale the moment a newer entry sends, and if it is *signed*-unsent it is armed. Ask
 before queuing another (`queue` refuses while one exists).
@@ -155,12 +174,14 @@ Show the user in-session: the subject, the rendered email (and text alternative)
 ranges, and the target (org + outbox form). **Wait for explicit approval.** On decline: stop —
 nothing was written anywhere.
 
-On approval, run `node scripts/outbox.mjs queue .release-email <YYYY-MM-DD>`. It creates the entry
+On approval, run `node scripts/outbox.mjs queue .release-email <YYYY-MM-DD>`, open its bridge, and
+run `tab-queue.js`. It refuses while an unsent entry exists, creates the entry
 (GraphQL `createFormRow` on the office record: `subject`, `emailHtml` = the body, `emailText`,
-`payloadJson`), reads it back, and byte-compares every field **and** that
-`wrapEmailDocument(stored body, subject)` equals the rendered email. Any mismatch → stop and
+`payloadJson`), reads it back, and byte-compares every field with the draft (`outbox.mjs` has
+already checked that `wrapEmailDocument(draft body, subject)` equals the rendered email). Any mismatch → stop and
 investigate; nothing may send from a corrupt entry. Agents cannot delete rows: fix the entry in
-place with `outbox.mjs rewrite <entry> …` (after the human confirms it is not signed), or ask the
+place with `outbox.mjs rewrite <entry> …` + `tab-rewrite.js` (after the human confirms it is not
+signed), or ask the
 human to delete it in the UI.
 
 Tell the human where the entry lives (the office record → the outbox form → the new entry) — the
@@ -169,12 +190,13 @@ embedded **Email Preview** merge report on the entry renders exactly what Send w
 ### 6. Test send — approval gate #2, human-fired
 
 The test send goes **only** to the config form's `testRecipients`, with `[TEST] ` in front of the
-subject (the real send has no prefix). MCP writes don't fire the post-save, so the human does it:
+subject (the real send has no prefix). The skill never writes the checkbox, so the human does it:
 open the entry, check the preview, **tick the test-send checkbox and Save**. The post-save sends the test,
 stamps `testSentAt`, clears the checkbox.
 
 The human validates the email in their **real inbox** (Outlook + Gmail: rendering, the
-"on behalf of" label, the logo). `outbox.mjs check <entry> …` confirms `testSentAt`/`sendResult`.
+"on behalf of" label, the logo). `outbox.mjs check <entry> …` + `tab-read.js` confirms
+`testSentAt`/`sendResult`.
 An empty-`testRecipients` refusal shows up in `sendResult`; fix the config form and repeat. A
 content fix after the test: re-render, `rewrite`, test again.
 
@@ -193,7 +215,7 @@ config/entry — a refused entry stays sendable; `sentAt` is only stamped by an 
 
 ### 8. Record
 
-After the human confirms the real send, run `outbox.mjs list` and `outbox.mjs watermarks` to see
+After the human confirms the real send, run the `read` step again to see
 `sentAt`, the counts in `sendResult`, and the advanced watermarks. Then write two files under
 `.claude/skills/release-email/sent/`, same basename
 `<YYYY-MM-DD>-plugin<vA>-cli<vB>-mcp<date>` (drop the token for a product not in the send):
@@ -240,5 +262,9 @@ Then **propose a commit** for those two files. Do not run `git commit` unless to
   exists.
 - **No per-recipient opt-out** — the footer stays generic ("reply to unsubscribe"); a real
   suppression list + unsubscribe link is a deferred open item.
-- **`queue` and `rewrite` are untested as a pair of commands** — the calls they make were proven
-  one by one in the 2026-09-23 run; the first real use should be watched.
+- **The tab route is unproven end to end** — the GraphQL calls are the ones proven through the
+  gateway on 2026-09-23, now sent from a tab as the signed-in person. Watch the first run for: the
+  org's site keeping the `#release-email=` hash on the way in (a redirect could drop it; the
+  scripts then answer `NO PAYLOAD`), and whether a write from a signed-in session fires the
+  outbox form's post-save (gateway writes did not; ours set no checkbox and no signature, so it
+  should send nothing either way — check `sendResult` after the queue).
