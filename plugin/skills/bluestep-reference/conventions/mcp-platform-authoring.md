@@ -20,7 +20,7 @@ is a **relay facade** exposing three meta-tools, not a flat aggregation of each 
 - `mcp__plugin_bluestep-tools_bluestep-gateway__list_org_tools` — the inner tool set (with schemas) for a
   given org.
 - `mcp__plugin_bluestep-tools_bluestep-gateway__invoke_org_tool` — run one inner tool against one org:
-  `invoke_org_tool(org, tool, arguments)`, where `org` is a **U-number** orgKey (e.g. `U142030`).
+  `invoke_org_tool(org, tool, arguments)`, where `org` is a **U-number** orgKey (`U` plus digits).
 
 Every per-org authoring/discovery tool (`add_queries`, `list_forms`, `get_script_declarations`, …) is
 reached **through** `invoke_org_tool` — the native `mcp__bluestep-<subdomain>__<tool>` per-org namespaces no
@@ -95,7 +95,7 @@ specifically `mcp__plugin_bluestep-tools_bluestep-gateway__available_tenants` an
 
 ### 3 — Resolve the target org (to a U-number)
 
-The `org` param is a **U-number** orgKey (`U…`, e.g. `U142030`) or a bare number. Resolve in this order:
+The `org` param is a **U-number** orgKey (`U` plus digits) or a bare number. Resolve in this order:
 
 1. **Task/user supplies a U-number** (or bare number) → use it directly.
 2. **Else call `available_tenants`** and map the named subdomain / display name to its `orgKey`.
@@ -121,8 +121,9 @@ Every op runs as an **inner tool** through the facade:
 
 Inner-tool **schemas are no longer surfaced natively** (the harness sees only the 3 meta-tools). When you
 need an inner tool's input schema, call **`list_org_tools(org)`** and read it from there. **Per-org tool
-sets vary** (a personal playground exposed 76 tools vs bkplayground's 80) — always `list_org_tools` for the
-resolved org rather than assume a fixed catalogue.
+sets vary** (two orgs checked side by side served 76 and 80 tools) — always `list_org_tools` for the
+resolved org rather than assume a fixed catalogue. When you already know the tool's name, `describe_tool(org,
+tool)` returns just that schema, or `TOOL_NOT_FOUND` when the org does not serve it.
 
 Use **read-only discovery** to fill/validate args before mutating — each via `invoke_org_tool`, e.g.
 `invoke_org_tool(org, tool:"list_applicable_forms", arguments:{…})`. Read-only inner tools:
@@ -138,7 +139,7 @@ mutation.
 Print the **concrete inner call** and **wait for an explicit yes** in the main session — e.g.:
 
 ```
-invoke_org_tool → org=U142030 (bkplayground), tool=add_queries, arguments={ script: "…", query: "allStaff" }
+invoke_org_tool → org=U<number> (<org name>), tool=add_queries, arguments={ script: "…", query: "allStaff" }
 ```
 
 This is the **key mitigation** for losing the native per-tool approval surface: behind `invoke_org_tool`
@@ -217,7 +218,8 @@ the filter and match by name/type before concluding an object doesn't exist (det
   `discard_pending_change` only rolls back the data-entry staging queue (it errors "requires a chat
   session"), **not** schema objects (verified 2026-07). Treat every schema-authoring op as
   **effectively irreversible via MCP** — removal is a manual step in the platform UI. This raises the bar
-  on the approval echo for schema creation; **never** guess a `graphql_mutation` delete to clean up.
+  on the approval echo for schema creation; **never** guess a GraphQL delete to clean up, on either
+  route (see [GraphQL reads and writes](#graphql-reads-and-writes)).
 - **Approval denied / partial failure** → leave the task `[ ]`; report exactly what did and didn't apply;
   **never** mark done on partial success.
 
@@ -314,6 +316,17 @@ tools, not a fixed inventory.
 **Declaration read-back**
 - `get_script_declarations`
 
+### GraphQL reads and writes
+
+Some steps on this page read or write through GraphQL (`relateQuery`, `remoteObject`,
+`createRelateQuery`, `updateRelateQuery`, …). Not every org serves `graphql_query` /
+`graphql_mutation` to MCP clients, so never assume them: follow
+[../reference/gql-in-a-tab.md](../reference/gql-in-a-tab.md). It probes the org with `describe_tool`,
+uses the gateway tool when the org serves it, and otherwise runs the same query from a browser tab
+signed in to that org. A mutation by either route gets the approval echo of step 5. When neither
+route is available, the step is handed to the user, and a read-back that could not run is reported
+as **not done**.
+
 ### Known authoring quirks
 
 Observed live-platform behaviors with their workarounds; each bullet carries the month it was last
@@ -408,15 +421,15 @@ verified — the dating key at the top of this page says how to read the markers
 
 **Units & records**
 
-- **Unit creation is a UI hand-back.** There is no dedicated unit tool; the only MCP path is
-  `graphql_mutation createUnit`, and units it creates are structurally incomplete — the unit reads
+- **Unit creation is a UI hand-back.** There is no dedicated unit tool; the only other path is the
+  GraphQL `createUnit` mutation, and units it creates are structurally incomplete — the unit reads
   back fine but its Entities container is not linked, so any later record placement into it fails.
   `deleteRemoteObject` on such a unit also fails (opaque `INTERNAL`), so cleanup is UI-only. Create
   units in the platform UI; if one was already created, report it to the user for manual UI
   deletion. (verified 2026-08)
 - **MCP cannot seed a record.** Both creation paths fail: the `record` tool CREATE returns
   `Cannot create an Entity w/o any form entries.` (it has no way to pass initial base-form field
-  data), and `graphql_mutation createRecord` fails with an opaque `INTERNAL`. Mint records in the
+  data), and the GraphQL `createRecord` mutation fails with an opaque `INTERNAL`. Mint records in the
   platform UI (or an app/SPA session); once a record exists, `form_entry` CREATE/UPDATE work
   against it. `record` UPDATE and DELETE exist — the gap is CREATE only. (verified 2026-08)
 
@@ -425,7 +438,7 @@ verified — the dating key at the top of this page says how to read the markers
 **Display columns are part of CREATE, on every query/view creation path that accepts them.** A query
 or view created without display columns is **incomplete**: it matches records but renders **blank**
 for a human — rows with no columns to show. Always pass `displayColumns` on **every** path that takes
-the parameter — the `view` inner tool and a raw `createRelateQuery` / `graphql_mutation` alike. There
+the parameter — the `view` inner tool and a raw GraphQL `createRelateQuery` alike. There
 is no cheap second chance: **create time is the only cheap moment.**
 
 **Exception — `create_mefr` has no `displayColumns` parameter** (its schema takes only `formId` /
@@ -453,8 +466,8 @@ SINGLE_OPTION_LIST search criterion given as an option-item topId, reports succe
 reads it back — but query **execution** then fails with an opaque `INTERNAL` server error, and MCP
 cannot repair the criterion (the DELETE guard above). Until the accepted stored value format is
 documented, treat an option-list criterion as **unproven until the query has been executed**: after
-creating an option-filtered query, run it (a `relateQuery` fetch or `graphql_query relateQuery` with a
-small count) — a read-back of the definition is not enough. Flag this risk in the approval echo — the
+creating an option-filtered query, run it (a `relateQuery` with a small count, by the route in
+[GraphQL reads and writes](#graphql-reads-and-writes)) — a read-back of the definition is not enough. Flag this risk in the approval echo — the
 user may prefer to add the criterion in the UI. Repairing a broken criterion is a UI hand-back (remove
 and re-add the criterion there). (verified 2026-08)
 
@@ -479,9 +492,11 @@ query the column set is fixed and one column wide:
 The declaration read-back of step 6 has a twin for **query / view creation**, and it is **equally
 mandatory**: a create call's **success response is not proof the object is complete**. Several inputs are
 accepted, reported as success, and then **silently stored as empty**. After creating a query or view —
-on any path (`view`, `create_mefr`, `createRelateQuery`, `graphql_mutation`) — **read the object back**
+on any path (`view`, `create_mefr`, `createRelateQuery`) — **read the object back**
 and check each row below. `get_view` does not return a query's categories or the unit it runs in,
-so those two rows are checked with `graphql_query` on the query's `remoteObject` instead. (verified
+so those two rows are checked with a GraphQL read of the query's `remoteObject` instead, by the route
+in [GraphQL reads and writes](#graphql-reads-and-writes). If that read cannot run, report those two
+rows as **not checked** — never as passed. (verified
 2026-10)
 
 | Check | Expect | Read with | Why it can go wrong silently |
@@ -489,8 +504,8 @@ so those two rows are checked with `graphql_query` on the query's `remoteObject`
 | `displayFields` | non-empty — and for a MEFR, that the **seeded column is the intended field** | `get_view` | display columns are dropped unless passed at CREATE (above); a query with none renders **blank**. `create_mefr` always seeds one column (never empty), so its check is *which* field got seeded — the base form's first field, per the exemption above |
 | `recordTypes` | expected type(s) | `get_view` | categories are categories **of** a base record type; without it the filter has nothing to hang on |
 | `searchComponents` | non-empty, **unless** the query is meant to filter by category only | `get_view` | empty criteria and no category filter **fails open** — the query matches **every** record of its record type. A category-only query (record type + must-have category, no criteria) is correct with none |
-| `mustHaveCategories` / `mustNotHaveCategories` | expected sets | `graphql_query`: `remoteObject(id) { ... on RelateQuery { mustHaveCategories { displayName } mustNotHaveCategories { displayName } } }` | accepted on create, **stored neither**; `get_view` shows neither a stored filter nor a dropped one |
-| run unit | for a lookup, a fixed unit that holds every record the code must find | `graphql_query`: `unitKey` on the same `RelateQuery` | `unitKey` set = the query runs there, whatever unit it is called from. `unitKey` null = it runs in the caller's unit, so records outside that unit are silently not found. The `unit` field is the unit that **owns** the query, not where it runs (verified 2026-10) |
+| `mustHaveCategories` / `mustNotHaveCategories` | expected sets | GraphQL: `remoteObject(id) { ... on RelateQuery { mustHaveCategories { displayName } mustNotHaveCategories { displayName } } }` | accepted on create, **stored neither**; `get_view` shows neither a stored filter nor a dropped one |
+| run unit | for a lookup, a fixed unit that holds every record the code must find | GraphQL: `unitKey` on the same `RelateQuery` | `unitKey` set = the query runs there, whatever unit it is called from. `unitKey` null = it runs in the caller's unit, so records outside that unit are silently not found. The `unit` field is the unit that **owns** the query, not where it runs (verified 2026-10) |
 
 Repairing dropped categories: a follow-up `updateRelateQuery` **also** drops them **unless
 `recordTypes` is sent in the same mutation** — the repair call must carry the record types alongside
