@@ -5,7 +5,7 @@ description: "Reading multi-entry form data through a Relate query created via t
 # Relate query over a multi-entry form — four traps
 
 Creating a Relate query (DB view) over a multi-entry form via the MCP `view` tool and reading it
-with `graphql_query { relateQuery(...) }` fails in ways that look like a platform limitation rather
+with a GraphQL `relateQuery(...)` fails in ways that look like a platform limitation rather
 than a config mistake — a healthy-looking view (columns come back correctly) that returns
 `totalSize: 0` against a form holding hundreds of entries. All four traps observed live (2026-07,
 plugin 0.14.0); together they produced the wrong conclusion "a Relate query cannot read MEFR
@@ -34,7 +34,8 @@ entries."
 ## The working recipe
 
 Create with the `view` tool: `viewType: "List"`, `maxRows: -1`, `recordTypes: [<base record type
-topId>]`, plus display columns. Read with:
+topId>]`, plus display columns. Read with this GraphQL query, by the route in
+[../reference/gql-in-a-tab.md](../reference/gql-in-a-tab.md):
 
 ```graphql
 { relateQuery(id: "<view topId>", count: 50, start: 0,

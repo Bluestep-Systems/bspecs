@@ -9,6 +9,15 @@
             "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/block-generated-files.sh"
           }
         ]
+      },
+      {
+        "matcher": "mcp__(Claude_Browser|claude-in-chrome)__(javascript_tool|browser_batch)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/hooks/tab-guard.sh"
+          }
+        ]
       }
     ],
     "SessionStart": [

@@ -11,7 +11,7 @@ unit, with sub-units. A query with no fixed run unit returns only the records in
 from, so a staff record outside the page's unit is not found: the lookup in step 3 comes back empty,
 with no error, and that user gets `none`. Users whose record sits in the page's unit are found, so a
 test with them passes. Check before reusing any other query (a group's own security query, for
-example): read its `unitKey` with `graphql_query` — null means it has no fixed run unit. `get_view`
+example): read its `unitKey` over GraphQL ([gql-in-a-tab.md](gql-in-a-tab.md) picks the route) — null means it has no fixed run unit. `get_view`
 does not show it, and the GraphQL `unit` field is the owner unit, not the run unit; see the read-back
 table in [../conventions/mcp-platform-authoring.md](../conventions/mcp-platform-authoring.md).
 (verified 2026-10)
@@ -63,7 +63,8 @@ die on the AI-tools DELETE guard and can only be fixed by hand in the platform U
 created query back** with `get_view`: non-empty `displayFields`, the expected `recordTypes`, and
 non-empty `searchComponents` unless the query filters by category only. `get_view` does **not** show
 `mustHave`/`mustNotHaveCategories` or the run unit, so `get_view` alone cannot prove the query is
-safe: read `mustHaveCategories`, `mustNotHaveCategories` and `unitKey` with `graphql_query`. A
+safe: read `mustHaveCategories`, `mustNotHaveCategories` and `unitKey` over GraphQL
+([gql-in-a-tab.md](gql-in-a-tab.md)); if that read cannot run, the query is not proven safe. A
 permission query with no criteria **and** no category filter **fails open** — it admits everyone. Full
 rules, quirks and the `DisplayColumnInput` field list:
 [../conventions/mcp-platform-authoring.md](../conventions/mcp-platform-authoring.md).

@@ -6,8 +6,9 @@ description: "Reading option-list items' export values: get_option_list omits th
 
 The gateway MCP's `get_option_list` returns only `topId`, `displayName`, `description`, and
 `sortOrder` per item — **no export value**. That does not make export values unreadable
-in-session: GraphQL exposes them as `RelateListItem.value`. Working query (run via the org's
-`graphql_query` inner tool, through `invoke_org_tool`):
+in-session: GraphQL exposes them as `RelateListItem.value`. Working query (run it by the route in
+[gql-in-a-tab.md](gql-in-a-tab.md): the gateway's `graphql_query` where the org serves it, a
+signed-in tab otherwise):
 
 ```graphql
 {

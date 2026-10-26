@@ -96,6 +96,30 @@ fi
 [ "$NONODE" != "$TOOLD" ] && rm -rf "$NONODE"
 rm -rf "$STUBD"
 
+echo "=== tab-guard.sh ==="
+# Payloads as Claude Code sends them: javascript_tool's text, or browser_batch actions.
+js() { "$PY" -c 'import json,sys; print(json.dumps({"tool_name":"mcp__Claude_Browser__javascript_tool","tool_input":{"text":sys.argv[1]}}))' "$1"; }
+batch() { "$PY" -c 'import json,sys; print(json.dumps({"tool_name":"mcp__claude-in-chrome__browser_batch","tool_input":{"actions":[{"name":"navigate","input":{"url":"https://x"}},{"name":"javascript_tool","input":{"text":sys.argv[1]}}]}}))' "$1"; }
+tg() { # name expected(ask|go) payload
+  local out rc got
+  out=$(printf '%s' "$3" | bash "$H/tab-guard.sh" 2>&1); rc=$?
+  if [ "$rc" = 0 ] && [[ "$out" == *'"permissionDecision":"ask"'* ]]; then got=ask
+  elif [ "$rc" = 0 ] && [ -z "$out" ]; then got=go
+  else got="exit $rc: ${out:0:60}"; fi
+  if [ "$got" = "$2" ]; then echo "  PASS  $1"; pass=$((pass+1)); else echo "  FAIL  $1 — expected $2, got $got"; fail=$((fail+1)); fi
+}
+tg "read query goes on" go "$(js 'const query = `{ user { id super } }`; await fetch("/gql")')"
+tg "remoteObject read goes on" go "$(js 'const query = `{ remoteObject(id: "1") { ... on RelateQuery { unitKey } } }`;')"
+tg "MutationObserver goes on" go "$(js 'new MutationObserver(() => {}); const mutations = [];')"
+tg "mutation { ... } asks" ask "$(js 'const query = `mutation { updateRelateQuery(id: "1") { id } }`;')"
+tg "named mutation with variables asks" ask "$(js 'const query = `mutation Fix($id: ID!) { updateRelateQuery(id: $id) { id } }`;')"
+tg "mutation over a newline asks" ask "$(js "$(printf 'const query = `mutation\n{\n  createUnit { id }\n}`;')")"
+tg "mutation inside browser_batch asks" ask "$(batch 'const q = "mutation { createRecord { id } }";')"
+tg "read inside browser_batch goes on" go "$(batch 'const q = "{ user { id } }";')"
+out=$(printf '%s' 'not json' | bash "$H/tab-guard.sh" 2>&1); rc=$?
+if [ "$rc" = 2 ]; then echo "  PASS  unparseable input blocks"; pass=$((pass+1));
+else echo "  FAIL  unparseable input gave exit $rc"; fail=$((fail+1)); fi
+
 echo "=== exec bits in the index ==="
 # Claude Code runs the source scripts directly; an edit from Windows over a UNC path has reset
 # a mode to 100644 before. core.fileMode may be off, so ask the index, not the filesystem.

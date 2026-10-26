@@ -1,12 +1,13 @@
 ---
-description: "Reading multi-entry form entries through the gateway MCP — form_entry READ is broken for multi-entry (NEW_MULTI), formRows ignores limit/offset and times out on huge forms, fieldData is one-field-one-entry (batch via GraphQL aliases); prefer relateQuery over a stored List query, the only paged, filterable path"
+description: "Reading multi-entry form entries in-session — form_entry READ is broken for multi-entry (NEW_MULTI); the working paths are GraphQL (gateway tool or signed-in tab): formRows ignores limit/offset and times out on huge forms, fieldData is one-field-one-entry (batch via aliases); prefer relateQuery over a stored List query, the only paged, filterable path"
 ---
 
-# Reading multi-entry form entries via the gateway MCP
+# Reading multi-entry form entries
 
-The read-path decision tree for multi-entry form data, as observed live (2026-07, plugin 0.14.0 —
-the underlying platform gaps are tracked separately and may be fixed server-side later). Without
-this map, discovering it costs a fresh session ~15 calls.
+The read-path decision tree for multi-entry form data. Without this map, discovering it costs a
+fresh session ~15 calls. Paths 2–4 are GraphQL: run them by the route in
+[gql-in-a-tab.md](gql-in-a-tab.md) (the gateway's `graphql_query` where the org serves it, a
+signed-in tab otherwise).
 
 ## The paths, worst to best
 

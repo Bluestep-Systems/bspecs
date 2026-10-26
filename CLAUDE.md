@@ -37,7 +37,8 @@ conversationally.
   emits the committed `dist/` trees and the two generated marketplace manifests. CI's
   `cross-tool-drift` job regenerates and diffs, so stale or hand-edited output cannot merge.
   → `cross-tool-plugin-output.md`
-- **Hooks** are two guardrails (`block-generated-files`, `block-tsc`, `PreToolUse`) plus
+- **Hooks** are two guardrails (`PreToolUse`: `block-generated-files`, and `tab-guard`, Claude
+  Code only, which asks before a browser script runs a GraphQL mutation) plus
   `canary.sh` (`SessionStart`, Claude Code only). They run in **whatever shell hosts the agent —
   Git Bash on Windows, not WSL** — so they must not assume `jq` or WSL tools; that assumption is
   why they silently allowed everything for 77 days. Parser fallback is jq → python3 → python →
