@@ -323,9 +323,9 @@ Some steps on this page read or write through GraphQL (`relateQuery`, `remoteObj
 `graphql_mutation` to MCP clients, so never assume them: follow
 [../reference/gql-in-a-tab.md](../reference/gql-in-a-tab.md). It probes the org with `describe_tool`,
 uses the gateway tool when the org serves it, and otherwise runs the same query from a browser tab
-signed in to that org. A mutation by either route gets the approval echo of step 5. When neither
-route is available, the step is handed to the user, and a read-back that could not run is reported
-as **not done**.
+signed in to that org. A mutation by either route needs the user's yes first (step 5; a tab write
+is put as one plain sentence). When neither route is available, the user hears in plain words what
+was not done, never a query to run, and a read-back that could not run is reported as **not done**.
 
 ### Known authoring quirks
 

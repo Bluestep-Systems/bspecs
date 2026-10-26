@@ -8,6 +8,39 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.40.0] — 2026-10-26
+
+> **Run `/b6p-setup` in each project after updating.** On orgs on the newer BlueStep release,
+> Claude now reads and writes GraphQL from a browser tab signed in to the org, and `/b6p-setup`
+> adds the browser permission so those reads don't stop on a prompt every time. Writes from a tab
+> still ask first.
+
+### Changed
+
+- **GraphQL runs by what the org serves** (#246). Newer BlueStep releases no longer offer
+  `graphql_query` / `graphql_mutation` to MCP clients, so every GraphQL step in
+  `bluestep-reference` now follows the new `reference/gql-in-a-tab.md`: probe with
+  `describe_tool`, use the gateway tool where the org serves it, otherwise POST to `/gql` from a
+  browser tab signed in to that org. Claude opens the sign-in page itself and asks only "please sign
+  in"; it never tells the user which route it took or why. A write is put as one plain sentence
+  first. Who is signed in is checked again before every write, since a *Temporary Login* switches
+  the whole site. An empty read from a user who is not `super` is reported as not checked. With no
+  route at all, the user hears what was not done, never a query to run, and a read-back that could
+  not run is **not done**, never passed.
+
+### Added
+
+- **`tab-guard` hook (Claude Code only).** A `PreToolUse` hook on the browser script tools
+  (`javascript_tool` and `browser_batch`, in the desktop app's browser pane and in Claude in
+  Chrome). A script that holds a GraphQL mutation is put to the user with "This script would change
+  data in BlueStep. Allow it only if you want Claude to make this change."; anything else goes on.
+  It reads the script's text, so it is a safety net for mutations written out in full, which the
+  reference requires. Not wired on Cursor or Codex, which have neither browser tool.
+- **`/b6p-setup` allows the two browser tools** in the project's `.claude/settings.json`, so a tab
+  read does not stop on a permission prompt the user has no basis to answer. The `project-settings`
+  migration adds the two entries to an older project without asking and keeps every entry the user
+  added.
+
 ## [plugin 0.39.2] — 2026-10-23
 
 > **Windows: the guardrail no longer blocks every edit on a machine with only Store Python

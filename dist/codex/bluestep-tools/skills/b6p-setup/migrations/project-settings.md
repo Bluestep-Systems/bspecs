@@ -25,6 +25,12 @@ buys:
 > find the plugin) and the 400 K compaction window (compacts at 400 K instead of near the 1 M
 > limit).
 
+**`permissions.allow` is a list, and an entry missing from it counts as a missing key.** Add only
+the entries step 2b writes that the list lacks (the two browser entries, for a project set up
+before they shipped), keep every entry the user added, and never remove one. Report it in the same
+one line ("added the browser permission, so reading an org from a signed-in tab does not stop on a
+prompt every time").
+
 Do not present a table of missing keys and ask whether to add them. The user has nothing to weigh:
 the keys are absent, the defaults are the ones this tooling ships, and adding them changes nothing
 they chose — check that last part before you add a key the user may have set somewhere else (below).

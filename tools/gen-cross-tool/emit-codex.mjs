@@ -433,6 +433,8 @@ function codexMatcherFor(matcher) {
   throw new Error(`emit-codex: hooks/hooks.json: no Codex wiring for matcher "${matcher}" — refusing to emit`);
 }
 
+const CLAUDE_BROWSER_MATCHER = /^mcp__\(?(?:Claude_Browser|claude-in-chrome)\b/;
+
 // Read plugin/hooks/hooks.json and derive the groups to re-emit — discovered,
 // not hardcoded, so a 4th hook wired at the source is picked up here with zero
 // emitter changes.
@@ -450,6 +452,10 @@ function readHookWiring(tree) {
       throw new Error(`emit-codex: hooks/hooks.json: unmapped source hook event "${event}" — give it a Codex wiring`);
     }
     for (const group of sourceGroups) {
+      // hooks/tab-guard.sh guards Claude Code's own browser tools (the desktop app's pane and
+      // Claude in Chrome). Codex has neither, so it is not wired here; its script still ships
+      // in shared/ like every hooks/*.sh.
+      if (CLAUDE_BROWSER_MATCHER.test(String(group.matcher ?? ''))) continue;
       const { matcher, kind } = codexMatcherFor(group.matcher);
       const scripts = [];
       for (const h of group.hooks ?? []) {
@@ -618,6 +624,7 @@ silently.
 |---|---|---|
 | block-generated-files | *(none)* | Fires on every PreToolUse; the wrapper filters. (The \`Bash\`-matcher \`block-tsc\` hook that proved this path live was removed in 0.37.0.) |
 | canary | *(not wired)* | Claude Code-only SessionStart check; \`shared/canary.sh\` ships but nothing runs it on Codex |
+| tab-guard | *(not wired)* | Guards Claude Code's own browser tools, which Codex does not have; \`shared/tab-guard.sh\` ships but nothing runs it on Codex |
 
 The two edit guardrails are matcher-less on purpose. Codex intercepts file
 edits through **\`apply_patch\`** (documented), but its \`tool_input\` shape has
