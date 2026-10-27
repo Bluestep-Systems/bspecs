@@ -8,6 +8,11 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.40.1] — 2026-10-27
+
+> **A hook changed** (`tab-guard.sh`). Codex users: re-trust the plugin's hooks after updating, or
+> the guardrails stop running.
+
 ### Fixed
 
 - **The tab guard no longer asks a second time after one-tools' card.** In a BlueStep One
