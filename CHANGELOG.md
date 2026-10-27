@@ -10,8 +10,8 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [plugin 0.40.1] — 2026-10-27
 
-> **A hook changed** (`tab-guard.sh`). Codex users: re-trust the plugin's hooks after updating, or
-> the guardrails stop running.
+> **The tab guard no longer asks twice after one-tools' card.** Only the `tab-guard.sh` script
+> changes, not the hook definitions, so nobody has to re-trust hooks.
 
 ### Fixed
 
