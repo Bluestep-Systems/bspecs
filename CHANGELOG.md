@@ -8,6 +8,20 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.40.1] — 2026-10-27
+
+> **The tab guard no longer asks twice after one-tools' card.** Only the `tab-guard.sh` script
+> changes, not the hook definitions, so nobody has to re-trust hooks.
+
+### Fixed
+
+- **The tab guard no longer asks a second time after one-tools' card.** In a BlueStep One
+  conversion workspace, the one-tools plugin shows its own card before a browser script that
+  changes data. After *Proceed* there, this plugin's `tab-guard.sh` asked again for the same call.
+  It now goes on when it finds the fresh ticket one-tools leaves for that exact call (named by its
+  `tool_use_id`, under `one-tools-tab-guard/` in the temp folder, two minutes old at most). Without
+  that ticket it asks as before.
+
 ## [plugin 0.40.0] — 2026-10-26
 
 > **Run `/b6p-setup` in each project after updating.** On orgs on the newer BlueStep release,

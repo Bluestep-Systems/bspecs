@@ -119,6 +119,21 @@ tg "read inside browser_batch goes on" go "$(batch 'const q = "{ user { id } }";
 out=$(printf '%s' 'not json' | bash "$H/tab-guard.sh" 2>&1); rc=$?
 if [ "$rc" = 2 ]; then echo "  PASS  unparseable input blocks"; pass=$((pass+1));
 else echo "  FAIL  unparseable input gave exit $rc"; fail=$((fail+1)); fi
+# one-tools' Proceed ticket: a fresh file named by this call's tool_use_id stops the second ask.
+# Each case points every temp variable at its own folder, so the machine's tickets never count.
+jsid() { "$PY" -c 'import json,sys; print(json.dumps({"tool_name":"mcp__Claude_Browser__javascript_tool","tool_input":{"text":sys.argv[1]},"tool_use_id":sys.argv[2]}))' "$1" "$2"; }
+TT=$(mktemp -d); mkdir -p "$TT/one-tools-tab-guard"
+tgt() { local saved_tmpdir="$TMPDIR" saved_temp="$TEMP" saved_tmp="$TMP"; export TMPDIR="$TT" TEMP="$TT" TMP="$TT"; tg "$@"; export TMPDIR="$saved_tmpdir" TEMP="$saved_temp" TMP="$saved_tmp"; }
+SAVE='const q = "mutation { createRecord { id } }";'
+: > "$TT/one-tools-tab-guard/toolu_ok"
+tgt "a fresh one-tools ticket for this call goes on" go "$(jsid "$SAVE" toolu_ok)"
+tgt "a ticket for another call asks" ask "$(jsid "$SAVE" toolu_other)"
+: > "$TT/one-tools-tab-guard/toolu_old"; touch -d '10 minutes ago' "$TT/one-tools-tab-guard/toolu_old" 2>/dev/null || touch -t "$(date -v-10M +%Y%m%d%H%M.%S)" "$TT/one-tools-tab-guard/toolu_old"
+tgt "a stale ticket asks" ask "$(jsid "$SAVE" toolu_old)"
+tgt "a tool_use_id written inside the script is not the call's" ask "$(jsid "$SAVE"' x = {"tool_use_id":"toolu_ok"};' toolu_none)"
+: > "$TT/x"
+tgt "an id that would leave the ticket folder is not read" ask "$(jsid "$SAVE" ../x)"
+rm -rf "$TT"
 
 echo "=== exec bits in the index ==="
 # Claude Code runs the source scripts directly; an edit from Windows over a UNC path has reset

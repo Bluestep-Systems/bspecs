@@ -32,6 +32,26 @@ case $? in
   1) exit 0 ;; # no mutation: reads and page checks go on
 esac
 
+# The one-tools plugin's tab-guard mod shows its own card first. When the user presses Proceed
+# there, it leaves a ticket for this exact call: a file named by the call's tool_use_id, in
+# one-tools-tab-guard/ under the system temp folder, fresh for two minutes. one-tools' own hook
+# checks what the ticket holds; this one only needs to know the user already said yes to this
+# call, so it goes on when a fresh ticket by that name exists and asks otherwise. Without this,
+# Proceed was followed by this hook's prompt for the same call. Keep the folder name and the age
+# in step with one-tools (hooks/lib/tab-script.mjs).
+# Only the real top-level key counts: inside the script's text a quote arrives escaped (\").
+ids=$(printf '%s' "$HOOK_INPUT" | grep -Eo '"tool_use_id"[[:space:]]*:[[:space:]]*"[A-Za-z0-9_-]+"' | sed -E 's/.*"([A-Za-z0-9_-]+)"$/\1/' | sort -u)
+if [ -n "$ids" ] && [ "$(printf '%s\n' "$ids" | wc -l)" -eq 1 ]; then
+  for dir in "$TMPDIR" "$TEMP" "$TMP" /tmp; do
+    [ -n "$dir" ] || continue
+    command -v cygpath >/dev/null 2>&1 && dir=$(cygpath -u "$dir")
+    ticket="${dir%/}/one-tools-tab-guard/$ids"
+    if [ -f "$ticket" ] && [ -n "$(find "$ticket" -mmin -2 2>/dev/null)" ]; then
+      exit 0
+    fi
+  done
+fi
+
 # A mutation, or grep could not run: ask. Plain words, no org or tool names (the user need not
 # know them); the script itself shows under the prompt.
 printf '%s' '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"This script would change data in BlueStep. Allow it only if you want Claude to make this change."}}'
