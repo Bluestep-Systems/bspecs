@@ -223,6 +223,8 @@ pg "blocks a phone in a B6P project (Write content)" 2 "$B6" "$(jw file_path "$B
 pg "blocks in a project marked only by AGENTS.md" 2 "$AG" "$(jw file_path "$AG/README.md" content "$PHONE")"
 pg "blocks an email via new_string (Edit)" 2 "$B6" "$(jw file_path "$B6/README.md" old_string x new_string 'mail alpha.testcase@someclinic-invented.org')"
 pg "blocks a record title via edits (MultiEdit)" 2 "$B6" "$(jw file_path "$B6/README.md" edits 'json:[{"old_string":"a","new_string":"owner: (CL) Testcase, Alpha"}]')"
+pg "blocks a phone in a later edit of the list" 2 "$B6" "$(jw file_path "$B6/README.md" edits 'json:[{"old_string":"a","new_string":"clean"},{"old_string":"b","new_string":"call (395) 482-1335"}]')"
+pg "allows a MultiEdit that only removes client data (old_string)" 0 "$B6" "$(jw file_path "$B6/README.md" edits 'json:[{"old_string":"owner: (CL) Testcase, Alpha","new_string":"owner: <client A>"},{"old_string":"(395) 482-1335","new_string":"(395) 555-0142"}]')"
 pg "blocks a relative path (taken as inside the root)" 2 "$B6" "$(jw file_path 'U123456/Comp/draft/README.md' content "$PHONE")"
 pg "blocks a CRLF write" 2 "$B6" "$(jw file_path "$B6/notes.md" content "$(printf 'one\r\nphone 495-271-0846\r\n')")"
 if ! command -v cygpath >/dev/null 2>&1; then

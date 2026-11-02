@@ -77,11 +77,13 @@ fi
 
 # file_path / path: Claude Code and Codex. target_file / relative_workspace_path: the names
 # Cursor's agent tools have used (see block-generated-files.sh). Text: content (Write),
-# new_string (Edit), edits (MultiEdit — a list, which hook_field hands back as JSON; the
-# detector reads JSON text fine), new_source (NotebookEdit, which the Edit|Write matcher also
-# catches; its path key is notebook_path).
+# new_string (Edit), new_source (NotebookEdit, which the Edit|Write matcher also catches; its
+# path key is notebook_path), and for MultiEdit the new_string of each entry in edits — never an
+# old_string, so an edit that takes client data OUT of a file is not blocked for the text it
+# removes. The line numbers a MultiEdit block reports count through those new_strings in order.
 FILE=$(hook_field_path file_path path target_file relative_workspace_path notebook_path)
-TEXT=$(hook_field content new_string edits new_source)
+TEXT=$(hook_field content new_string new_source)
+[ -n "$TEXT" ] || TEXT=$(hook_field_items edits new_string)
 [ -n "$TEXT" ] || exit 0
 
 # Where the file is, relative to the project root. A relative path is taken as inside the root.
