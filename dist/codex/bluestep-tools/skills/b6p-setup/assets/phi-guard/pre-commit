@@ -1,0 +1,11 @@
+#!/bin/sh
+# bluestep-tools phi-guard 1
+# Block a commit whose added lines look like real client data (phone, email, record title).
+# The check itself is phi-check.sh next to this file; /b6p-setup installs both and sets
+# core.hooksPath. Run with sh, so a lost executable bit on phi-check.sh does not matter.
+HERE=$(dirname "$0")
+if [ ! -f "$HERE/phi-check.sh" ]; then
+  echo "BLOCKED: the client-data check cannot run: $HERE/phi-check.sh is missing. Re-run /b6p-setup to restore the project's scripts/hooks/ files." >&2
+  exit 1
+fi
+exec sh "$HERE/phi-check.sh" --staged

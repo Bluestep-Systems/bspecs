@@ -1,0 +1,185 @@
+#!/bin/sh
+# bluestep-tools phi-guard 1
+# Block a push whose new commits add what looks like real client data.
+#
+# Two layers, both on the lines the pushed commits ADD:
+#   1. the regex check (phi-check.sh --range), always. Cheap, and it catches commits made with
+#      git commit --no-verify. Fails closed, like pre-commit.
+#   2. a model review, only when this clone has `git config bluestep.phiReview true`. It looks
+#      for what a regex cannot: names, street addresses and birth dates in free text. It is a
+#      second opinion, so it fails OPEN: claude missing, an error, a timeout or an answer that
+#      cannot be read prints one warning and lets the push through (the regex already passed).
+#
+# /b6p-setup copies this file next to phi-check.sh and phi-detect.sh in scripts/hooks/ and sets
+# core.hooksPath. git calls it as `pre-push <remote name> <remote url>` with one line per ref on
+# stdin: "<local ref> <local sha> <remote ref> <remote sha>".
+#
+# Which commits count as new, per ref:
+#   - local sha all zeros: a branch delete, nothing to check.
+#   - remote sha known here: <remote sha>..<local sha>, what the remote does not have yet.
+#   - new ref (remote sha all zeros) or a remote tip this clone has never fetched: the merge-base
+#     with the remote's default branch (refs/remotes/<remote>/HEAD) when that is known, so a new
+#     branch is checked from where it left main. Otherwise the commits on no remote-tracking ref
+#     (git rev-list <local> --not --remotes), from the parent of the oldest one, or from the empty
+#     tree when that one is a root commit. If every commit is already on a remote, nothing is new.
+#   The merge-base can re-check commits that reached the remote on another branch; that costs a
+#   second look, never a missed one.
+#
+# The model call (checked against `claude --help` of Claude Code 2.1.81 in WSL and 2.1.287 on
+# Windows; every flag below is listed by both):
+#   claude -p --model haiku --tools "" --setting-sources user --strict-mcp-config
+#          --disable-slash-commands --no-session-persistence --output-format text
+#          --system-prompt <the fixed prompt>  < the added lines
+#   -p / --output-format text   one answer on stdout, then exit
+#   --model haiku               the small, fast model alias
+#   --tools ""                  no tools at all: it only reads stdin and answers
+#   --setting-sources user      skip the project's and local settings (their hooks and rules),
+#                               keep the user's own, which may carry the login (apiKeyHelper, env)
+#   --strict-mcp-config         no MCP servers (none are passed)
+#   --disable-slash-commands    no skills
+#   --no-session-persistence    the diff is not saved as a session transcript
+#   --system-prompt             replaces the default prompt; the diff goes in as the user message
+# It runs from a fresh temp folder, so no project file is in reach, with a 60 s limit when a
+# `timeout` command exists (Git Bash, WSL, Linux; not stock macOS, where it runs without one).
+# --bare would skip more, but it ignores OAuth logins, so most users would always get a warning.
+#
+# The lines go in as "<file>:<line>: <text>" (phi-check.sh --emit-lines: same skip list, phi-ok
+# lines and .phi-allow literals left out). Over about 100 KB, the model step is skipped with a
+# warning. A finding is printed as "<file>:<line> <kind>" only, never the value, and only for a
+# place that was actually sent.
+#
+# For tests: PHI_REVIEW_CLAUDE=<path> runs that command instead of claude.
+#
+# POSIX sh and POSIX awk only: git runs this under Git for Windows' sh, WSL and macOS.
+
+HERE=$(dirname "$0")
+CHECK="$HERE/phi-check.sh"
+if [ ! -f "$CHECK" ]; then
+  echo "BLOCKED: the client-data check cannot run: $CHECK is missing. Re-run /b6p-setup to restore the project's scripts/hooks/ files." >&2
+  exit 1
+fi
+remote=${1:-origin}
+MAX_BYTES=102400
+
+warn() { echo "phi-guard: model review skipped: $1; the regex check passed." >&2; exit 0; }
+
+# The empty tree's id (4b825dc642cb6eb9a060e54bf8d69288fbee4904 in a SHA-1 repo), asked from git
+# so a SHA-256 repo gets its own.
+EMPTY=$(git hash-object -t tree --stdin < /dev/null 2>/dev/null) || EMPTY=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+
+base_for() { # <local sha> <remote sha> -> the base on stdout; exit 1 when nothing is new
+  case "$2" in
+    *[!0]*)
+      if git cat-file -e "$2^{commit}" 2>/dev/null; then echo "$2"; return 0; fi ;;
+  esac
+  if def=$(git rev-parse -q --verify "refs/remotes/$remote/HEAD" 2>/dev/null) &&
+     mb=$(git merge-base "$def" "$1" 2>/dev/null); then
+    echo "$mb"; return 0
+  fi
+  oldest=$(git rev-list --reverse "$1" --not --remotes 2>/dev/null | head -n 1)
+  [ -n "$oldest" ] || return 1
+  git rev-parse -q --verify "$oldest^" 2>/dev/null || echo "$EMPTY"
+}
+
+ranges=""
+while read -r lref lsha rref rsha; do
+  [ -n "$lsha" ] || continue
+  case "$lsha" in *[!0]*) ;; *) continue ;; esac     # a delete
+  base=$(base_for "$lsha" "$rsha" < /dev/null) || continue
+  [ "$base" = "$lsha" ] && continue
+  ranges="$ranges $base..$lsha"
+done
+[ -n "$ranges" ] || exit 0
+
+# Layer 1: the regex check. Its own message says what to do.
+for r in $ranges; do
+  sh "$CHECK" --range "$r" < /dev/null || exit 1
+done
+
+# Layer 2: the model review, opt-in per clone.
+[ "$(git config --bool bluestep.phiReview 2>/dev/null)" = true ] || exit 0
+
+T=$(mktemp -d 2>/dev/null) || T=$(mktemp -d /tmp/phi-push.XXXXXX 2>/dev/null) ||
+  warn "no writable temp folder outside the project"
+trap 'rm -rf "$T"' EXIT
+trap 'exit 1' HUP INT TERM
+
+for r in $ranges; do
+  sh "$CHECK" --range "$r" --emit-lines < /dev/null >> "$T/lines" 2> "$T/err" ||
+    warn "could not collect the added lines"
+done
+[ -s "$T/lines" ] || exit 0
+size=$(wc -c < "$T/lines" | tr -d ' ')
+[ "$size" -le "$MAX_BYTES" ] || warn "the added lines are $size bytes, over the $MAX_BYTES-byte limit"
+
+CL=${PHI_REVIEW_CLAUDE:-claude}
+command -v "$CL" > /dev/null 2>&1 || warn "'$CL' was not found"
+
+PROMPT='You review lines that are about to be pushed to a git repository, looking for personal data of real clients or contacts. Each input line is "<file>:<line>: <text>".
+Report a line only if its text contains a real person'"'"'s name, phone number, email address, street address or date of birth belonging to a client, patient, resident or contact.
+Ignore: placeholders (<client A>, Jane Doe, John Doe, Test User), 555 phone numbers, example.com / example.org addresses, code identifiers and variable names, platform record ids and other numbers, test data, and lines about the authors or staff of the software itself (author fields, copyright lines, maintainers).
+Answer with ONLY this JSON and nothing else: {"findings":[{"loc":"<file>:<line>","kind":"name|phone|email|address|dob"}]}
+"loc" is the "<file>:<line>" part exactly as given. Never repeat the personal data itself. If nothing qualifies, answer {"findings":[]}.'
+
+mkdir "$T/run" || warn "no writable temp folder"
+TO=""
+command -v timeout > /dev/null 2>&1 && TO="timeout 60"
+(cd "$T/run" && $TO "$CL" -p --model haiku --tools "" --setting-sources user --strict-mcp-config \
+    --disable-slash-commands --no-session-persistence --output-format text \
+    --system-prompt "$PROMPT" < "$T/lines" > "$T/answer" 2> "$T/err")
+rc=$?
+[ "$rc" = 124 ] && [ -n "$TO" ] && warn "claude did not answer within 60 s"
+# claude prints some errors ("Not logged in") on stdout, not stderr.
+if [ "$rc" != 0 ]; then
+  why=$(head -n 1 "$T/err" | cut -c1-120)
+  [ -n "$why" ] || why=$(head -n 1 "$T/answer" | cut -c1-120)
+  warn "claude exited with $rc (${why:-no message})"
+fi
+
+# Read the answer without jq: every innermost {...} object with a "loc" is one finding. A ```json
+# fence or text around the JSON does not matter. Only places that were sent are printed, so a
+# value the model put in "loc" never reaches the terminal.
+LC_ALL=C awk '
+function val(o, key,   v) {
+  if (!match(o, "\"" key "\"[ \t]*:[ \t]*\"[^\"]*\"")) return ""
+  v = substr(o, RSTART, RLENGTH)
+  sub(/^"[^"]*"[ \t]*:[ \t]*"/, "", v); sub(/"$/, "", v)
+  return v
+}
+FILENAME == ARGV[1] { i = index($0, ": "); if (i) sent[substr($0, 1, i - 1)] = 1; next }
+{ s = s " " $0 }
+END {
+  if (index(s, "\"findings\"") == 0) { print "unreadable"; exit }
+  split("name phone email address dob", t, " "); for (i in t) kinds[t[i]] = 1
+  while (match(s, /\{[^{}]*\}/)) {
+    o = substr(s, RSTART, RLENGTH); s = substr(s, RSTART + RLENGTH)
+    loc = val(o, "loc"); if (loc == "") continue
+    kind = val(o, "kind"); if (!(kind in kinds)) kind = "personal-data"
+    if (loc in sent) print "  " loc " " kind; else other++
+  }
+  if (other) print "other " other
+}' "$T/lines" "$T/answer" > "$T/found"
+
+grep -q '^unreadable$' "$T/found" && warn "the answer was not the expected JSON"
+other=$(sed -n 's/^other //p' "$T/found")
+grep '^  ' "$T/found" > "$T/hits"
+if [ ! -s "$T/hits" ]; then
+  [ -n "$other" ] && warn "the answer named only lines that were not sent"
+  exit 0
+fi
+
+{
+  echo "BLOCKED: the model review (git config bluestep.phiReview) found what looks like real client data in these commits. Only the place is shown:"
+  head -n 20 "$T/hits"
+  n=$(wc -l < "$T/hits" | tr -d ' ')
+  [ "$n" -gt 20 ] && echo "  ... and $((n - 20)) more"
+  [ -n "$other" ] && echo "  (and $other place(s) the answer named that were not in the push, ignored)"
+  echo "Committed files stay in git history, so real client or contact data does not go in them. Fix the commit (git commit --amend, or a rebase for an older one), then push again:"
+  echo "  - use placeholders: <client A>, Jane Doe, a 555-01xx phone number, name@example.com"
+  echo "  - keep real data you need for debugging in .claude/scratch/ (git-ignored, not checked)"
+  echo "  - if this is test data or a staff/author line that only looks real, add phi-ok to the line"
+  echo "  - if it is public (the org's own front desk), list it in .phi-allow at the project root"
+  echo "  - git push --no-verify skips this check. Try the options above first, and never use it to get real data through."
+  echo "More: the bluestep-reference skill, conventions/client-data.md."
+} >&2
+exit 1

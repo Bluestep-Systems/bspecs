@@ -8,6 +8,9 @@ node_modules/
 # Claude Code — local, user-private settings (may hold secrets like B6PT_TOKEN); never commit
 .claude/settings.local.json
 
+# Real client data while debugging — never committed (bluestep-reference → conventions/client-data.md)
+.claude/scratch/
+
 # OS
 .DS_Store
 Thumbs.db

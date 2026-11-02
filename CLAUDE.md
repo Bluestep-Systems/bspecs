@@ -19,7 +19,7 @@ plugin/                           ← THE SOURCE OF TRUTH — author only here
   .claude-plugin/plugin.json      ← manifest; its `version` is the ONE shared version stream
   skills/                         ← one folder per skill, incl. bluestep-reference (the platform reference)
   agents/                         ← three subagents
-  hooks/                          ← hooks.json + block-generated-files, block-tsc, canary
+  hooks/                          ← hooks.json + block-generated-files, phi-guard, tab-guard, canary, lib/
   .mcp.json                       ← bundles the bluestep-gateway MCP server ($B6PT_TOKEN)
 tools/gen-cross-tool/             ← the generator — npm run gen / gen:check
 dist/cursor/, dist/codex/         ← GENERATED, committed, never hand-edited
@@ -37,9 +37,11 @@ conversationally.
   emits the committed `dist/` trees and the two generated marketplace manifests. CI's
   `cross-tool-drift` job regenerates and diffs, so stale or hand-edited output cannot merge.
   → `cross-tool-plugin-output.md`
-- **Hooks** are two guardrails (`PreToolUse`: `block-generated-files`, and `tab-guard`, Claude
-  Code only, which asks before a browser script runs a GraphQL mutation) plus
-  `canary.sh` (`SessionStart`, Claude Code only). They run in **whatever shell hosts the agent —
+- **Hooks** are three guardrails (`PreToolUse`: `block-generated-files`; `phi-guard`, which blocks
+  a write that looks like real client data in a B6P project; and `tab-guard`, Claude Code only,
+  which asks before a browser script runs a GraphQL mutation) plus `canary.sh` (`SessionStart`,
+  Claude Code only). `phi-guard` shares its detector (`hooks/lib/phi-detect.sh`) with the git
+  hooks `/b6p-setup` copies into projects → `client-data-guard.md`. They run in **whatever shell hosts the agent —
   Git Bash on Windows, not WSL** — so they must not assume `jq` or WSL tools; that assumption is
   why they silently allowed everything for 77 days. Parser fallback is jq → python3 → python →
   node, and the guardrails **fail closed**.
@@ -67,13 +69,15 @@ conversationally.
   cannot record the executable bit, and the drift job fails.
 - A new `hooks/*.sh` needs its executable bit **in the index**: this checkout has
   `core.fileMode=false`, so `chmod +x` alone does nothing — run `git update-index --chmod=+x` on
-  the script and on its two `dist/*/hooks/shared/` copies.
+  the script and on its two `dist/*/hooks/shared/` copies (`shared/lib/` for a lib script). The
+  same goes for a script under `skills/*/assets/` (the `phi-guard` git hooks); the emitters give
+  any skill file that starts with `#!` mode 755.
 - Run `npm run test:hooks` (WSL) after touching a hook.
 
 ## Running / testing
 
 No automated suite. By hand: add the in-repo marketplace, install the plugin into a scratch
-project, and confirm the skills appear, the two guardrail hooks fire on Edit/Write/Bash, and
+project, and confirm the skills appear, the Edit/Write guardrail hooks fire, and
 `bluestep-reference` serves files on demand; then `/b6p-setup` in a scratch dir writes the root
 files and a plugin-enabling `.claude/settings.json` with no hooks block.
 

@@ -128,6 +128,50 @@ _hook_slashes() {
   esac
 }
 
+# hook_field_items <list-key> <item-key> -> the <item-key> value of every element of
+# .tool_input.<list-key> (a list of objects), one per line, in order; empty when the list is
+# missing or holds no such value. For MultiEdit's `edits` this gives each edit's new_string and
+# never its old_string — an edit that removes client data must not be blocked for the text it
+# takes out.
+hook_field_items() {
+  case "$_hook_parser" in
+    jq)
+      printf '%s' "$HOOK_INPUT" | jq -r --arg l "$1" --arg k "$2" \
+        '(.tool_input[$l] // []) | if type == "array" then .[] | (.[$k] // empty) | select(. != "") | if type == "string" then . else tojson end else empty end' 2>/dev/null
+      ;;
+    python3 | python)
+      printf '%s' "$HOOK_INPUT" | "$_hook_parser" -I -c '
+import json, sys
+try:
+    d = json.load(sys.stdin).get("tool_input") or {}
+except Exception:
+    sys.exit(3)
+l = d.get(sys.argv[1])
+if isinstance(l, list):
+    for e in l:
+        v = e.get(sys.argv[2]) if isinstance(e, dict) else None
+        if v:
+            sys.stdout.write((v if isinstance(v, str) else json.dumps(v)) + "\n")
+' "$1" "$2" 2>/dev/null
+      ;;
+    node)
+      printf '%s' "$HOOK_INPUT" | node -e '
+let s = "";
+process.stdin.on("data", d => s += d).on("end", () => {
+  let t;
+  try { t = (JSON.parse(s) || {}).tool_input || {}; } catch (e) { process.exit(3); }
+  const l = t[process.argv[1]];
+  if (!Array.isArray(l)) return;
+  for (const e of l) {
+    const v = e && typeof e === "object" ? e[process.argv[2]] : undefined;
+    if (v) process.stdout.write((typeof v === "string" ? v : JSON.stringify(v)) + "\n");
+  }
+});
+' "$1" "$2" 2>/dev/null
+      ;;
+  esac
+}
+
 # hook_field <key> [key...] -> first non-empty .tool_input.<key>, or empty.
 hook_field() {
   case "$_hook_parser" in
