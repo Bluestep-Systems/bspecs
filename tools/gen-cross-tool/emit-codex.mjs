@@ -623,6 +623,7 @@ silently.
 | Guardrail | Matcher | Status |
 |---|---|---|
 | block-generated-files | *(none)* | Fires on every PreToolUse; the wrapper filters. (The \`Bash\`-matcher \`block-tsc\` hook that proved this path live was removed in 0.37.0.) |
+| phi-guard | *(none)* | Same wrapper shape; blocks a write that looks like real client data in a B6P project. The project root is the hook's working directory (no \`CLAUDE_PROJECT_DIR\` on Codex), unproven on a live seat; the git \`pre-commit\` check is the gate either way |
 | canary | *(not wired)* | Claude Code-only SessionStart check; \`shared/canary.sh\` ships but nothing runs it on Codex |
 | tab-guard | *(not wired)* | Guards Claude Code's own browser tools, which Codex does not have; \`shared/tab-guard.sh\` ships but nothing runs it on Codex |
 
@@ -655,7 +656,9 @@ function emit(tree) {
       text = transformFrontmatter(text, ['allowed-tools'], KNOWN_SKILL_FM, f.rel, LABEL);
     }
     text = rewriteRefs(text, f.rel, tree.root, mapTarget, LABEL);
-    files[`${OUT_PLUGIN}/${f.rel}`] = text;
+    // A skill asset that is a script (shebang: e.g. the git hooks /b6p-setup copies into a
+    // project) keeps its exec bit, like the hook scripts below.
+    files[`${OUT_PLUGIN}/${f.rel}`] = text.startsWith('#!') ? { text, mode: 0o755 } : text;
   }
 
   // Agents (task 11): TOML payload, NOT a plugin surface — prove-out X5. The

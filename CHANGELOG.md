@@ -8,6 +8,45 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 ## [Unreleased]
 
+## [plugin 0.41.0] — 2026-11-02
+
+> **Run `/b6p-setup` in each project after updating.** It installs the new client-data check in
+> git for that clone and asks once about the optional model review. This release adds a hook, so
+> **Codex users must re-trust hooks**.
+
+### Added
+
+- **Client data stays out of committed files** (#248). Agents debugging a component copied real
+  names, phone numbers and emails into docs, specs, comments and fixtures, and from there into git
+  history. Now:
+  - **Rule 9** in the shipped `AGENTS.md` (template marker 4): placeholders in anything committed,
+    record ids are fine, real data only in the git-ignored `.claude/scratch/`.
+  - **`phi-guard` hook** (`PreToolUse` on Edit/Write): blocks a write that looks like real client
+    data in a B6P project and tells the agent to use placeholders. It never rewrites the text, and
+    shows found values cut to two characters. Silent outside B6P projects.
+  - **Git `pre-commit` and `pre-push` hooks**, copied by `/b6p-setup` into the project's
+    `scripts/hooks/` and committed, so the check covers every tool and hand edits. A new
+    `phi-guard` migration installs and refreshes them, adds `.claude/scratch/` to `.gitignore`,
+    pins the scripts to LF in `.gitattributes`, and scans what is already committed once,
+    reporting counts only.
+  - **Optional model review on push** (`git config bluestep.phiReview true`): sends only the added
+    lines to Claude Haiku, through the login the session already uses, to catch names in free
+    text. When Claude is missing or not logged in it warns and lets the push through.
+  - **Escape hatches:** `phi-ok` on a line (test data only) and a committed `.phi-allow` (literal
+    values, `domain:<d>`, or `*` to turn the checks off for a project).
+  - **Reference:** `conventions/client-data.md`, and `gotchas/build-sourcemap-embeds-source.md`
+    (compiled `.build/*.js` keeps removed source text until a publish and a pull).
+  - Why it blocks instead of masking: `docs/decisions/client-data-guard.md`.
+
+### Known gaps
+
+- **Cursor and Codex:** the hook takes its working directory as the project root, since those
+  tools set no `CLAUDE_PROJECT_DIR`. Not yet checked on a live seat; if the directory is not the
+  project, the hook stays silent and the git `pre-commit` check is the gate.
+- **The model review** has not yet answered on a logged-in seat in testing; its failure path
+  (warn and allow) is tested.
+- **Names in free text** are seen only by the opt-in review or a person reading the diff.
+
 ## [plugin 0.40.1] — 2026-10-27
 
 > **The tab guard no longer asks twice after one-tools' card.** Only the `tab-guard.sh` script

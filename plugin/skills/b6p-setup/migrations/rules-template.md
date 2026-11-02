@@ -93,7 +93,7 @@ Write any `docs/` page a chunk moved into during the same change, so no pointer 
 
 **The rebuild renumbers the platform rules — from v1.** Template 2 shuffled most of the v1 numbers (v1 rule 1 is
 now 7, 2 is 1, 3 is 8, 4 is 2, 6 is 5, 8 is 3, 9 is 4, 10 is 6); template 3 keeps template 2's numbering and
-only corrected the sentence about which rules a hook enforces, so a 2 → 3 swap needs none of this. A project's own quick-tasks, specs
+only corrected the sentence about which rules a hook enforces, and template 4 only adds rule 9 (client data) at the end and widens that sentence, so a swap from 2 or 3 needs none of this. A project's own quick-tasks, specs
 and decision logs often cite "Critical rule N" by the old number — after the swap every one of those
 points at the wrong rule, with no signal that anything is off. So, if
 `grep -rlin "rules\? [0-9]" docs .claude 2>/dev/null` lists at least one file, add this line right under the

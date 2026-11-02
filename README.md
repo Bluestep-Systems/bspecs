@@ -117,7 +117,7 @@ drift.
 
 | Plugin | What it's for | Install |
 | --- | --- | --- |
-| **`bluestep-tools`** | BlueStep component workspaces: the `/spec-*` workflow, `/b6p-*` platform-sync skills, BlueStep subagents, a guardrail hook, the bundled gateway MCP and an on-demand platform reference. | `bluestep-tools@bluestep` |
+| **`bluestep-tools`** | BlueStep component workspaces: the `/spec-*` workflow, `/b6p-*` platform-sync skills, BlueStep subagents, guardrail hooks, a client-data check, the bundled gateway MCP and an on-demand platform reference. | `bluestep-tools@bluestep` |
 | **`core-tools`** | Every other repo: the `core` rule set, `/task`, `/plan`, `/repo-setup`. Source: [`Bluestep-Systems/bluestep-ai`](https://github.com/Bluestep-Systems/bluestep-ai). | `core-tools@bluestep` |
 
 Once `bluestep-tools` is enabled:
@@ -127,7 +127,8 @@ Once `bluestep-tools` is enabled:
 - **Setup** — `/b6p-setup` (machine, project and update in one run) and `/bluestep-vite-report` (scaffold an off-platform Vite/Preact merge report).
 - **Platform authoring** — the bundled `bluestep-gateway` MCP server (auto-registers once the plugin is enabled and `$B6PT_TOKEN` is set) lets the agent create and wire platform objects in-session.
 - **Subagents** — `b6p-task-implementer` (isolated task execution), `b6p-commenter` (component README), `b6p-code-review` (report-only review).
-- **Guardrail hook** — blocks hand-edits to platform-generated files (`declarations/`, `B.d.ts`, …). Claude Code blocks; Cursor is wired to block too (`preToolUse`, not yet confirmed on a live seat, and not on Windows); Codex runs it only once trusted. On Claude Code a session canary warns once if no JSON parser is on PATH and offers setup in a folder that holds components but no rules file.
+- **Guardrail hooks** — block hand-edits to platform-generated files (`declarations/`, `B.d.ts`, …) and writes that look like real client data (phone numbers, emails, record titles) in a B6P project. Claude Code blocks; Cursor is wired to block too (`preToolUse`, not yet confirmed on a live seat, and not on Windows); Codex runs them only once trusted. On Claude Code a session canary warns once if no JSON parser is on PATH and offers setup in a folder that holds components but no rules file.
+- **Client-data check in git** — `/b6p-setup` copies `pre-commit` and `pre-push` hooks into the project's `scripts/hooks/` (committed, so they work in every tool and for hand edits), and can turn on an optional model review of each push. How it works and what to do when it blocks: `bluestep-reference` → `conventions/client-data.md`.
 - **On-demand reference** — `bluestep-reference`, a BsJs/RelateScript/platform reference the agent reads one file at a time, only when a task calls for it.
 - **Feedback** — `/task-comment` (ClickUp implementation comment), `/bspecs-feedback` (propose a plugin change upstream; you get an email when it is closed).
 
