@@ -13,15 +13,15 @@ The runtime docs consume FIDs everywhere — `entry.fields.<name>`, the bare que
 | Mechanism | Set where | Resolves |
 | --- | --- | --- |
 | **`FID=<name>` alternate identifier** — a key/value entry (key `FID`) in the object's alternate-identifier / custom-lookup list | platform UI (the object's Alt IDs / custom lookup properties), or the MCP `altIds` param | name-addressability of **formulas, merge reports, and queries**: the `__FID_<name>` full-id encoding, `B.find.mergeReport("…__FID_<name>")`, `optApplicable*("FID", "<name>")` custom-prop lookups (args = alt-id key, value), `.altIds()` walks — and observed live making `runFormula("<name>")` resolve (2026-08) |
-| **Field `formulaId`** — a dedicated "Formula ID" property on **fields** | field CREATE (or a repair UPDATE) — the `formulaId` param on the MCP `field` tool | the field's **property key in the generated BSJS declarations** (`entry.fields.<name>`, `readonly <name>:` in `declarations/`) |
+| **Field `formulaId`** — a dedicated "Formula ID" property on **fields** | field CREATE (or a repair UPDATE) — the `formulaId` param on the MCP `batch_fields` tool | the field's **property key in the generated BSJS declarations** (`entry.fields.<name>`, `readonly <name>:` in `declarations/`) |
 | **ON_DEMAND `Identifier`** (`uniqueId`) — a required, plain single-value text field on ON_DEMAND formulas | platform UI only ("Edit Formula Options"; no MCP parameter exists) | the platform's documented key for **scheduling** the on-demand formula from other code |
 
 Three consequences of "three different things":
 
 - An `altIds` `FID=` entry on a **field** does **not** set `formulaId` — the field stays out of the
-  declarations (`formulaId: null`) and the tool warns about it. (verified 2026-08 — see the quirks in
+  declarations (no `formulaId`) and the tool warns about it. (verified 2026-08 — see the quirks in
   [conventions/mcp-platform-authoring.md](../conventions/mcp-platform-authoring.md))
-- **Before any `field` / `batch_fields` UPDATE that sets `formulaId`, confirm the field has none.**
+- **Before any `batch_fields` UPDATE that sets `formulaId`, confirm the field has none.**
   `list_applicable_fields` lists only the fields that have a `formulaId`, with its value — a field
   missing from that list has none. `describe_form` and `get_form` do not return it. Only on a field
   with none is the UPDATE safe: it adds a name where there was none. If the field already has one,

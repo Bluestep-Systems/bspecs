@@ -35,5 +35,4 @@ signed-in tab otherwise).
 
 Sibling tools disagree on argument names — read the schema (`describe_tool`) instead of assuming:
 
-- the `field` tool takes **`field`** (not `fieldId`);
 - `get_option_list` takes **`listId`** (not `optionListId`).

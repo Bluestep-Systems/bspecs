@@ -138,7 +138,7 @@ for (const record of results) {
 }
 ```
 
-That `B.queries.X` shape is what a **named-query import** produces. A **query-group import** — the query (or MEFR) wired into the script as a query group, e.g. via the MCP `add_queries` with a `groupId`, or the UI's query-group import — binds a **bare global const named after the group variable** instead, not `B.queries.X`:
+That `B.queries.X` shape is what a **named-query import** produces. A **query-group import** — the query (or MEFR) wired into the script as a query group, e.g. via the MCP `script_queries` ADD with a `groupId`, or the UI's query-group import — binds a **bare global const named after the group variable** instead, not `B.queries.X`:
 
 ```typescript
 // declarations/index.d.ts shows: declare const projectTracker: RecordQuery_projectTracker
