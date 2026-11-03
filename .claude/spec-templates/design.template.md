@@ -6,9 +6,9 @@
 
 Which parts of the repo this touches.
 
-- `cli.js` / `src/*` — what changes
-- `templates/*` — what changes (remember `.template` files strip the extension on copy)
-- skills / instructions / docs — what changes
+- `plugins/<name>/**` — skills, agents, hooks, reference files: what changes
+- `tools/gen-cross-tool/**` / `.github/workflows/*` — what changes
+- docs / ADRs / repo-local `.claude/` skills — what changes
 
 ## Approach
 
@@ -16,7 +16,7 @@ High-level summary of how this will be implemented. Reference existing patterns 
 
 ## Data / control flow
 
-How the change behaves end to end. For scaffold logic, which template trees are copied and which variables are substituted.
+How the change behaves end to end. For plugin changes, what each surface (Claude Code, Cursor, Codex) gets after `npm run gen`.
 
 ## Edge cases
 
@@ -28,4 +28,4 @@ Which conventions from `CLAUDE.md` are being applied. If a new pattern is introd
 
 ## Risks
 
-What could go wrong; how it's verified given there is no test suite (manual scaffold into a scratch dir, `node cli.js` checks, etc.).
+What could go wrong; how it's verified given there is no test suite (`npm run gen` + `gen:check`, `npm run test:hooks`, installing the plugin into a scratch project, etc.).

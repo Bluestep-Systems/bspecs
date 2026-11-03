@@ -15,7 +15,8 @@ linked: the design record is `docs/decisions/cross-tool-plugin-output.md`, the l
 prove-out behind the hook/MCP rules is
 `.claude/specs/cross-tool-plugin-output/prove-out.md`, and the per-tool hook degradation
 notes are `dist/cursor/bluestep-tools/hooks/README.md` and
-`dist/codex/bluestep-tools/hooks/README.md`.
+`dist/codex/bluestep-tools/hooks/README.md` (for the opt-in phi-guard plugin's write-time hook,
+`dist/cursor/phi-guard/hooks/README.md` and `dist/codex/phi-guard/hooks/README.md`).
 
 ---
 
@@ -33,7 +34,7 @@ users.
 ### When
 
 After **every release that ships plugin content or emitter changes** — i.e. any merge to
-`main` that bumped `version` in `plugin/.claude-plugin/plugin.json`. Installed plugins
+`main` that bumped `version` in `plugins/bluestep-tools/.claude-plugin/plugin.json`. Installed plugins
 only update on a version change, so run this **after** the release is live, against what
 users actually receive. Docs-only merges (no bump) ship nothing and need no run.
 
@@ -52,8 +53,9 @@ Fill in per run (copy the row):
 ## 2. Shared prerequisites (before any tool)
 
 - [ ] **The release is actually out.** The repo (`github.com/Bluestep-Systems/bspecs`) has
-      the `plugin-vX.Y.Z` tag and GitHub Release for the version under test, and that
-      version is what `plugin/.claude-plugin/plugin.json` on `main` says.
+      the `bluestep-tools-vX.Y.Z` tag (`plugin-vX.Y.Z` up to 0.41.0) and GitHub Release
+      for the version under test, and that
+      version is what `plugins/bluestep-tools/.claude-plugin/plugin.json` on `main` says.
 - [ ] **`B6PT_TOKEN` is set** in the environment the tool launches from (needed for the
       MCP steps only; everything else works without it). Creation + placement steps live in
       `/b6p-setup`'s `references/platform-token.md` — the short version:
@@ -119,7 +121,8 @@ serves a Claude Code marketplace (`.claude-plugin/marketplace.json`), a Cursor m
    the CLI: `/hooks`). Until you trust them, the guardrails **silently never run** — no
    error, no log.
 4. **Re-trust after every hook-changing release.** Trust is per hook *definition*, so any
-   release that touched `plugin/hooks/**` or the emitters' hook wiring resets it. Check the
+   release that touched a plugin's `plugins/<name>/hooks/**` (bluestep-tools or phi-guard)
+   or the emitters' hook wiring resets it. Check the
    plugin page for the "needs review" banner on **every** run of this plan, not just the
    first.
 5. If you just set `B6PT_TOKEN`, fully quit and reopen the app.
@@ -156,7 +159,7 @@ Three reusable probes referenced below:
 - [ ] **Reference on-demand:** ask "Using the bluestep-reference skill, open the
       common-gotchas file and quote its first heading." → the agent reads the bundled file
       and quotes a heading that matches
-      `plugin/skills/bluestep-reference/gotchas/common-gotchas.md` in this repo.
+      `plugins/bluestep-tools/skills/bluestep-reference/gotchas/common-gotchas.md` in this repo.
 - [ ] ~~**Hook — block-tsc:** P1 → command denied, `tsc-ran.txt` absent, `echo ok` passes.~~ *(removed 0.37.0)*
 - [ ] **Hook — block-generated-files:** P2 → edit denied, file byte-identical.
 - [ ] **Hook — block-inline-frontend:** P3 → edit denied.
@@ -300,8 +303,8 @@ tooling.
       endpoint component, the agent runs the read-only `b6p audit` (or `/b6p-audit`) to
       surface drift first. If the first-run experience confirms the need, file the rule
       change as a fix task (candidate homes:
-      `plugin/skills/b6p-setup/templates/AGENTS.md.template` and/or
-      `plugin/skills/b6p-push/SKILL.md`) — note this deliberately softens the `/b6p-audit`
+      `plugins/bluestep-tools/skills/b6p-setup/templates/AGENTS.md.template` and/or
+      `plugins/bluestep-tools/skills/b6p-push/SKILL.md`) — note this deliberately softens the `/b6p-audit`
       skill's current "on demand, not a pre-flight" stance for the endpoint-component case
       only, so it needs a deliberate decision, not a drive-by edit.
 - [ ] **5.7 Close the remaining assumption-register rows.** These are still DOCS/INFERRED
@@ -345,8 +348,10 @@ tooling.
 - `.claude/specs/cross-tool-plugin-output/` — requirements, design (see "Prove-out
   amendments"), tasks, and the full prove-out record this plan inherits from.
 - `docs/decisions/cross-tool-plugin-output.md` — the ADR (output shape, committed `dist/`,
-  single version stream, tag-on-merge).
+  version stream — one per plugin since 2026-11 —, tag-on-merge).
 - `dist/cursor/bluestep-tools/hooks/README.md` / `dist/codex/bluestep-tools/hooks/README.md`
-  — per-tool hook wiring and documented degradations the §4 expectations come from.
-- `plugin/skills/b6p-setup/SKILL.md` — the scaffold and
+  — per-tool hook wiring and documented degradations the §4 expectations come from;
+  `dist/cursor/phi-guard/hooks/README.md` / `dist/codex/phi-guard/hooks/README.md` — the same
+  for the opt-in phi-guard plugin.
+- `plugins/bluestep-tools/skills/b6p-setup/SKILL.md` — the scaffold and
   the per-tool enablement steps §3/§4 exercise, including full `B6PT_TOKEN` setup.

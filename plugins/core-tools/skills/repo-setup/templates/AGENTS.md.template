@@ -1,0 +1,43 @@
+# {{PROJECT_NAME}}
+
+<!-- core-tools repo-setup-template 1 -->
+
+> Always-on rules for AI coding agents in this repo. Cursor, Codex and most agents read `AGENTS.md`
+> natively; Claude Code reads it through the one-line `CLAUDE.md` bridge next to it. Repo rules go
+> here, never in `CLAUDE.md`. Anything that is only true sometimes belongs in a skill under
+> `.claude/skills/`; anything true of one directory only belongs in an `AGENTS.md` *in* that
+> directory, where it costs nothing to sessions that never go there.
+
+**Rule set:** `core`, from the `core-tools` plugin (`lane/core.md`). It carries how to read, when to
+delegate to a subagent, and where a session should end. Read it once at the start of a session that
+will do real work here; it is not repeated in this file, so that one copy stays the only copy.
+
+## What this is
+
+{{WHAT_THIS_IS}}
+
+## Commands
+
+{{COMMANDS}}
+
+## Rules
+
+{{RULES}}
+
+<!-- The two sections below are recommended by the agents.md convention. Fill one only if this repo
+     really has something there, and delete the heading if it does not — an empty section costs every
+     session and teaches nothing. Add other free-form sections the same way. -->
+
+## Commit and PR
+
+{{COMMIT_AND_PR}}
+
+## Security
+
+{{SECURITY}}
+
+## Compaction
+
+When compacting, always preserve: the paths of every file changed in this session, the exact
+commands used to check the work, every open decision with its reason, and the done-when check for
+the current task. Drop verbatim tool output and superseded attempts.

@@ -3,20 +3,22 @@
   "owner": {
     "name": "BlueStep Systems"
   },
-  "description": "BlueStep tooling for Claude Code — bluestep-tools for B6P component workspaces (spec-driven skills, b6p CLI integration, subagents, hooks, platform reference), core-tools for every other repo (core rule set, /task, /plan, subagents), and one-tools for moving a Manage system into BlueStep One and building its components.",
+  "description": "BlueStep tooling for Claude Code — bluestep-tools for B6P component workspaces (spec-driven skills, b6p CLI integration, subagents, hooks, platform reference), core-tools for every other repo (core rule set, /repo-setup, /task, /plan), phi-guard for the write-time client-data check in B6P projects, and one-tools for moving a Manage system into BlueStep One and building its components.",
   "plugins": [
     {
       "name": "bluestep-tools",
-      "source": "./plugin",
+      "source": "./plugins/bluestep-tools",
       "description": "Spec-driven BlueStep (B6P) development: /b6p-* platform CLI skills, the /spec-* workflow, BlueStep subagents, guardrail hooks, and an on-demand platform reference."
     },
     {
       "name": "core-tools",
-      "source": {
-        "source": "github",
-        "repo": "Bluestep-Systems/bluestep-ai"
-      },
-      "description": "Base workflow tooling for repos that are not BlueStep components: the core rule set, /task and /plan, explorer and implementer subagents, and the session-cost measurement script."
+      "source": "./plugins/core-tools",
+      "description": "Base workflow tooling for repos that are not BlueStep components: the core rule set, /repo-setup for a repo's own AGENTS.md and skills, /task and /plan, and the session-cost measurement script."
+    },
+    {
+      "name": "phi-guard",
+      "source": "./plugins/phi-guard",
+      "description": "Write-time client-data check for B6P projects: blocks an agent's Edit or Write that looks like real client data in a committed file. Opt-in, installed per machine; acts only in B6P projects."
     },
     {
       "name": "one-tools",

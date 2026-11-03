@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 // tools/gen-cross-tool/index.mjs — CLI entry for the cross-tool plugin
-// generator. No args: run every registered emitter over plugin/** and write
-// its output tree. --check: structural self-test + the Claude-ism denylist
-// lint + the b6p CLI floor lint (the CI gate); exits non-zero on any finding.
-// Invariant: output is a pure function of plugin/** — sorted walks, no
+// generator. No args: discover every plugins/<name>/, run every registered
+// emitter over them and write its output tree. --check: discovery asserts +
+// structural self-test + the Claude-ism denylist lint + the b6p CLI floor
+// lint + shared-copy identity + each emitter's own check (the CI gate); exits
+// non-zero on any finding.
+// Invariant: output is a pure function of plugins/** — sorted walks, no
 // timestamps, no environment leakage, LF line endings.
 
 // Fail fast below the supported engine floor (same as package.json engines).
@@ -15,23 +17,35 @@ if (nodeMajor < 18) {
   process.exit(1);
 }
 
-import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkPluginStructure, lintClaudeIsms, lintCliFloor, readPluginTree, writeOutputs } from './lib.mjs';
+import {
+  PLUGINS_DIR,
+  checkPluginStructure,
+  checkSharedCopies,
+  discoverPlugins,
+  emittedShapeView,
+  lintClaudeIsms,
+  lintCliFloor,
+  writeOutputs,
+} from './lib.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..', '..');
-const PLUGIN_ROOT = join(REPO_ROOT, 'plugin');
+const PLUGINS_ROOT = join(REPO_ROOT, PLUGINS_DIR);
 
 // Emitter registry. Each specifier default-exports
-//   { name, outputDirs, emit(pluginTree, ctx) }
-// where outputDirs are repo-root-relative POSIX paths (e.g. 'dist/cursor',
-// '.cursor-plugin') and emit() returns a plain object of repo-root-relative
-// paths → file content. The writer wipes outputDirs and refuses to write
-// anywhere else. An emitter may also export check(pluginTree, ctx) → problem
-// strings for its own --check structural assertions (emitted manifests parse,
-// every source skill present, zero unmapped ${CLAUDE_PLUGIN_ROOT} refs).
+//   { name, outputDirs, emit(plugins, ctx) }
+// where plugins is the discovered array of { name, dir, manifest, tree } (every
+// plugin; the emitter builds only the crossTool: true ones — crossToolPlugins()
+// in lib.mjs), outputDirs are repo-root-relative POSIX paths (e.g.
+// 'dist/cursor', '.cursor-plugin') and emit() returns ONE flat object of
+// repo-root-relative paths → file content covering every plugin it emits plus
+// its marketplace. The writer wipes outputDirs and refuses to write anywhere
+// else. An emitter may also export check(plugins, ctx) → problem strings for
+// its own --check structural assertions (emitted manifests parse, every source
+// skill present, zero unmapped ${CLAUDE_PLUGIN_ROOT} refs). The version to
+// mirror is per plugin: plugin.manifest.version.
 const EMITTER_SPECIFIERS = [
   './emit-cursor.mjs', // content (task 8) + hooks/MCP wiring (task 9)
   './emit-codex.mjs', // content (task 10) + hooks/MCP/agents-payload wiring (task 11)
@@ -45,23 +59,18 @@ if (unknown.length) {
   process.exit(1);
 }
 
-if (!existsSync(PLUGIN_ROOT)) {
-  console.error(`gen-cross-tool: plugin tree not found at ${PLUGIN_ROOT}`);
+// Discovery: every folder under plugins/ must be a well-formed, listed plugin.
+// Any failure stops both modes — emitters and lints key on these names.
+const { plugins, problems: discoveryProblems } = discoverPlugins(REPO_ROOT);
+if (discoveryProblems.length) {
+  for (const p of discoveryProblems) console.error(`FAIL ${p}`);
+  console.error(`gen-cross-tool: ${discoveryProblems.length} plugin discovery problem(s).`);
   process.exit(1);
 }
 
-const tree = readPluginTree(PLUGIN_ROOT);
-
-// ctx passed to emitters. version comes from the one shared manifest; in
-// --check mode an unparsable manifest surfaces as a structural finding
-// instead of a crash here.
-let version;
-try {
-  version = JSON.parse(tree.files.find((f) => f.rel === '.claude-plugin/plugin.json')?.text ?? '{}').version;
-} catch {
-  version = undefined;
-}
-const ctx = { repoRoot: REPO_ROOT, pluginRoot: PLUGIN_ROOT, version };
+const ctx = { repoRoot: REPO_ROOT, pluginsRoot: PLUGINS_ROOT };
+const fileCount = plugins.reduce((n, p) => n + p.tree.files.length, 0);
+const pluginList = plugins.map((p) => `${p.name}${p.manifest.crossTool ? '' : ' (crossTool false)'}`).join(', ');
 
 const emitters = [];
 for (const spec of EMITTER_SPECIFIERS) {
@@ -70,10 +79,10 @@ for (const spec of EMITTER_SPECIFIERS) {
 
 if (!checkMode) {
   if (emitters.length === 0) {
-    console.log(`gen-cross-tool: read ${tree.files.length} plugin files; no emitters registered yet — nothing to generate.`);
+    console.log(`gen-cross-tool: read ${fileCount} files in ${plugins.length} plugin(s); no emitters registered yet — nothing to generate.`);
   } else {
     for (const emitter of emitters) {
-      const files = emitter.emit(tree, ctx);
+      const files = emitter.emit(plugins, ctx);
       writeOutputs(REPO_ROOT, emitter.outputDirs, files);
       console.log(`gen-cross-tool: ${emitter.name}: wrote ${Object.keys(files).length} files into ${emitter.outputDirs.join(', ')}`);
     }
@@ -81,13 +90,25 @@ if (!checkMode) {
   process.exit(0);
 }
 
-// --check: source-side assertions always run; emitter self-tests when present.
+// --check: source-side assertions run on each plugin's emitted-shape view
+// (skills/, agents/, hooks/, manifest, .mcp.json); emitter self-tests when
+// present. Findings are labelled plugins/<name>/<rel>.
 if (emitters.length === 0) {
   console.log('gen-cross-tool: no emitters registered yet — running source structure checks + denylist lint only.');
 }
-const problems = [...checkPluginStructure(tree), ...lintClaudeIsms(tree), ...lintCliFloor(tree, REPO_ROOT)];
+const views = plugins.map((p) => ({ tree: emittedShapeView(p.tree), prefix: `${p.dir}/` }));
+const problems = [
+  ...views.flatMap(({ tree, prefix }) => [...checkPluginStructure(tree, prefix), ...lintClaudeIsms(tree, prefix)]),
+  ...lintCliFloor(views, REPO_ROOT),
+  ...checkSharedCopies(plugins),
+];
 for (const emitter of emitters) {
-  if (typeof emitter.check === 'function') problems.push(...emitter.check(tree, ctx));
+  if (typeof emitter.check !== 'function') continue;
+  try {
+    problems.push(...emitter.check(plugins, ctx));
+  } catch (err) {
+    problems.push(`${emitter.name}: check() threw — ${err.message}`);
+  }
 }
 
 if (problems.length) {
@@ -95,4 +116,7 @@ if (problems.length) {
   console.error(`gen-cross-tool --check: ${problems.length} problem(s).`);
   process.exit(1);
 }
-console.log(`gen-cross-tool --check: OK (${tree.files.length} plugin files; structure + denylist + CLI-floor lint clean).`);
+console.log(
+  `gen-cross-tool --check: OK (${plugins.length} plugin(s): ${pluginList}; ${fileCount} files; ` +
+    'structure + denylist + CLI-floor lint + shared copies clean).'
+);

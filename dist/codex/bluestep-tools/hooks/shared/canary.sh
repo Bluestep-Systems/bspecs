@@ -34,4 +34,23 @@ if ls -d U[0-9][0-9][0-9][0-9][0-9][0-9]/ >/dev/null 2>&1 && [ ! -f AGENTS.md ] 
   echo "bluestep-tools: this folder holds BlueStep components (a U######/ unit folder) but no AGENTS.md or CLAUDE.md rules file, so the always-on platform rules are not loaded. Before anything else, tell the user in one line and offer to run /b6p-setup; wait for their answer."
 fi
 
+# Third job (0.42.0): phi-guard left this plugin for its own. A project that runs the git
+# client-data check (scripts/hooks/phi-check.sh, copied by /b6p-setup) and has not switched it off
+# (a `*` line in .phi-allow, read the way the detector reads it: CR and edge blanks trimmed) loses
+# the write-time check on update unless phi-guard is installed. The sibling test only means
+# something in the marketplace cache layout ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/,
+# so it runs only when the plugin root sits there (backslashes normalised for Windows); a dev
+# install from a checkout prints nothing.
+_root="${CLAUDE_PLUGIN_ROOT//\\//}"
+_root="${_root%/}"
+case "$_root" in
+  */plugins/cache/*/*/*)
+    if [ -f scripts/hooks/phi-check.sh ] \
+      && ! grep -qE '^[[:space:]]*\*[[:space:]]*$' .phi-allow 2>/dev/null \
+      && [ ! -d "$_root/../../phi-guard" ]; then
+      echo "bluestep-tools: this project runs the git client-data check, but the write-time check now comes from the phi-guard plugin, which is not installed — \`claude plugin install phi-guard@bluestep --scope user\`, or add \`*\` to \`.phi-allow\` if this project has no client data."
+    fi
+    ;;
+esac
+
 exit 0

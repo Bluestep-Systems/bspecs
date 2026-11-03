@@ -1,14 +1,22 @@
 # ============================================================================
 # bspecs Release
 # ============================================================================
-# Purpose: On a plugin version tag (plugin-v*.*.*), create a GitHub Release.
+# Purpose: On a plugin version tag (<name>-vX.Y.Z), create a GitHub Release.
 #
-# bspecs is distributed as a Claude Code plugin via the in-repo marketplace
-# (.claude-plugin/marketplace.json) — there is no npm publish and no binary
-# build. Tagging a version cuts a Release (users/marketplaces can pin to it).
-# Plugin releases use the `plugin-vX.Y.Z` namespace to avoid colliding with the
-# historic npm-package tags (`v0.2.0`..`v0.15.0`), which are frozen. The npm CLI
-# is retained dormant in the repo but is no longer published.
+# bspecs is distributed as plugins (plugins/<name>/) via the in-repo
+# marketplaces — there is no npm publish and no binary build. Tagging a
+# version cuts a Release (users/marketplaces can pin to it). Each plugin has
+# its own tag namespace, `<name>-vX.Y.Z` (bluestep-tools-v0.42.0,
+# core-tools-v0.5.0, phi-guard-v0.1.0, ...). This is the manual path:
+# release-tag.yml tags and releases on merge to main, but tags it pushes with
+# GITHUB_TOKEN never trigger this workflow.
+#
+# The one pattern below also matches the legacy bluestep-tools tags
+# `plugin-vX.Y.Z` (its leading `*` matches `plugin`), so a hand-pushed
+# legacy tag still gets its Release. It does not match the historic
+# npm-package tags (`v0.2.0`..`v0.15.0`, nothing before the `-v`), which
+# are frozen. The npm CLI is retained dormant in the repo but is no longer
+# published.
 # ============================================================================
 
 name: Release
@@ -16,7 +24,7 @@ name: Release
 on:
   push:
     tags:
-      - 'plugin-v[0-9]+.[0-9]+.[0-9]+*'  # plugin-v0.2.0, plugin-v1.2.3-rc.1, ...
+      - '*-v[0-9]+.[0-9]+.[0-9]+*'  # core-tools-v0.5.0, phi-guard-v1.2.3-rc.1, plugin-v0.41.0, ...
 
 # Least privilege at the top; the job elevates to contents: write to cut the release.
 permissions:

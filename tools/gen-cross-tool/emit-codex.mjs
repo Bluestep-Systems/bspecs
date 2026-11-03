@@ -1,34 +1,44 @@
 // tools/gen-cross-tool/emit-codex.mjs — Codex emitter (content: task 10,
 // hooks/MCP/agents wiring: task 11).
 //
-// Emits:
-//   dist/codex/GENERATED.md                                 (do-not-edit note)
-//   dist/codex/bluestep-tools/.codex-plugin/plugin.json     (name + version +
-//       description mirrored from plugin/.claude-plugin/plugin.json, plus the
-//       "skills" path field — Codex path fields must be relative and
-//       ./-prefixed)
-//   dist/codex/bluestep-tools/skills/**    (same two transforms as Cursor:
+// Emits, for every crossTool: true plugin plugins/<name>/ (crossToolPlugins()
+// in lib.mjs; crossTool: false plugins are skipped and left out of the
+// marketplace):
+//   dist/codex/GENERATED.md                          (do-not-edit note, once)
+//   dist/codex/<name>/.codex-plugin/plugin.json      (name + version +
+//       description mirrored from plugins/<name>/.claude-plugin/plugin.json —
+//       and nothing else from it: crossTool is NOT copied (a Claude-side generator flag);
+//       skills/hooks/mcpServers path fields, each only when that surface is
+//       present — Codex path fields must be relative and ./-prefixed)
+//   dist/codex/<name>/skills/**    (same two transforms as Cursor:
 //       allowed-tools stripped from SKILL.md frontmatter, ${CLAUDE_PLUGIN_ROOT}
 //       refs rewritten relative — both from lib.mjs, shared, never forked)
-//   dist/codex/bluestep-tools/hooks/shared/*.sh   (byte-identical copies of
-//       plugin/hooks/*.sh — the guardrail logic lives ONCE there, never forked)
-//   dist/codex/bluestep-tools/hooks/*-codex.sh    (generated POSIX-sh wrappers:
+//   dist/codex/<name>/hooks/shared/*.sh   (byte-identical copies of
+//       plugins/<name>/hooks/*.sh — the guardrail logic lives ONCE there,
+//       never forked)
+//   dist/codex/<name>/hooks/*-codex.sh    (generated POSIX-sh wrappers:
 //       stdin passes through unchanged — Codex's hook stdin is Claude-identical
 //       (LIVE, X3) — and the shared script's exit 2 + stderr becomes the pure
 //       hookSpecificOutput deny JSON, the only live-proven block on Codex)
-//   dist/codex/bluestep-tools/hooks/hooks.json    (Claude-compatible schema:
+//   dist/codex/<name>/hooks/hooks.json    (Claude-compatible schema:
 //       PreToolUse groups; commands resolve the wrapper via $PLUGIN_ROOT)
-//   dist/codex/bluestep-tools/hooks/README.md     (wiring + the trust gate +
-//       the best-effort apply_patch mapping)
-//   dist/codex/bluestep-tools/.mcp.json           (the gateway server with
-//       Codex's native bearer_token_env_var instead of an Authorization
-//       header — proven live in X4)
-//   dist/codex/bluestep-tools/agents/*.toml       (the three subagents as Codex
+//   dist/codex/<name>/hooks/README.md     (wiring, derived from the plugin's
+//       own hooks.json + the trust gate + the best-effort apply_patch mapping)
+//   dist/codex/<name>/.mcp.json           (the plugin's servers with Codex's
+//       native bearer_token_env_var instead of an Authorization header —
+//       proven live in X4)
+//   dist/codex/<name>/agents/*.toml       (the plugin's subagents as Codex
 //       TOML — PAYLOAD, not a registered surface; see below)
-//   dist/codex/bluestep-tools/agents/README.md    (how to install that payload)
+//   dist/codex/<name>/agents/README.md    (how to install that payload)
 //   .agents/plugins/marketplace.json       (root marketplace, Codex's
-//       documented location; local source with a nested ./dist path — the shape
-//       proven live in the task-1 prove-out, X1 + G1)
+//       documented location; one local entry per emitted plugin, sorted, with
+//       a nested ./dist path — the shape proven live in the task-1 prove-out,
+//       X1 + G1)
+//
+// Optional surfaces (design §2 surface table): a plugin without
+// skills/*/SKILL.md, agents/*.md, hooks/hooks.json or .mcp.json gets no
+// output for that surface (no agents → no TOML and no agents README) and no
+// manifest field for it, and the matching check() gates are skipped for it.
 //
 // Agents are PAYLOAD, never a manifest field: plugin-bundled subagents are not
 // operational on Codex at all (prove-out X5 — the files land in the plugin
@@ -59,17 +69,19 @@
 //
 // Description budget (design: "Codex description budget", prove-out X6): Codex
 // spends a bounded slice of the context window on the skill catalog (~8k chars
-// / ~2%). The catalog entry is plugin-prefixed ("bluestep-tools:<skill-name>",
-// the one data point banked in X6) plus the skill's description, so this
-// emitter sums that cost across all emitted skills and WARNS when it climbs
-// near the cap. It never fails the build: the real cap is the tool's, we only
-// have an estimate, and a warning that blocks a release on an estimate would be
-// worse than a truncated catalog we can see in the task-14 smoke test.
+// / ~2%). The catalog entry is plugin-prefixed ("<plugin>:<skill-name>", the
+// one data point banked in X6) plus the skill's description, so this emitter
+// sums that cost per plugin and across all emitted plugins (the catalog is
+// shared by everything installed) and WARNS when the total climbs near the
+// cap. It never fails the build: the real cap is the tool's, we only have an
+// estimate, and a warning that blocks a release on an estimate would be worse
+// than a truncated catalog we can see in the task-14 smoke test.
 
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   contentText,
+  crossToolPlugins,
   expandBraces,
   parseFrontmatter,
   rewriteRefs,
@@ -79,15 +91,32 @@ import {
 } from './lib.mjs';
 
 const LABEL = 'emit-codex';
-const PLUGIN_NAME = 'bluestep-tools';
-const OUT_PLUGIN = `dist/codex/${PLUGIN_NAME}`;
+const OUT_ROOT = 'dist/codex';
+const outPluginDir = (plugin) => `${OUT_ROOT}/${plugin.name}`;
 const MARKETPLACE = '.agents/plugins/marketplace.json';
 
+// Which optional surfaces a plugin carries (design §2 surface table) —
+// decided by presence, used by emit() and by every check() gate.
+function surfacesOf(tree) {
+  const has = (pred) => tree.files.some((f) => pred(f.rel));
+  return {
+    skills: has((rel) => /^skills\/[^/]+\/SKILL\.md$/.test(rel)),
+    agents: has((rel) => /^agents\/[^/]+\.md$/.test(rel)),
+    hooks: has((rel) => rel === 'hooks/hooks.json'),
+    mcp: has((rel) => rel === '.mcp.json'),
+  };
+}
+
 // Manifest path fields Codex reads (docs, re-confirmed in the prove-out's
-// "Confirmed from docs" section). Used by check() to assert every path field
-// present is ./-prefixed and actually exists in the emitted tree — so task
-// 11's hooks/mcpServers additions are covered without editing check().
-const MANIFEST_PATH_FIELDS = ['skills', 'hooks', 'mcpServers'];
+// "Confirmed from docs" section), each with the surface that earns it and its
+// one expected value. Used by emit() to build the manifest and by check() to
+// assert a field is there exactly when its surface is, ./-prefixed, and
+// pointing at emitted files.
+const MANIFEST_PATH_FIELDS = [
+  ['skills', 'skills', './skills/'],
+  ['hooks', 'hooks', './hooks/hooks.json'],
+  ['mcpServers', 'mcp', './.mcp.json'],
+];
 
 // Frontmatter keys this emitter understands. Unknown keys pass through (Codex
 // tolerates unknown frontmatter — LIVE, prove-out X2) but get a warning, so a
@@ -108,16 +137,18 @@ const BUDGET_WARN = 7000;
 
 const GENERATED_MD = `# Generated tree — do not edit
 
-Everything under \`dist/codex/\` is generated from \`plugin/**\` by
+Everything under \`dist/codex/\` is generated from \`plugins/**\` by
 \`tools/gen-cross-tool\` (the Codex emitter). Never hand-edit these files:
 the generator wipes and rewrites this whole tree on every run, so edits here
-are lost — edit the source under \`plugin/\` instead and regenerate with:
+are lost — edit the source under \`plugins/<name>/\` instead and regenerate with:
 
     npm run gen
 `;
 
 // Map a plugin-root-relative target to its path inside the emitted Codex
-// plugin dir. Throws on anything without a mapping (fail loudly).
+// plugin dir. Throws on anything without a mapping (fail loudly). Targets are
+// validated against the source tree by rewriteRefs, so a ref to a surface
+// the plugin does not carry fails there.
 function mapTarget(ref, where) {
   if (ref === '') return ''; // the plugin root itself
   if (ref === '.claude-plugin/plugin.json') return '.codex-plugin/plugin.json';
@@ -126,12 +157,6 @@ function mapTarget(ref, where) {
   if (/^hooks\/[A-Za-z0-9_.-]+\.sh$/.test(ref)) return `hooks/shared/${ref.slice('hooks/'.length)}`;
   if (ref.startsWith('skills/')) return ref;
   throw new Error(`emit-codex: ${where}: no Codex mapping for \${CLAUDE_PLUGIN_ROOT}/${ref} — refusing to emit (agents are not bundleable on Codex, prove-out X5, so nothing may point at them as a plugin path)`);
-}
-
-function readManifest(tree) {
-  const src = tree.files.find((f) => f.rel === '.claude-plugin/plugin.json');
-  if (!src) throw new Error('emit-codex: plugin/.claude-plugin/plugin.json missing');
-  return JSON.parse(src.text);
 }
 
 // ---------- agents → TOML (task 11) ----------
@@ -218,12 +243,12 @@ const AGENT_REF = /(`?)\$\{CLAUDE_PLUGIN_ROOT\}(\\?")?((?:\/[A-Za-z0-9_.{},-]+)*
 // agents do not stay inside the plugin on Codex: the user copies them into
 // ~/.codex/agents/ or the project's .codex/agents/ (prove-out X5), so a path relative to
 // the emitted file would point nowhere at runtime. Documented degradation: the
-// reference becomes prose that names the plugin-relative path and says where
-// that path lives. Anything unmappable still fails the run loudly — the
+// reference becomes prose that names the plugin-relative path and the plugin
+// it is bundled with. Anything unmappable still fails the run loudly — the
 // no-silent-passthrough rule holds for prose too.
 // `lineOffset` is how many source lines were dropped ahead of `text` (the
 // frontmatter block), so an error points at the line the author has to fix.
-function rewriteAgentRefs(text, sourceRel, treeRoot, lineOffset = 0) {
+function rewriteAgentRefs(text, sourceRel, treeRoot, pluginName, lineOffset = 0) {
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i++) {
     const where = `${sourceRel}:${lineOffset + i + 1}`;
@@ -259,7 +284,7 @@ function rewriteAgentRefs(text, sourceRel, treeRoot, lineOffset = 0) {
       }
       const plural = alternatives.length > 1;
       const noun = dirs ? (plural ? 'directories' : 'directory') : (plural ? 'files' : 'file');
-      result += `${lines[i].slice(last, m.index)}the \`${shown}\` ${noun} bundled with the ${PLUGIN_NAME} plugin${punct}`;
+      result += `${lines[i].slice(last, m.index)}the \`${shown}\` ${noun} bundled with the ${pluginName} plugin${punct}`;
       last = m.index + m[0].length;
     }
     if (last === 0) continue;
@@ -268,28 +293,29 @@ function rewriteAgentRefs(text, sourceRel, treeRoot, lineOffset = 0) {
   return lines.join('\n');
 }
 
-// Convert one plugin/agents/*.md into a Codex agent TOML file. `renames` maps
-// every source agent name to its Codex name, so prose that addresses another
-// agent uses the name Codex actually answers to (prove-out X5: per-tool prose
-// must use the per-tool name).
-function agentToml(f, treeRoot, renames) {
+// Convert one plugins/<name>/agents/*.md into a Codex agent TOML file.
+// `renames` maps every source agent name to its Codex name, so prose that
+// addresses another agent uses the name Codex actually answers to (prove-out
+// X5: per-tool prose must use the per-tool name).
+function agentToml(plugin, f, renames) {
+  const label = `${plugin.dir}/${f.rel}`;
   const fm = parseFrontmatter(f.text);
-  if (!fm) throw new Error(`emit-codex: ${f.rel}: missing YAML frontmatter — cannot build the agent TOML`);
+  if (!fm) throw new Error(`emit-codex: ${label}: missing YAML frontmatter — cannot build the agent TOML`);
   for (const key of Object.keys(fm.data)) {
     if (!KNOWN_AGENT_FM.has(key)) {
-      console.warn(`emit-codex: ${f.rel}: unknown agent frontmatter key "${key}" dropped from the Codex TOML — give it a deliberate mapping`);
+      console.warn(`emit-codex: ${label}: unknown agent frontmatter key "${key}" dropped from the Codex TOML — give it a deliberate mapping`);
     }
   }
   const sourceName = fm.data.name;
-  if (!sourceName) throw new Error(`emit-codex: ${f.rel}: frontmatter has no "name"`);
-  if (!fm.data.description) throw new Error(`emit-codex: ${f.rel}: frontmatter has no "description"`);
-  const name = codexAgentName(sourceName, f.rel);
+  if (!sourceName) throw new Error(`emit-codex: ${label}: frontmatter has no "name"`);
+  if (!fm.data.description) throw new Error(`emit-codex: ${label}: frontmatter has no "description"`);
+  const name = codexAgentName(sourceName, label);
 
   let description = fm.data.description;
   const stripped = stripFrontmatter(f.text);
   const blankLines = stripped.match(/^\n*/)[0].length;
-  let body = rewriteAgentRefs(stripped.slice(blankLines), f.rel, treeRoot, fm.endLine + blankLines);
-  if (!body.trim()) throw new Error(`emit-codex: ${f.rel}: empty body — nothing to put in developer_instructions`);
+  let body = rewriteAgentRefs(stripped.slice(blankLines), label, plugin.tree.root, plugin.name, fm.endLine + blankLines);
+  if (!body.trim()) throw new Error(`emit-codex: ${label}: empty body — nothing to put in developer_instructions`);
   for (const [from, to] of renames) {
     const re = new RegExp(`(?<![\\w/-])${from}(?![\\w-])`, 'g');
     description = description.replace(re, to);
@@ -297,7 +323,7 @@ function agentToml(f, treeRoot, renames) {
   }
 
   return `# Generated by tools/gen-cross-tool (emit-codex) — do not edit; see
-# ../../GENERATED.md. Source: plugin/agents/${f.rel.slice('agents/'.length)}
+# ../../GENERATED.md. Source: ${plugin.dir}/agents/${f.rel.slice('agents/'.length)}
 #
 # PAYLOAD, not a plugin surface: Codex does not load agents from plugins
 # (prove-out X5 — bundled agent files are cached but never registered), so this
@@ -308,9 +334,9 @@ developer_instructions = ${tomlMultiline(body)}
 `;
 }
 
-const AGENTS_README = `# Codex subagents — generated payload, do not edit
+const agentsReadme = (plugin) => `# Codex subagents — generated payload, do not edit
 
-Generated by \`tools/gen-cross-tool\` from \`plugin/agents/*.md\` (see
+Generated by \`tools/gen-cross-tool\` from \`${plugin.dir}/agents/*.md\` (see
 \`../../GENERATED.md\`); regenerate with \`npm run gen\`.
 
 ## Codex does not load agents from plugins
@@ -342,58 +368,69 @@ over rather than running it: \`~/.codex/agents/\` is outside the project.
   fields here).
 - **Plugin-path references became prose.** An instruction that pointed at a
   path inside the plugin now reads "the \`skills/…\` file bundled with the
-  ${PLUGIN_NAME} plugin", because once the agent file sits in
+  ${plugin.name} plugin", because once the agent file sits in
   \`.codex/agents/\` it is no longer inside the plugin and no relative path
   would resolve. The agent has to find that file inside the installed plugin
-  (\`~/.codex/plugins/cache/<marketplace>/${PLUGIN_NAME}/<version>/\`) — the
+  (\`~/.codex/plugins/cache/<marketplace>/${plugin.name}/<version>/\`) — the
   same bundled reference tree the skills read.
 `;
 
-// Per-skill catalog cost: the plugin-prefixed name Codex shows plus the
-// description text. Reads the frontmatter of the EMITTED SKILL.md so the
-// numbers describe what Codex actually ingests.
-function budgetEntries(files) {
+// Per-skill catalog cost for one plugin: the plugin-prefixed name Codex shows
+// plus the description text. Reads the frontmatter of the EMITTED SKILL.md so
+// the numbers describe what Codex actually ingests.
+function budgetEntries(plugin, files) {
+  const prefix = `${outPluginDir(plugin)}/skills/`;
   const entries = [];
   for (const [rel, content] of Object.entries(files)) {
-    const m = rel.match(new RegExp(`^${OUT_PLUGIN}/skills/([^/]+)/SKILL\\.md$`));
-    if (!m) continue;
+    if (!rel.startsWith(prefix)) continue;
+    const parts = rel.slice(prefix.length).split('/');
+    if (parts.length !== 2 || parts[1] !== 'SKILL.md') continue;
     const fm = parseFrontmatter(contentText(content));
-    const name = fm?.data.name || m[1];
+    const name = fm?.data.name || parts[0];
     const description = fm?.data.description ?? '';
     entries.push({
-      skill: m[1],
+      plugin: plugin.name,
+      skill: parts[0],
       description,
-      cost: `${PLUGIN_NAME}:${name}`.length + description.length,
+      cost: `${plugin.name}:${name}`.length + description.length,
     });
   }
   return entries.sort((a, b) => (a.skill < b.skill ? -1 : a.skill > b.skill ? 1 : 0));
 }
 
-// Report the catalog cost: one info line always, plus a WARNING (never a
-// failure) with the worst offenders when it nears the cap.
-function reportBudget(entries) {
-  const total = entries.reduce((sum, e) => sum + e.cost, 0);
-  console.log(`emit-codex: skill description budget: ${total} chars across ${entries.length} skills (soft warn at ${BUDGET_WARN}, Codex catalog allowance ~${BUDGET_CAP}).`);
+// Report the catalog cost: one info line per plugin and one for the total
+// (the catalog is shared by every installed plugin), plus a WARNING (never a
+// failure) with the worst offenders when the total nears the cap.
+function reportBudget(perPlugin) {
+  const sum = (entries) => entries.reduce((n, e) => n + e.cost, 0);
+  for (const { plugin, entries } of perPlugin) {
+    console.log(`emit-codex: skill description budget: ${plugin.name}: ${sum(entries)} chars across ${entries.length} skills.`);
+  }
+  const all = perPlugin.flatMap((p) => p.entries);
+  const total = sum(all);
+  console.log(`emit-codex: skill description budget: total ${total} chars across ${all.length} skills in ${perPlugin.length} plugin(s) (soft warn at ${BUDGET_WARN}, Codex catalog allowance ~${BUDGET_CAP}).`);
   if (total <= BUDGET_WARN) return;
-  console.warn(`emit-codex: WARNING: the skill catalog costs ${total} chars, past the ${BUDGET_WARN}-char soft limit under Codex's ~${BUDGET_CAP}-char allowance — descriptions may get truncated or skills dropped from discovery. Shorten the longest ones (source: plugin/skills/<name>/SKILL.md frontmatter):`);
-  const longest = [...entries].sort((a, b) => b.description.length - a.description.length).slice(0, 3);
+  console.warn(`emit-codex: WARNING: the skill catalog costs ${total} chars, past the ${BUDGET_WARN}-char soft limit under Codex's ~${BUDGET_CAP}-char allowance — descriptions may get truncated or skills dropped from discovery. Shorten the longest ones (source: plugins/<name>/skills/<skill>/SKILL.md frontmatter):`);
+  const longest = [...all].sort((a, b) => b.description.length - a.description.length).slice(0, 3);
   for (const e of longest) {
-    console.warn(`emit-codex:   ${e.skill}: ${e.description.length} chars — ${e.description.slice(0, 80)}…`);
+    console.warn(`emit-codex:   ${e.plugin}:${e.skill}: ${e.description.length} chars — ${e.description.slice(0, 80)}…`);
   }
 }
 
 // ---------- MCP (task 11) ----------
 
-// Translate plugin/.mcp.json into the shape Codex actually authenticates with.
-// Codex does NOT interpolate ${VAR} inside `headers` (prove-out X4: the request
-// reached the gateway with an empty bearer and came back
-// AUTHORIZATION_REQUIRED); its native form is `bearer_token_env_var`, which the
-// same test then proved end to end. The env var name is read out of the source
-// header rather than hardcoded, and anything that does not fit that pattern
-// fails the run — a silently unauthenticated server is worse than no server.
-function mcpConfig(tree) {
-  const src = tree.files.find((f) => f.rel === '.mcp.json');
-  if (!src) throw new Error('emit-codex: plugin/.mcp.json missing');
+// Translate plugins/<name>/.mcp.json into the shape Codex actually
+// authenticates with. Codex does NOT interpolate ${VAR} inside `headers`
+// (prove-out X4: the request reached the gateway with an empty bearer and came
+// back AUTHORIZATION_REQUIRED); its native form is `bearer_token_env_var`,
+// which the same test then proved end to end. The env var name is read out of
+// the source header rather than hardcoded, and anything that does not fit that
+// pattern fails the run — a silently unauthenticated server is worse than no
+// server. Called only when the plugin carries .mcp.json (surfacesOf().mcp).
+function mcpConfig(plugin) {
+  const mcpRel = `${plugin.dir}/.mcp.json`;
+  const src = plugin.tree.files.find((f) => f.rel === '.mcp.json');
+  if (!src) throw new Error(`emit-codex: ${mcpRel} missing`);
   const servers = JSON.parse(src.text).mcpServers ?? {};
   const out = {};
   for (const [name, config] of Object.entries(servers)) {
@@ -401,17 +438,17 @@ function mcpConfig(tree) {
     const auth = String(headers?.Authorization ?? headers?.authorization ?? '');
     const m = auth.match(/^Bearer \$\{([A-Za-z_][A-Za-z0-9_]*)\}$/);
     if (!m) {
-      throw new Error(`emit-codex: plugin/.mcp.json: server "${name}" carries no "Authorization: Bearer \${VAR}" header — the Codex auth rewrite (bearer_token_env_var, prove-out X4) has nothing to translate, refusing to emit`);
+      throw new Error(`emit-codex: ${mcpRel}: server "${name}" carries no "Authorization: Bearer \${VAR}" header — the Codex auth rewrite (bearer_token_env_var, prove-out X4) has nothing to translate, refusing to emit; give it a mapping or set crossTool false`);
     }
     for (const key of Object.keys(headers)) {
       if (!/^authorization$/i.test(key)) {
-        throw new Error(`emit-codex: plugin/.mcp.json: server "${name}" sets header "${key}", which cannot be carried over — Codex does not interpolate \${VAR} in headers (prove-out X4); give it a deliberate mapping`);
+        throw new Error(`emit-codex: ${mcpRel}: server "${name}" sets header "${key}", which cannot be carried over — Codex does not interpolate \${VAR} in headers (prove-out X4); give it a mapping or set crossTool false`);
       }
     }
     out[name] = { ...rest, bearer_token_env_var: m[1] };
   }
   if (!Object.keys(out).length) {
-    throw new Error('emit-codex: plugin/.mcp.json declares no mcpServers — refusing to emit');
+    throw new Error(`emit-codex: ${mcpRel} declares no mcpServers — refusing to emit (drop the file or add a server)`);
   }
   return `${JSON.stringify({ mcpServers: out }, null, 2)}\n`;
 }
@@ -424,23 +461,26 @@ function mcpConfig(tree) {
 // out MATCHER-LESS: Codex intercepts file edits through `apply_patch`
 // (documented) but that tool_input shape is unverified, so the wrapper filters
 // on stdin instead of a matcher we would be guessing at.
-function codexMatcherFor(matcher) {
+function codexMatcherFor(matcher, hooksRel) {
   const parts = String(matcher ?? '').split('|').map((s) => s.trim()).filter(Boolean);
   if (parts.length && parts.every((p) => p === 'Bash')) return { matcher: 'Bash', kind: 'shell' };
   if (parts.length && parts.every((p) => ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(p))) {
     return { matcher: null, kind: 'edit' };
   }
-  throw new Error(`emit-codex: hooks/hooks.json: no Codex wiring for matcher "${matcher}" — refusing to emit`);
+  throw new Error(`emit-codex: ${hooksRel}: no Codex wiring for matcher "${matcher}" — give it a mapping or set crossTool false`);
 }
 
 const CLAUDE_BROWSER_MATCHER = /^mcp__\(?(?:Claude_Browser|claude-in-chrome)\b/;
 
-// Read plugin/hooks/hooks.json and derive the groups to re-emit — discovered,
-// not hardcoded, so a 4th hook wired at the source is picked up here with zero
-// emitter changes.
-function readHookWiring(tree) {
+// Read plugins/<name>/hooks/hooks.json and derive the groups to re-emit —
+// discovered, not hardcoded, so a new hook wired at the source is picked up
+// here with zero emitter changes. Called only when the plugin carries a
+// hooks/hooks.json (surfacesOf().hooks).
+function readHookWiring(plugin) {
+  const { tree } = plugin;
+  const hooksRel = `${plugin.dir}/hooks/hooks.json`;
   const src = tree.files.find((f) => f.rel === 'hooks/hooks.json');
-  if (!src) throw new Error('emit-codex: plugin/hooks/hooks.json missing');
+  if (!src) throw new Error(`emit-codex: ${hooksRel} missing`);
   const config = JSON.parse(src.text);
   const groups = [];
   for (const [event, sourceGroups] of Object.entries(config.hooks ?? {})) {
@@ -449,30 +489,30 @@ function readHookWiring(tree) {
     // are a different surface, and the canary's report path is Claude Code's stderr handling.
     if (event === 'SessionStart') continue;
     if (event !== 'PreToolUse') {
-      throw new Error(`emit-codex: hooks/hooks.json: unmapped source hook event "${event}" — give it a Codex wiring`);
+      throw new Error(`emit-codex: ${hooksRel}: unmapped source hook event "${event}" — give it a Codex wiring or set crossTool false`);
     }
     for (const group of sourceGroups) {
       // hooks/tab-guard.sh guards Claude Code's own browser tools (the desktop app's pane and
       // Claude in Chrome). Codex has neither, so it is not wired here; its script still ships
       // in shared/ like every hooks/*.sh.
       if (CLAUDE_BROWSER_MATCHER.test(String(group.matcher ?? ''))) continue;
-      const { matcher, kind } = codexMatcherFor(group.matcher);
+      const { matcher, kind } = codexMatcherFor(group.matcher, hooksRel);
       const scripts = [];
       for (const h of group.hooks ?? []) {
         const m = String(h.command ?? '').match(/\/hooks\/([A-Za-z0-9_.-]+\.sh)$/);
         if (!m) {
-          throw new Error(`emit-codex: hooks/hooks.json: cannot extract a hooks/*.sh script from command "${h.command}"`);
+          throw new Error(`emit-codex: ${hooksRel}: cannot extract a hooks/*.sh script from command "${h.command}" — give this a mapping or set crossTool false`);
         }
         if (!tree.files.some((f) => f.rel === `hooks/${m[1]}`)) {
-          throw new Error(`emit-codex: hooks/hooks.json references hooks/${m[1]}, which does not exist`);
+          throw new Error(`emit-codex: ${hooksRel} references hooks/${m[1]}, which does not exist`);
         }
         scripts.push(m[1]);
       }
-      if (!scripts.length) throw new Error(`emit-codex: hooks/hooks.json: group with matcher "${group.matcher}" wires no scripts`);
+      if (!scripts.length) throw new Error(`emit-codex: ${hooksRel}: group with matcher "${group.matcher}" wires no scripts`);
       groups.push({ matcher, kind, scripts });
     }
   }
-  if (!groups.length) throw new Error('emit-codex: hooks/hooks.json wires no hooks — unexpected');
+  if (!groups.length) throw new Error(`emit-codex: ${hooksRel} wires no hooks Codex can run — set crossTool false or drop the hooks surface`);
   return groups;
 }
 
@@ -485,7 +525,7 @@ const DENY_JQ = `jq -Rsc '{hookSpecificOutput:{hookEventName:"PreToolUse",permis
 // Generated POSIX-sh wrapper around one shared guardrail script. `kind` is
 // 'shell' (Bash matcher — stdin passes straight through) or 'edit'
 // (matcher-less — the wrapper decides whether this tool call is an edit).
-function hookWrapper(script, kind) {
+function hookWrapper(plugin, script, kind) {
   const filter = kind === 'shell'
     ? `# Codex's hook stdin is Claude Code-identical (LIVE — the X3 stdin capture
 # showed session_id / tool_name / tool_input.command verbatim), so it is passed
@@ -529,7 +569,7 @@ esac
   return `#!/bin/sh
 # Generated by tools/gen-cross-tool (emit-codex) — do not edit; see
 # dist/codex/GENERATED.md. Codex PreToolUse wrapper around
-# shared/${script}, a byte-identical copy of plugin/hooks/${script} —
+# shared/${script}, a byte-identical copy of ${plugin.dir}/hooks/${script} —
 # the guardrail logic lives ONCE there, never forked.
 #
 # Why a wrapper when Codex's hook contract is Claude Code-shaped (prove-out X3,
@@ -573,12 +613,103 @@ exit 0
 `;
 }
 
-const HOOKS_README = `# Codex hook wiring — generated, do not edit
+// What each source hook script does on Codex, keyed by script name — the
+// hooks README's "Status" column. A wired script's note follows the wrapper
+// shape text (WRAPPER_SHAPE); an unwired script's note stands alone. A script
+// the plugin ships with no entry here fails the run: a new guardrail needs its
+// Codex story written down.
+const GUARDRAIL_NOTES = {
+  'block-generated-files.sh':
+    '(The `Bash`-matcher `block-tsc` hook that proved this path live was removed in 0.37.0.)',
+  'phi-guard.sh':
+    'blocks a write that looks like real client data in a B6P project. The project root is the hook\'s ' +
+    'working directory (no `CLAUDE_PROJECT_DIR` on Codex), unproven on a live seat; the git `pre-commit` ' +
+    'check is the gate either way',
+  'canary.sh': "Claude Code-only SessionStart check; `shared/canary.sh` ships but nothing runs it on Codex",
+  'tab-guard.sh':
+    "Guards Claude Code's own browser tools, which Codex does not have; `shared/tab-guard.sh` ships but " +
+    'nothing runs it on Codex',
+};
 
-Generated by \`tools/gen-cross-tool\` from \`plugin/hooks/\` (see
+// The opening of a wired row's "Status" text, by wrapper kind. The first row
+// of a kind says how that wrapper fires; a later row of the same kind says
+// "Same wrapper shape;" and goes straight to its own note.
+const WRAPPER_SHAPE = {
+  edit: 'Fires on every PreToolUse; the wrapper filters.',
+  shell: 'Fires on `Bash` calls only; stdin passes through unchanged.',
+};
+
+// The guardrail table, derived from the plugin's own wiring: one row per
+// top-level hooks/*.sh it ships — the scripts wired on Codex first, in
+// hooks.json order, then the unwired ones sorted by name.
+function guardrailRows(plugin, groups) {
+  const scripts = plugin.tree.files
+    .map((f) => f.rel.match(/^hooks\/([A-Za-z0-9_.-]+\.sh)$/)?.[1])
+    .filter(Boolean);
+  const wired = [];
+  for (const group of groups) {
+    for (const script of group.scripts) {
+      if (!wired.some((w) => w.script === script)) wired.push({ script, matcher: group.matcher, kind: group.kind });
+    }
+  }
+  const unwired = scripts
+    .filter((s) => !wired.some((w) => w.script === s))
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const note = (script) => {
+    const text = GUARDRAIL_NOTES[script];
+    if (text === undefined) {
+      throw new Error(`emit-codex: ${plugin.dir}/hooks/${script}: no GUARDRAIL_NOTES entry — say what it does on Codex`);
+    }
+    return text;
+  };
+  const rows = [];
+  let lastKind;
+  for (const { script, matcher, kind } of wired) {
+    const text = note(script);
+    const status = kind === lastKind
+      ? `Same wrapper shape; ${text}`
+      : `${WRAPPER_SHAPE[kind]}${text ? ` ${text[0].toUpperCase()}${text.slice(1)}` : ''}`;
+    lastKind = kind;
+    rows.push(`| ${script.replace(/\.sh$/, '')} | ${matcher ? `\`${matcher}\`` : '*(none)*'} | ${status} |`);
+  }
+  for (const script of unwired) {
+    rows.push(`| ${script.replace(/\.sh$/, '')} | *(not wired)* | ${note(script)} |`);
+  }
+  return rows.join('\n');
+}
+
+// The apply_patch paragraph, only when the plugin wires an edit guardrail;
+// worded for one or for several.
+function editGuardrailNotes(groups) {
+  const count = new Set(groups.filter((g) => g.kind === 'edit').flatMap((g) => g.scripts)).size;
+  if (!count) return '';
+  const words = { 2: 'two', 3: 'three', 4: 'four' };
+  const lead = count === 1
+    ? 'The edit guardrail is matcher-less on purpose.'
+    : `The ${words[count] ?? count} edit guardrails are matcher-less on purpose.`;
+  return `
+${lead} Codex intercepts file
+edits through **\`apply_patch\`** (documented), but its \`tool_input\` shape has
+not been verified, so the ${count === 1 ? 'wrapper accepts' : 'wrappers accept'} either form:
+
+- \`Edit\`/\`Write\`/\`MultiEdit\`/\`NotebookEdit\` (Claude Code-compatible) —
+  passed through unchanged, fully supported;
+- \`apply_patch\` — **best effort, pending verification.** The wrapper looks for
+  a file path (\`file_path\`, \`path\`, \`filename\`, or the first key of a
+  \`changes\` object) and the incoming text (\`content\`, \`new_content\`,
+  \`new_string\`, \`patch\`, \`input\`). If the real shape uses other field
+  names, the wrapper does not recognize it and fails open — the guardrail is
+  skipped, nothing breaks. Confirming the shape on WSL and fixing the mapping is
+  task 14 of the cross-tool-plugin-output spec.
+`;
+}
+
+const hooksReadme = (plugin, groups) => `# Codex hook wiring — generated, do not edit
+
+Generated by \`tools/gen-cross-tool\` from \`${plugin.dir}/hooks/\` (see
 \`../../GENERATED.md\`); regenerate with \`npm run gen\`. Layout:
 
-- \`shared/\` — byte-identical copies of \`plugin/hooks/*.sh\`. The guardrail
+- \`shared/\` — byte-identical copies of \`${plugin.dir}/hooks/*.sh\`. The guardrail
   logic lives ONCE, in those sources; never fork or edit the copies.
 - \`*-codex.sh\` — generated thin wrappers. Codex's hook **stdin** is Claude
   Code-identical, so nothing is remapped on the way in; what the wrappers do is
@@ -622,28 +753,18 @@ silently.
 
 | Guardrail | Matcher | Status |
 |---|---|---|
-| block-generated-files | *(none)* | Fires on every PreToolUse; the wrapper filters. (The \`Bash\`-matcher \`block-tsc\` hook that proved this path live was removed in 0.37.0.) |
-| phi-guard | *(none)* | Same wrapper shape; blocks a write that looks like real client data in a B6P project. The project root is the hook's working directory (no \`CLAUDE_PROJECT_DIR\` on Codex), unproven on a live seat; the git \`pre-commit\` check is the gate either way |
-| canary | *(not wired)* | Claude Code-only SessionStart check; \`shared/canary.sh\` ships but nothing runs it on Codex |
-| tab-guard | *(not wired)* | Guards Claude Code's own browser tools, which Codex does not have; \`shared/tab-guard.sh\` ships but nothing runs it on Codex |
+${guardrailRows(plugin, groups)}
+${editGuardrailNotes(groups)}`;
 
-The two edit guardrails are matcher-less on purpose. Codex intercepts file
-edits through **\`apply_patch\`** (documented), but its \`tool_input\` shape has
-not been verified, so the wrappers accept either form:
+const byName = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 
-- \`Edit\`/\`Write\`/\`MultiEdit\`/\`NotebookEdit\` (Claude Code-compatible) —
-  passed through unchanged, fully supported;
-- \`apply_patch\` — **best effort, pending verification.** The wrapper looks for
-  a file path (\`file_path\`, \`path\`, \`filename\`, or the first key of a
-  \`changes\` object) and the incoming text (\`content\`, \`new_content\`,
-  \`new_string\`, \`patch\`, \`input\`). If the real shape uses other field
-  names, the wrapper does not recognize it and fails open — the guardrail is
-  skipped, nothing breaks. Confirming the shape on WSL and fixing the mapping is
-  task 14 of the cross-tool-plugin-output spec.
-`;
-
-function emit(tree) {
-  const manifest = readManifest(tree);
+// One plugin's Codex tree, as repo-root-relative path → content. Optional
+// surfaces (surfacesOf) produce nothing — no files, no manifest field — when
+// the plugin does not carry them.
+function emitPlugin(plugin) {
+  const { tree, manifest } = plugin;
+  const out = outPluginDir(plugin);
+  const surfaces = surfacesOf(tree);
   const files = {};
 
   // Skills: verbatim except the two shared transforms. Everything else in the
@@ -658,58 +779,65 @@ function emit(tree) {
     text = rewriteRefs(text, f.rel, tree.root, mapTarget, LABEL);
     // A skill asset that is a script (shebang: e.g. the git hooks /b6p-setup copies into a
     // project) keeps its exec bit, like the hook scripts below.
-    files[`${OUT_PLUGIN}/${f.rel}`] = text.startsWith('#!') ? { text, mode: 0o755 } : text;
+    files[`${out}/${f.rel}`] = text.startsWith('#!') ? { text, mode: 0o755 } : text;
   }
 
   // Agents (task 11): TOML payload, NOT a plugin surface — prove-out X5. The
   // rename map is built first so prose in any body can address another agent by
-  // the name Codex actually answers to.
-  const agentFiles = tree.files.filter((f) => /^agents\/[^/]+\.md$/.test(f.rel));
-  if (!agentFiles.length) throw new Error('emit-codex: plugin/agents/*.md missing — nothing to convert');
+  // the name Codex actually answers to. No agents → no TOML, no README.
   for (const f of tree.files) {
     if (f.rel.startsWith('agents/') && !/^agents\/[^/]+\.md$/.test(f.rel)) {
-      throw new Error(`emit-codex: plugin/${f.rel}: unexpected file under agents/ — only top-level *.md agent definitions convert to Codex TOML, give this one a deliberate mapping`);
+      throw new Error(`emit-codex: ${plugin.dir}/${f.rel}: unexpected file under agents/ — only top-level *.md agent definitions convert to Codex TOML, give this one a deliberate mapping`);
     }
   }
-  const renames = agentFiles.map((f) => {
-    const sourceName = parseFrontmatter(f.text)?.data.name;
-    if (!sourceName) throw new Error(`emit-codex: ${f.rel}: frontmatter has no "name"`);
-    return [sourceName, codexAgentName(sourceName, f.rel)];
-  });
-  for (const f of agentFiles) {
-    const name = codexAgentName(parseFrontmatter(f.text).data.name, f.rel);
-    files[`${OUT_PLUGIN}/agents/${name}.toml`] = agentToml(f, tree.root, renames);
+  if (surfaces.agents) {
+    const agentFiles = tree.files.filter((f) => /^agents\/[^/]+\.md$/.test(f.rel));
+    const renames = agentFiles.map((f) => {
+      const label = `${plugin.dir}/${f.rel}`;
+      const sourceName = parseFrontmatter(f.text)?.data.name;
+      if (!sourceName) throw new Error(`emit-codex: ${label}: frontmatter has no "name"`);
+      return [sourceName, codexAgentName(sourceName, label)];
+    });
+    for (const f of agentFiles) {
+      const name = codexAgentName(parseFrontmatter(f.text).data.name, `${plugin.dir}/${f.rel}`);
+      files[`${out}/agents/${name}.toml`] = agentToml(plugin, f, renames);
+    }
+    files[`${out}/agents/README.md`] = agentsReadme(plugin);
   }
-  files[`${OUT_PLUGIN}/agents/README.md`] = AGENTS_README;
 
   // Hooks (task 11): shared scripts verbatim + generated wrappers + the
   // Claude-compatible hooks.json + the trust-gate/degradation README. Shared
-  // copies and wrappers are executable POSIX sh.
-  for (const f of tree.files) {
-    if (f.rel.startsWith('hooks/') && f.rel.endsWith('.sh')) {
-      files[`${OUT_PLUGIN}/hooks/shared/${f.rel.slice('hooks/'.length)}`] = { text: f.text, mode: 0o755 };
+  // copies and wrappers are executable POSIX sh. Only when the plugin carries
+  // hooks/hooks.json.
+  if (surfaces.hooks) {
+    for (const f of tree.files) {
+      if (f.rel.startsWith('hooks/') && f.rel.endsWith('.sh')) {
+        files[`${out}/hooks/shared/${f.rel.slice('hooks/'.length)}`] = { text: f.text, mode: 0o755 };
+      }
     }
+    const groups = readHookWiring(plugin);
+    const hooksConfig = { hooks: { PreToolUse: [] } };
+    for (const group of groups) {
+      const entry = {};
+      if (group.matcher) entry.matcher = group.matcher;
+      entry.hooks = group.scripts.map((script) => {
+        const wrapper = script.replace(/\.sh$/, '-codex.sh');
+        files[`${out}/hooks/${wrapper}`] = { text: hookWrapper(plugin, script, group.kind), mode: 0o755 };
+        // `sh -c` makes the $PLUGIN_ROOT expansion self-contained no matter how
+        // Codex spawns the command (X3: commands run from the session cwd, so a
+        // plugin-relative path never resolves).
+        return { type: 'command', command: `sh -c '"$PLUGIN_ROOT"/hooks/${wrapper}'` };
+      });
+      hooksConfig.hooks.PreToolUse.push(entry);
+    }
+    files[`${out}/hooks/hooks.json`] = `${JSON.stringify(hooksConfig, null, 2)}\n`;
+    files[`${out}/hooks/README.md`] = hooksReadme(plugin, groups);
   }
-  const hooksConfig = { hooks: { PreToolUse: [] } };
-  for (const group of readHookWiring(tree)) {
-    const entry = {};
-    if (group.matcher) entry.matcher = group.matcher;
-    entry.hooks = group.scripts.map((script) => {
-      const wrapper = script.replace(/\.sh$/, '-codex.sh');
-      files[`${OUT_PLUGIN}/hooks/${wrapper}`] = { text: hookWrapper(script, group.kind), mode: 0o755 };
-      // `sh -c` makes the $PLUGIN_ROOT expansion self-contained no matter how
-      // Codex spawns the command (X3: commands run from the session cwd, so a
-      // plugin-relative path never resolves).
-      return { type: 'command', command: `sh -c '"$PLUGIN_ROOT"/hooks/${wrapper}'` };
-    });
-    hooksConfig.hooks.PreToolUse.push(entry);
-  }
-  files[`${OUT_PLUGIN}/hooks/hooks.json`] = `${JSON.stringify(hooksConfig, null, 2)}\n`;
-  files[`${OUT_PLUGIN}/hooks/README.md`] = HOOKS_README;
 
-  // MCP (task 11): same gateway server, Codex's native bearer_token_env_var
-  // (prove-out X4 — a ${VAR} in headers is never interpolated).
-  files[`${OUT_PLUGIN}/.mcp.json`] = mcpConfig(tree);
+  // MCP (task 11): same servers, Codex's native bearer_token_env_var
+  // (prove-out X4 — a ${VAR} in headers is never interpolated). Only when the
+  // plugin carries .mcp.json.
+  if (surfaces.mcp) files[`${out}/.mcp.json`] = mcpConfig(plugin);
 
   // Belt and suspenders: nothing emitted may still carry the variable.
   for (const [rel, content] of Object.entries(files)) {
@@ -718,23 +846,31 @@ function emit(tree) {
     }
   }
 
-  // Codex plugin manifest. Path fields must be relative and ./-prefixed. No
+  // Codex plugin manifest. Fields are picked one by one: nothing else from
+  // the Claude manifest is copied (crossTool in particular — a Claude-side generator flag).
+  // Path fields must be relative and ./-prefixed, one per surface present. No
   // "agents" field on purpose: plugin-bundled subagents do not register on
   // Codex (prove-out X5), so agents/ is payload the enablement step installs.
-  files[`${OUT_PLUGIN}/.codex-plugin/plugin.json`] = `${JSON.stringify({
-    name: PLUGIN_NAME,
-    version: manifest.version,
-    description: manifest.description,
-    skills: './skills/',
-    hooks: './hooks/hooks.json',
-    mcpServers: './.mcp.json',
-  }, null, 2)}\n`;
+  const codexManifest = { name: plugin.name, version: manifest.version, description: manifest.description };
+  for (const [field, surface, value] of MANIFEST_PATH_FIELDS) {
+    if (surfaces[surface]) codexManifest[field] = value;
+  }
+  files[`${out}/.codex-plugin/plugin.json`] = `${JSON.stringify(codexManifest, null, 2)}\n`;
 
-  files['dist/codex/GENERATED.md'] = GENERATED_MD;
+  return files;
+}
 
-  // Root Codex marketplace, at Codex's documented location. The local source
-  // with a nested ./dist path is what the prove-out installed from (X1), and
-  // G1 confirmed the same shape resolves when the repo is added remotely with
+function emit(plugins) {
+  const emitted = [...crossToolPlugins(plugins)].sort(byName);
+  const files = {};
+  for (const plugin of emitted) Object.assign(files, emitPlugin(plugin));
+
+  files[`${OUT_ROOT}/GENERATED.md`] = GENERATED_MD;
+
+  // Root Codex marketplace, at Codex's documented location, one local entry
+  // per emitted plugin, sorted. The local source with a nested ./dist path is
+  // what the prove-out installed from (X1), and G1 confirmed the same shape
+  // resolves when the repo is added remotely with
   // `codex plugin marketplace add <owner>/<repo>`. No version here on purpose:
   // Codex reads it from the plugin's own manifest (that is what keys the
   // versioned install cache), so duplicating it would just be a second place
@@ -742,97 +878,72 @@ function emit(tree) {
   files[MARKETPLACE] = `${JSON.stringify({
     name: 'bluestep',
     interface: { displayName: 'BlueStep Tools' },
-    plugins: [
-      {
-        name: PLUGIN_NAME,
-        source: { source: 'local', path: `./${OUT_PLUGIN}` },
-        policy: { installation: 'AVAILABLE' },
-      },
-    ],
+    plugins: emitted.map((plugin) => ({
+      name: plugin.name,
+      source: { source: 'local', path: `./${outPluginDir(plugin)}` },
+      policy: { installation: 'AVAILABLE' },
+    })),
   }, null, 2)}\n`;
 
-  reportBudget(budgetEntries(files));
+  reportBudget(emitted.map((plugin) => ({ plugin, entries: budgetEntries(plugin, files) })));
 
   return files;
 }
 
-// --check structural self-test: re-emit in memory (any unmappable ref surfaces
-// here as a finding, not a crash), then assert the on-disk output matches and
-// honors the task-10 contracts.
-function check(tree, ctx) {
+// Per-plugin contract assertions on the emitted set, each gated on the
+// surfaces the plugin carries (design §2 surface table).
+function checkPlugin(plugin, files, diskRels, executableOnDisk, canCheckMode) {
   const problems = [];
-  let files;
-  try {
-    files = emit(tree, ctx);
-  } catch (err) {
-    problems.push(`codex: emit failed — ${err.message}`);
-    return problems;
-  }
+  const { tree } = plugin;
+  const out = outPluginDir(plugin);
+  const surfaces = surfacesOf(tree);
 
-  // Disk must match a fresh emit exactly (stale output = finding).
-  const diskRels = new Set();
-  for (const dir of ['dist/codex', '.agents/plugins']) {
-    const abs = join(ctx.repoRoot, ...dir.split('/'));
-    if (!existsSync(abs)) {
-      problems.push(`codex: ${dir}/ missing — run npm run gen`);
-      continue;
-    }
-    for (const rel of walkSorted(abs)) diskRels.add(`${dir}/${rel}`);
-  }
-  for (const [rel, content] of Object.entries(files)) {
-    if (!diskRels.has(rel)) {
-      problems.push(`codex: ${rel} missing on disk — run npm run gen`);
-    } else if (readFileSync(join(ctx.repoRoot, ...rel.split('/')), 'utf8') !== contentText(content).replace(/\r\n/g, '\n')) {
-      problems.push(`codex: ${rel} is stale — run npm run gen`);
-    }
-  }
-  for (const rel of diskRels) {
-    if (!(rel in files)) problems.push(`codex: ${rel} on disk but not emitted — run npm run gen`);
-  }
-
-  // Every source skill reaches the output tree.
+  // Every source skill reaches the output tree (an empty loop for a plugin
+  // without skills).
   const skillDirs = [...new Set(
     tree.files.filter((f) => f.rel.startsWith('skills/')).map((f) => f.rel.split('/')[1])
   )].sort();
   for (const dir of skillDirs) {
-    if (!(`${OUT_PLUGIN}/skills/${dir}/SKILL.md` in files)) {
-      problems.push(`codex: source skill ${dir} missing from the output tree`);
+    if (!(`${out}/skills/${dir}/SKILL.md` in files)) {
+      problems.push(`codex: source skill ${plugin.dir}/skills/${dir} missing from the output tree`);
     }
   }
 
-  // No unrewritten variable anywhere; no allowed-tools in emitted frontmatter.
-  for (const [rel, content] of Object.entries(files)) {
-    const text = contentText(content);
-    if (text.includes('${CLAUDE_PLUGIN_ROOT}')) {
-      problems.push(`codex: ${rel}: \${CLAUDE_PLUGIN_ROOT} occurrence in output`);
-    }
-    if (rel.endsWith('/SKILL.md')) {
-      const fm = parseFrontmatter(text);
-      if (fm && 'allowed-tools' in fm.data) problems.push(`codex: ${rel}: allowed-tools survived in frontmatter`);
-    }
-  }
-
-  // Plugin manifest: parses, mirrors the shared version, and every path field
-  // it carries is ./-prefixed (Codex requires it) and points at emitted files.
-  const manifestRel = `${OUT_PLUGIN}/.codex-plugin/plugin.json`;
+  // Plugin manifest: parses, mirrors the Claude name and version, carries no
+  // crossTool key, has a path field for exactly the surfaces present, and
+  // every path field is ./-prefixed (Codex requires it) and points at emitted
+  // files.
+  const manifestRel = `${out}/.codex-plugin/plugin.json`;
   try {
     const parsed = JSON.parse(contentText(files[manifestRel] ?? ''));
-    if (parsed.name !== PLUGIN_NAME) problems.push(`codex: ${manifestRel}: name "${parsed.name}" is not "${PLUGIN_NAME}"`);
-    if (parsed.version !== ctx.version) {
-      problems.push(`codex: ${manifestRel}: version "${parsed.version}" does not mirror the Claude manifest ("${ctx.version}")`);
+    if (parsed.name !== plugin.name) {
+      problems.push(`codex: ${manifestRel}: name "${parsed.name}" does not match the plugin folder "${plugin.name}"`);
+    }
+    if (parsed.version !== plugin.manifest.version) {
+      problems.push(`codex: ${manifestRel}: version "${parsed.version}" does not mirror the Claude manifest ("${plugin.manifest.version}")`);
     }
     if (!parsed.description) problems.push(`codex: ${manifestRel}: no description`);
+    if ('crossTool' in parsed) {
+      problems.push(`codex: ${manifestRel}: carries "crossTool" — the Codex manifest must not copy it`);
+    }
     if (parsed.agents !== undefined) {
       problems.push(`codex: ${manifestRel}: "agents" field present — plugin-bundled subagents do not register on Codex (prove-out X5); they ship via the enablement step`);
     }
-    for (const field of MANIFEST_PATH_FIELDS) {
+    for (const [field, surface, expected] of MANIFEST_PATH_FIELDS) {
       const value = parsed[field];
-      if (value === undefined) continue;
+      if (!surfaces[surface]) {
+        if (value !== undefined) problems.push(`codex: ${manifestRel}: "${field}" field present, but ${plugin.dir} carries no such surface`);
+        continue;
+      }
+      if (value !== expected) {
+        problems.push(`codex: ${manifestRel}: "${field}" field missing or wrong (expected "${expected}")`);
+        if (value === undefined) continue;
+      }
       if (!String(value).startsWith('./')) {
         problems.push(`codex: ${manifestRel}: "${field}" path "${value}" is not ./-prefixed (Codex requires relative ./ paths)`);
         continue;
       }
-      const target = `${OUT_PLUGIN}/${String(value).slice(2).replace(/\/$/, '')}`;
+      const target = `${out}/${String(value).slice(2).replace(/\/$/, '')}`;
       if (!Object.keys(files).some((rel) => rel === target || rel.startsWith(`${target}/`))) {
         problems.push(`codex: ${manifestRel}: "${field}" points at ${value}, which the emitter produced nothing for`);
       }
@@ -841,124 +952,93 @@ function check(tree, ctx) {
     problems.push(`codex: ${manifestRel}: invalid JSON — ${err.message}`);
   }
 
-  // Marketplace: parses, and its single entry's ./-prefixed local source path
-  // resolves to the emitted plugin dir (the manifest lives right there).
-  try {
-    const parsed = JSON.parse(contentText(files[MARKETPLACE] ?? ''));
-    const entry = parsed.plugins?.[0];
-    if (!entry) {
-      problems.push(`codex: ${MARKETPLACE}: no plugins[] entry`);
-    } else {
-      if (entry.name !== PLUGIN_NAME) problems.push(`codex: ${MARKETPLACE}: entry name "${entry.name}" is not "${PLUGIN_NAME}"`);
-      const path = entry.source?.path;
-      if (entry.source?.source !== 'local' || !String(path ?? '').startsWith('./')) {
-        problems.push(`codex: ${MARKETPLACE}: source must be {source:"local", path:"./…"} (the prove-out-proven shape), got ${JSON.stringify(entry.source)}`);
-      } else if (!(`${String(path).slice(2)}/.codex-plugin/plugin.json` in files)) {
-        problems.push(`codex: ${MARKETPLACE}: source path "${path}" does not hold an emitted .codex-plugin/plugin.json`);
-      }
+  // An absent surface leaves no output behind.
+  const absentOutputs = [
+    [surfaces.agents, `${out}/agents/`, 'agents/*.md'],
+    [surfaces.hooks, `${out}/hooks/`, 'hooks/hooks.json'],
+    [surfaces.mcp, `${out}/.mcp.json`, '.mcp.json'],
+  ];
+  for (const [present, prefix, source] of absentOutputs) {
+    if (present) continue;
+    for (const rel of Object.keys(files)) {
+      if (rel.startsWith(prefix)) problems.push(`codex: ${rel}: emitted, but ${plugin.dir} has no ${source}`);
     }
-  } catch (err) {
-    problems.push(`codex: ${MARKETPLACE}: invalid JSON — ${err.message}`);
   }
 
   // ---- task-11 wiring assertions ----
 
-  // Exec-bit checks only make sense on POSIX (Windows has no mode bits; the
-  // committed bits come from POSIX runs and are re-verified by the Linux CI).
-  const canCheckMode = process.platform !== 'win32';
-  const executableOnDisk = (rel) => {
-    try {
-      return (statSync(join(ctx.repoRoot, ...rel.split('/'))).mode & 0o111) !== 0;
-    } catch {
-      return false;
-    }
-  };
-
   // hooks.json: parses, wires PreToolUse, and every command resolves its
   // wrapper through $PLUGIN_ROOT (never a session-cwd-relative path — the X3
   // failure that silently disabled the guardrails). Each wrapper exists and is
-  // executable.
-  const hooksRel = `${OUT_PLUGIN}/hooks/hooks.json`;
-  try {
-    const cfg = JSON.parse(contentText(files[hooksRel] ?? ''));
-    const groups = cfg.hooks?.PreToolUse;
-    if (!Array.isArray(groups) || !groups.length) {
-      problems.push(`codex: ${hooksRel}: no PreToolUse groups — the guardrails would be unwired`);
-    }
-    for (const group of groups ?? []) {
-      for (const entry of group.hooks ?? []) {
-        const cmd = String(entry.command ?? '');
-        const m = cmd.match(/^sh -c '"\$PLUGIN_ROOT"\/hooks\/([A-Za-z0-9_.-]+\.sh)'$/);
-        if (!m) {
-          problems.push(`codex: ${hooksRel}: command ${JSON.stringify(cmd)} does not resolve its script via "$PLUGIN_ROOT" (hook commands run with the session cwd — prove-out X3)`);
-          continue;
-        }
-        const wrapperRel = `${OUT_PLUGIN}/hooks/${m[1]}`;
-        if (!(wrapperRel in files)) {
-          problems.push(`codex: ${hooksRel}: command references hooks/${m[1]}, which the emitter produced nothing for`);
-        } else if (canCheckMode && !executableOnDisk(wrapperRel)) {
-          problems.push(`codex: ${wrapperRel}: referenced by hooks.json but not executable on disk — run npm run gen`);
+  // executable. Shared scripts are byte-identical to their
+  // plugins/<name>/hooks/*.sh sources.
+  if (surfaces.hooks) {
+    const hooksRel = `${out}/hooks/hooks.json`;
+    try {
+      const cfg = JSON.parse(contentText(files[hooksRel] ?? ''));
+      const groups = cfg.hooks?.PreToolUse;
+      if (!Array.isArray(groups) || !groups.length) {
+        problems.push(`codex: ${hooksRel}: no PreToolUse groups — the guardrails would be unwired`);
+      }
+      for (const group of groups ?? []) {
+        for (const entry of group.hooks ?? []) {
+          const cmd = String(entry.command ?? '');
+          const m = cmd.match(/^sh -c '"\$PLUGIN_ROOT"\/hooks\/([A-Za-z0-9_.-]+\.sh)'$/);
+          if (!m) {
+            problems.push(`codex: ${hooksRel}: command ${JSON.stringify(cmd)} does not resolve its script via "$PLUGIN_ROOT" (hook commands run with the session cwd — prove-out X3)`);
+            continue;
+          }
+          const wrapperRel = `${out}/hooks/${m[1]}`;
+          if (!(wrapperRel in files)) {
+            problems.push(`codex: ${hooksRel}: command references hooks/${m[1]}, which the emitter produced nothing for`);
+          } else if (canCheckMode && !executableOnDisk(wrapperRel)) {
+            problems.push(`codex: ${wrapperRel}: referenced by hooks.json but not executable on disk — run npm run gen`);
+          }
         }
       }
+    } catch (err) {
+      problems.push(`codex: ${hooksRel}: invalid JSON — ${err.message}`);
     }
-  } catch (err) {
-    problems.push(`codex: ${hooksRel}: invalid JSON — ${err.message}`);
-  }
 
-  // Every emitted .sh (wrappers + shared copies) carries the exec bit.
-  if (canCheckMode) {
-    for (const rel of Object.keys(files)) {
-      if (rel.endsWith('.sh') && diskRels.has(rel) && !executableOnDisk(rel)) {
-        problems.push(`codex: ${rel}: not executable on disk — run npm run gen`);
+    for (const f of tree.files) {
+      if (!f.rel.startsWith('hooks/') || !f.rel.endsWith('.sh')) continue;
+      const outRel = `${out}/hooks/shared/${f.rel.slice('hooks/'.length)}`;
+      const emitted = files[outRel];
+      if (!emitted) {
+        problems.push(`codex: ${outRel}: shared copy of ${plugin.dir}/${f.rel} missing from the output`);
+      } else if (contentText(emitted) !== f.text) {
+        problems.push(`codex: ${outRel}: not byte-identical to ${plugin.dir}/${f.rel} — shared scripts must never be forked`);
       }
-    }
-  }
-
-  // Shared scripts are byte-identical to their plugin/hooks/*.sh sources.
-  for (const f of tree.files) {
-    if (!f.rel.startsWith('hooks/') || !f.rel.endsWith('.sh')) continue;
-    const outRel = `${OUT_PLUGIN}/hooks/shared/${f.rel.slice('hooks/'.length)}`;
-    const out = files[outRel];
-    if (!out) {
-      problems.push(`codex: ${outRel}: shared copy of ${f.rel} missing from the output`);
-    } else if (contentText(out) !== f.text) {
-      problems.push(`codex: ${outRel}: not byte-identical to plugin/${f.rel} — shared scripts must never be forked`);
     }
   }
 
   // MCP: parses, authenticates the Codex-native way (bearer_token_env_var), and
   // carries no header-based auth — Codex never interpolates ${VAR} in headers
   // (prove-out X4), so a header here would ship an unauthenticated server.
-  const mcpRel = `${OUT_PLUGIN}/.mcp.json`;
-  try {
-    const parsed = JSON.parse(contentText(files[mcpRel] ?? ''));
-    const servers = Object.entries(parsed.mcpServers ?? {});
-    if (!servers.length) problems.push(`codex: ${mcpRel}: no mcpServers`);
-    for (const [name, config] of servers) {
-      if (!config.bearer_token_env_var) {
-        problems.push(`codex: ${mcpRel}: server "${name}" has no bearer_token_env_var (the only auth form Codex honors — prove-out X4)`);
+  if (surfaces.mcp) {
+    const mcpRel = `${out}/.mcp.json`;
+    try {
+      const parsed = JSON.parse(contentText(files[mcpRel] ?? ''));
+      const servers = Object.entries(parsed.mcpServers ?? {});
+      if (!servers.length) problems.push(`codex: ${mcpRel}: no mcpServers`);
+      for (const [name, config] of servers) {
+        if (!config.bearer_token_env_var) {
+          problems.push(`codex: ${mcpRel}: server "${name}" has no bearer_token_env_var (the only auth form Codex honors — prove-out X4)`);
+        }
+        if (config.headers !== undefined) {
+          problems.push(`codex: ${mcpRel}: server "${name}" carries a "headers" block — Codex does not interpolate \${VAR} there (prove-out X4)`);
+        }
       }
-      if (config.headers !== undefined) {
-        problems.push(`codex: ${mcpRel}: server "${name}" carries a "headers" block — Codex does not interpolate \${VAR} there (prove-out X4)`);
-      }
-    }
-  } catch (err) {
-    problems.push(`codex: ${mcpRel}: invalid JSON — ${err.message}`);
-  }
-
-  // The token itself is never interpolated by Codex, so the literal ${…} form
-  // must not appear anywhere in the output (it would look wired and silently
-  // authenticate with an empty bearer).
-  for (const [rel, content] of Object.entries(files)) {
-    if (/\$\{B6PT_TOKEN\}/.test(contentText(content))) {
-      problems.push(`codex: ${rel}: \${B6PT_TOKEN} occurrence — Codex does not interpolate it (prove-out X4); the env var goes in bearer_token_env_var`);
+    } catch (err) {
+      problems.push(`codex: ${mcpRel}: invalid JSON — ${err.message}`);
     }
   }
 
   // Agents: one TOML per source agent, Codex-legal names, structurally parsable,
   // and no hyphenated agent name left in the payload (Codex answers to the
   // underscored one — prove-out X5). Plus the install README, since the files
-  // are useless without it.
+  // are useless without it. An empty loop and no README for a plugin without
+  // agents.
   const agentFiles = tree.files.filter((f) => /^agents\/[^/]+\.md$/.test(f.rel));
   const sourceNames = agentFiles.map((f) => parseFrontmatter(f.text)?.data.name).filter(Boolean);
   for (const f of agentFiles) {
@@ -966,15 +1046,15 @@ function check(tree, ctx) {
     if (!sourceName) continue; // emit() already reported it
     let name;
     try {
-      name = codexAgentName(sourceName, f.rel);
+      name = codexAgentName(sourceName, `${plugin.dir}/${f.rel}`);
     } catch (err) {
       problems.push(`codex: ${err.message}`);
       continue;
     }
-    const rel = `${OUT_PLUGIN}/agents/${name}.toml`;
+    const rel = `${out}/agents/${name}.toml`;
     const text = contentText(files[rel] ?? '');
     if (!text) {
-      problems.push(`codex: ${rel}: no TOML emitted for plugin/${f.rel}`);
+      problems.push(`codex: ${rel}: no TOML emitted for ${plugin.dir}/${f.rel}`);
       continue;
     }
     let parsed;
@@ -1003,8 +1083,129 @@ function check(tree, ctx) {
       }
     }
   }
-  if (!(`${OUT_PLUGIN}/agents/README.md` in files)) {
-    problems.push(`codex: ${OUT_PLUGIN}/agents/README.md missing — the TOML payload needs its install note (Codex does not register plugin agents)`);
+  if (surfaces.agents && !(`${out}/agents/README.md` in files)) {
+    problems.push(`codex: ${out}/agents/README.md missing — the TOML payload needs its install note (Codex does not register plugin agents)`);
+  }
+
+  return problems;
+}
+
+// --check structural self-test: re-emit in memory (any unmappable ref surfaces
+// here as a finding, not a crash), then assert the on-disk output matches and
+// honors the task-10 + task-11 contracts for every emitted plugin.
+function check(plugins, ctx) {
+  const problems = [];
+  let files;
+  try {
+    files = emit(plugins, ctx);
+  } catch (err) {
+    problems.push(`codex: emit failed — ${err.message}`);
+    return problems;
+  }
+
+  // Disk must match a fresh emit exactly (stale output = finding).
+  const diskRels = new Set();
+  for (const dir of [OUT_ROOT, '.agents/plugins']) {
+    const abs = join(ctx.repoRoot, ...dir.split('/'));
+    if (!existsSync(abs)) {
+      problems.push(`codex: ${dir}/ missing — run npm run gen`);
+      continue;
+    }
+    for (const rel of walkSorted(abs)) diskRels.add(`${dir}/${rel}`);
+  }
+  for (const [rel, content] of Object.entries(files)) {
+    if (!diskRels.has(rel)) {
+      problems.push(`codex: ${rel} missing on disk — run npm run gen`);
+    } else if (readFileSync(join(ctx.repoRoot, ...rel.split('/')), 'utf8') !== contentText(content).replace(/\r\n/g, '\n')) {
+      problems.push(`codex: ${rel} is stale — run npm run gen`);
+    }
+  }
+  for (const rel of diskRels) {
+    if (!(rel in files)) problems.push(`codex: ${rel} on disk but not emitted — run npm run gen`);
+  }
+
+  // Exec-bit checks only make sense on POSIX (Windows has no mode bits; the
+  // committed bits come from POSIX runs and are re-verified by the Linux CI).
+  const canCheckMode = process.platform !== 'win32';
+  const executableOnDisk = (rel) => {
+    try {
+      return (statSync(join(ctx.repoRoot, ...rel.split('/'))).mode & 0o111) !== 0;
+    } catch {
+      return false;
+    }
+  };
+
+  const emitted = [...crossToolPlugins(plugins)].sort(byName);
+  for (const plugin of emitted) {
+    problems.push(...checkPlugin(plugin, files, diskRels, executableOnDisk, canCheckMode));
+  }
+
+  // No unrewritten variable anywhere; no allowed-tools in emitted frontmatter.
+  for (const [rel, content] of Object.entries(files)) {
+    const text = contentText(content);
+    if (text.includes('${CLAUDE_PLUGIN_ROOT}')) {
+      problems.push(`codex: ${rel}: \${CLAUDE_PLUGIN_ROOT} occurrence in output`);
+    }
+    if (rel.endsWith('/SKILL.md')) {
+      const fm = parseFrontmatter(text);
+      if (fm && 'allowed-tools' in fm.data) problems.push(`codex: ${rel}: allowed-tools survived in frontmatter`);
+    }
+  }
+
+  // Every emitted .sh (wrappers + shared copies) carries the exec bit.
+  if (canCheckMode) {
+    for (const rel of Object.keys(files)) {
+      if (rel.endsWith('.sh') && diskRels.has(rel) && !executableOnDisk(rel)) {
+        problems.push(`codex: ${rel}: not executable on disk — run npm run gen`);
+      }
+    }
+  }
+
+  // The token itself is never interpolated by Codex, so the literal ${…} form
+  // must not appear anywhere in the output (it would look wired and silently
+  // authenticate with an empty bearer).
+  for (const [rel, content] of Object.entries(files)) {
+    if (/\$\{B6PT_TOKEN\}/.test(contentText(content))) {
+      problems.push(`codex: ${rel}: \${B6PT_TOKEN} occurrence — Codex does not interpolate it (prove-out X4); the env var goes in bearer_token_env_var`);
+    }
+  }
+
+  // Marketplace: parses, lists exactly the emitted plugins, and each entry's
+  // ./-prefixed local source path resolves to an emitted plugin dir (the
+  // manifest lives right there) whose manifest name is the entry name.
+  try {
+    const parsed = JSON.parse(contentText(files[MARKETPLACE] ?? ''));
+    const entries = Array.isArray(parsed.plugins) ? parsed.plugins : [];
+    if (!Array.isArray(parsed.plugins)) problems.push(`codex: ${MARKETPLACE}: "plugins" must be an array`);
+    const want = emitted.map((p) => p.name);
+    const got = entries.map((e) => e?.name).sort();
+    if (JSON.stringify(got) !== JSON.stringify(want)) {
+      problems.push(`codex: ${MARKETPLACE}: entries [${got.join(', ')}] must equal the crossTool plugins [${want.join(', ')}]`);
+    }
+    for (const entry of entries) {
+      const label = `entry "${entry?.name}"`;
+      const path = entry?.source?.path;
+      if (entry?.source?.source !== 'local' || !String(path ?? '').startsWith('./')) {
+        problems.push(`codex: ${MARKETPLACE}: ${label} source must be {source:"local", path:"./…"} (the prove-out-proven shape), got ${JSON.stringify(entry?.source)}`);
+        continue;
+      }
+      const resolved = `${String(path).slice(2)}/.codex-plugin/plugin.json`;
+      if (!(resolved in files)) {
+        problems.push(`codex: ${MARKETPLACE}: ${label} source path "${path}" does not hold an emitted .codex-plugin/plugin.json`);
+        continue;
+      }
+      let manifestName;
+      try {
+        manifestName = JSON.parse(contentText(files[resolved])).name;
+      } catch {
+        continue; // Already reported as invalid JSON by checkPlugin.
+      }
+      if (entry.name !== manifestName) {
+        problems.push(`codex: ${MARKETPLACE}: ${label} must match the plugin manifest name "${manifestName}"`);
+      }
+    }
+  } catch (err) {
+    problems.push(`codex: ${MARKETPLACE}: invalid JSON — ${err.message}`);
   }
 
   return problems;
@@ -1012,7 +1213,7 @@ function check(tree, ctx) {
 
 export default {
   name: 'codex',
-  outputDirs: ['dist/codex', '.agents/plugins'],
+  outputDirs: [OUT_ROOT, '.agents/plugins'],
   emit,
   check,
 };

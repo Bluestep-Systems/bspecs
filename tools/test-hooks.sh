@@ -1,7 +1,11 @@
 #!/bin/bash
-# Test the bluestep-tools guardrail hooks.
+# Test the guardrail hooks of every plugin under plugins/ (bluestep-tools and phi-guard), the
+# phi-guard git hooks /b6p-setup copies into projects, and the generated Cursor wrappers.
 # Uses python to build the JSON so backslash payloads survive the shell.
-H="$(cd "$(dirname "${BASH_SOURCE[0]}")/../plugin/hooks" && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+H="$ROOT/plugins/bluestep-tools/hooks"   # block-generated-files, tab-guard, canary
+PG="$ROOT/plugins/phi-guard/hooks"       # phi-guard and its detector
+PCA="$ROOT/plugins/bluestep-tools/skills/b6p-setup/assets/phi-guard"   # the project copy
 pass=0; fail=0
 
 # python3 on Linux/WSL, python on Windows Git Bash — the harness must run in both.
@@ -138,7 +142,8 @@ rm -rf "$TT"
 echo "=== phi-detect.sh ==="
 # Every value here is synthetic: area codes 395/495 are N9X codes NANP keeps unassigned, the
 # domains are invented, the names are made up. This repo is public — keep it that way.
-PD="$H/lib/phi-detect.sh"
+# The phi-guard plugin's copy; the shared-copies section checks the project copy is the same bytes.
+PD="$PG/lib/phi-detect.sh"
 TAB=$(printf '\t')
 pc() { # name kind value [args...] — must be caught, as <kind>, without echoing the value
   local name="$1" kind="$2" val="$3" out rc; shift 3
@@ -204,7 +209,7 @@ echo "=== phi-guard.sh ==="
 jw() { "$PY" -c 'import json,sys; a=sys.argv[1:]; print(json.dumps({"tool_name":"Write","tool_input":{k:(json.loads(v[5:]) if v.startswith("json:") else v) for k,v in zip(a[::2],a[1::2])}}))' "$@"; }
 pg() { # name expected_exit project_root payload — never echoes a raw value, a block names the reference
   local out rc
-  out=$(printf '%s' "$4" | CLAUDE_PROJECT_DIR="$3" bash "$H/phi-guard.sh" 2>&1); rc=$?
+  out=$(printf '%s' "$4" | CLAUDE_PROJECT_DIR="$3" bash "$PG/phi-guard.sh" 2>&1); rc=$?
   if [ "$rc" != "$2" ]; then
     echo "  FAIL  $1 — expected exit $2, got $rc: ${out:0:100}"; fail=$((fail+1))
   elif [[ "$out" == *"482-1335"* || "$out" == *"271-0846"* || "$out" == *"someclinic-invented"* || "$out" == *"Testcase"* ]]; then
@@ -251,11 +256,11 @@ pg ".phi-allow literal does not cover another number" 2 "$B6" "$(jw file_path "$
 printf '*\n' > "$B6/.phi-allow"
 pg "allows everything with .phi-allow *" 0 "$B6" "$(jw file_path "$B6/README.md" content "$PHONE (CL) Testcase, Alpha")"
 rm -f "$B6/.phi-allow"
-out=$(printf '%s' 'not json' | CLAUDE_PROJECT_DIR="$B6" bash "$H/phi-guard.sh" 2>&1); rc=$?
+out=$(printf '%s' 'not json' | CLAUDE_PROJECT_DIR="$B6" bash "$PG/phi-guard.sh" 2>&1); rc=$?
 if [ "$rc" = 2 ]; then echo "  PASS  unparseable input blocks"; pass=$((pass+1));
 else echo "  FAIL  unparseable input gave exit $rc"; fail=$((fail+1)); fi
 # The detector missing or broken must block, not allow: a copy of the hook without it.
-GC=$(mktemp -d); mkdir -p "$GC/lib"; cp "$H/phi-guard.sh" "$GC/"; cp "$H/lib/hook-input.sh" "$GC/lib/"
+GC=$(mktemp -d); mkdir -p "$GC/lib"; cp "$PG/phi-guard.sh" "$GC/"; cp "$PG/lib/hook-input.sh" "$GC/lib/"
 out=$(jw file_path "$B6/README.md" content 'nothing here' | CLAUDE_PROJECT_DIR="$B6" bash "$GC/phi-guard.sh" 2>&1); rc=$?
 if [ "$rc" = 2 ] && [[ "$out" == *Reinstall* ]]; then echo "  PASS  missing detector blocks"; pass=$((pass+1));
 else echo "  FAIL  missing detector gave exit $rc: ${out:0:100}"; fail=$((fail+1)); fi
@@ -263,8 +268,8 @@ printf '#!/bin/sh\nexit 2\n' > "$GC/lib/phi-detect.sh"
 out=$(jw file_path "$B6/README.md" content 'nothing here' | CLAUDE_PROJECT_DIR="$B6" bash "$GC/phi-guard.sh" 2>&1); rc=$?
 if [ "$rc" = 2 ] && [[ "$out" == *Reinstall* ]]; then echo "  PASS  detector exit 2 blocks"; pass=$((pass+1));
 else echo "  FAIL  detector exit 2 gave exit $rc: ${out:0:100}"; fail=$((fail+1)); fi
-# The generated Cursor wrapper for this hook: a second script on the same matcher gets its own.
-WP="$H/../../dist/cursor/bluestep-tools/hooks/phi-guard-cursor.sh"
+# The generated Cursor wrapper for this hook, in the phi-guard plugin's own dist tree.
+WP="$ROOT/dist/cursor/phi-guard/hooks/phi-guard-cursor.sh"
 if [ ! -f "$WP" ]; then
   echo "  FAIL  $WP missing — run npm run gen"; fail=$((fail+1))
 else
@@ -278,9 +283,8 @@ fi
 rm -rf "$GC" "$B6" "$NB" "$AG"
 
 echo "=== phi-check.sh ==="
-# The project copy /b6p-setup installs: phi-check.sh + pre-commit from the b6p-setup assets, the
-# detector beside them, all in a temp repo's scripts/hooks/. Same synthetic values as above.
-PCA="$H/../skills/b6p-setup/assets/phi-guard"
+# The project copy /b6p-setup installs: phi-check.sh + pre-commit + the detector, all from the
+# b6p-setup assets ($PCA), in a temp repo's scripts/hooks/. Same synthetic values as above.
 if ! git --version >/dev/null 2>&1; then
   echo "  SKIP  phi-check.sh (git not runnable)"
 else
@@ -290,7 +294,7 @@ else
     (cd "$PCR" && git init -q && git config user.email t@example.com && git config user.name T \
       && git config commit.gpgsign false && git config core.autocrlf false) || return 1
     mkdir -p "$PCR/scripts/hooks"
-    cp "$PCA/phi-check.sh" "$PCA/pre-commit" "$H/lib/phi-detect.sh" "$PCR/scripts/hooks/"
+    cp "$PCA/phi-check.sh" "$PCA/pre-commit" "$PCA/phi-detect.sh" "$PCR/scripts/hooks/"
     chmod +x "$PCR/scripts/hooks/"*
   }
   # Commit what is staged without running any hook (setting up history, not testing).
@@ -399,7 +403,7 @@ else
     && git config user.name T && git config commit.gpgsign false && git config core.autocrlf false \
     && git remote add origin "$BARE")
   mkdir -p "$R/scripts/hooks"
-  cp "$PCA/phi-check.sh" "$PCA/pre-commit" "$PCA/pre-push" "$H/lib/phi-detect.sh" "$R/scripts/hooks/"
+  cp "$PCA/phi-check.sh" "$PCA/pre-commit" "$PCA/pre-push" "$PCA/phi-detect.sh" "$R/scripts/hooks/"
   chmod +x "$R/scripts/hooks/"*
   printf 'scripts/\n' > "$R/.git/info/exclude"
   mkstub() { # name body — a model stand-in that records how it was called
@@ -514,33 +518,59 @@ else
   rm -rf "$PP"
 fi
 
+echo "=== shared copies are the same bytes ==="
+# Each plugin installs alone, so a shared script lives once per plugin; gen:check holds the same
+# pairs, this keeps the harness honest about what it just tested.
+for pair in "plugins/bluestep-tools/hooks/lib/hook-input.sh plugins/phi-guard/hooks/lib/hook-input.sh" \
+            "plugins/phi-guard/hooks/lib/phi-detect.sh plugins/bluestep-tools/skills/b6p-setup/assets/phi-guard/phi-detect.sh"; do
+  set -- $pair
+  if cmp -s "$ROOT/$1" "$ROOT/$2"; then echo "  PASS  $1 = $2"; pass=$((pass+1));
+  else echo "  FAIL  $1 and $2 differ — copy one over the other"; fail=$((fail+1)); fi
+done
+
+# Every hook script of every plugin (lib/ included) and every shebang asset of every skill, as
+# repo paths. The index is the list, so a stray untracked file is not counted.
+SCRIPTS=$(cd "$ROOT" && git ls-files plugins | while IFS= read -r f; do
+  case "$f" in
+    plugins/*/hooks/*.sh) echo "$f" ;;
+    plugins/*/skills/*/assets/*) [ "$(head -c 2 "$f")" = '#!' ] && echo "$f" ;;
+  esac
+done)
+
 echo "=== phi-guard markers move together ==="
 # /b6p-setup's phi-guard migration refreshes a project's four copies when their line-2 marker is
-# below the shipped one. A bump in one file and not the others would leave a project mixed.
-M0=$(sed -n 2p "$H/../skills/b6p-setup/assets/phi-guard/phi-check.sh")
+# below the shipped one, and the plugin's detector is the same bytes as the project's. A bump in
+# one file and not the others would leave a project mixed. Every phi-guard asset and every
+# phi-detect.sh must carry the marker; any other script that carries one must match too.
+M0=$(sed -n 2p "$PCA/phi-check.sh")
 case "$M0" in
-  "# bluestep-tools phi-guard "[0-9]*) echo "  PASS  phi-check.sh carries the marker ($M0)"; pass=$((pass+1)) ;;
+  "# bluestep-tools phi-guard "[0-9]*) echo "  PASS  plugins/bluestep-tools/skills/b6p-setup/assets/phi-guard/phi-check.sh carries the marker ($M0)"; pass=$((pass+1)) ;;
   *) echo "  FAIL  phi-check.sh line 2 is not a phi-guard marker: $M0"; fail=$((fail+1)) ;;
 esac
-for f in "$H/../skills/b6p-setup/assets/phi-guard/pre-commit" "$H/../skills/b6p-setup/assets/phi-guard/pre-push" "$H/lib/phi-detect.sh"; do
-  m=$(sed -n 2p "$f")
-  if [ "$m" = "$M0" ]; then echo "  PASS  ${f##*/} marker matches"; pass=$((pass+1));
-  else echo "  FAIL  ${f##*/} line 2 is '$m', expected '$M0'"; fail=$((fail+1)); fi
+for f in $SCRIPTS; do
+  [ "$f" = plugins/bluestep-tools/skills/b6p-setup/assets/phi-guard/phi-check.sh ] && continue
+  m=$(sed -n 2p "$ROOT/$f")
+  case "$f" in
+    */assets/phi-guard/*|*/phi-detect.sh) ;;
+    *) case "$m" in "# bluestep-tools phi-guard "*) ;; *) continue ;; esac ;;
+  esac
+  if [ "$m" = "$M0" ]; then echo "  PASS  $f marker matches"; pass=$((pass+1));
+  else echo "  FAIL  $f line 2 is '$m', expected '$M0'"; fail=$((fail+1)); fi
 done
 
 echo "=== exec bits in the index ==="
 # Claude Code runs the source scripts directly; an edit from Windows over a UNC path has reset
 # a mode to 100644 before. core.fileMode may be off, so ask the index, not the filesystem.
-for f in $(cd "$H/.." && git ls-files hooks skills/b6p-setup/assets | grep -E '\.sh$|/pre-commit$|/pre-push$'); do
-  mode=$(cd "$H/.." && git ls-files -s "$f" | cut -c1-6)
-  if [ "$mode" = 100755 ]; then echo "  PASS  plugin/$f is 100755"; pass=$((pass+1));
-  else echo "  FAIL  plugin/$f is $mode in the index — git update-index --chmod=+x"; fail=$((fail+1)); fi
+for f in $SCRIPTS; do
+  mode=$(cd "$ROOT" && git ls-files -s "$f" | cut -c1-6)
+  if [ "$mode" = 100755 ]; then echo "  PASS  $f is 100755"; pass=$((pass+1));
+  else echo "  FAIL  $f is $mode in the index — git update-index --chmod=+x"; fail=$((fail+1)); fi
 done
 
 echo "=== Cursor preToolUse wrapper (generated) ==="
 # The wrapper is generated into dist/cursor by npm run gen; these cases pin its contract:
 # tool-name filter, deny JSON, and fail-closed on everything it can see.
-W="$H/../../dist/cursor/bluestep-tools/hooks/block-generated-files-cursor.sh"
+W="$ROOT/dist/cursor/bluestep-tools/hooks/block-generated-files-cursor.sh"
 jc() { "$PY" -c 'import json,sys; print(json.dumps({"tool_name":sys.argv[1],"tool_input":{sys.argv[2]:sys.argv[3]}}))' "$1" "$2" "$3"; }
 perm() { "$PY" -c 'import json,sys; print(json.load(sys.stdin)["permission"])' 2>/dev/null || echo INVALID_JSON; }
 c() { # name expected_permission output
@@ -600,6 +630,40 @@ else
   echo "  FAIL  no parser gave exit $rc with $lines stderr line(s) (want 1 and 1)"; echo "        ${out:0:120}"; fail=$((fail+1))
 fi
 rmdir "$TMPD" 2>/dev/null
+
+# The phi-guard nudge. It reads the sibling plugin folder only in the marketplace cache layout
+# .../plugins/cache/<marketplace>/<plugin>/<version>/, so the cases build that layout in a temp
+# folder with a copy of canary.sh and its lib/. The project is a folder with the git check copied in.
+CC=$(mktemp -d); CR="$CC/plugins/cache/bluestep/bluestep-tools/0.42.0"
+mkdir -p "$CR/hooks"; cp "$H/canary.sh" "$CR/hooks/"; cp -r "$H/lib" "$CR/hooks/"
+PJ=$(mktemp -d); mkdir -p "$PJ/scripts/hooks"; cp "$PCA/phi-check.sh" "$PJ/scripts/hooks/"; : > "$PJ/AGENTS.md"
+cn() { # name expected(line|silent) plugin_root canary_script — runs in $PJ
+  local out rc got
+  out=$(cd "$PJ" && printf '{"hook_event_name":"SessionStart","source":"startup"}' | CLAUDE_PLUGIN_ROOT="$3" bash "$4" 2>&1); rc=$?
+  if [ "$rc" = 0 ] && [ -z "$out" ]; then got=silent
+  elif [ "$rc" = 0 ] && [[ "$out" == *"phi-guard@bluestep"* ]] && [ "$(printf '%s\n' "$out" | grep -c .)" = 1 ]; then got=line
+  else got="exit $rc: ${out:0:80}"; fi
+  if [ "$got" = "$2" ]; then echo "  PASS  $1"; pass=$((pass+1)); else echo "  FAIL  $1 — expected $2, got $got"; fail=$((fail+1)); fi
+}
+cn "phi-guard nudge: git check, no .phi-allow, phi-guard not installed → one line, exit 0" line "$CR" "$CR/hooks/canary.sh"
+if command -v cygpath >/dev/null 2>&1; then
+  # Git Bash: Claude Code hands the plugin root over as C:\...\plugins\cache\...
+  cn "phi-guard nudge: a Windows backslash plugin root is the cache layout too" line "$(cygpath -w "$CR")" "$CR/hooks/canary.sh"
+else
+  cn "phi-guard nudge: a plugin root with a trailing slash is the cache layout too" line "$CR/" "$CR/hooks/canary.sh"
+fi
+printf '# no client data here\n *  \r\n' > "$PJ/.phi-allow"
+cn "phi-guard nudge: a * line in .phi-allow (edge blanks, CRLF) → silent" silent "$CR" "$CR/hooks/canary.sh"
+printf '# a * in a comment is not the switch\n(395) 555-0142\n' > "$PJ/.phi-allow"
+cn "phi-guard nudge: .phi-allow without a * line → still one line" line "$CR" "$CR/hooks/canary.sh"
+rm -f "$PJ/.phi-allow"
+mkdir -p "$CC/plugins/cache/bluestep/phi-guard/0.1.0"
+cn "phi-guard nudge: sibling phi-guard in the cache → silent" silent "$CR" "$CR/hooks/canary.sh"
+rm -rf "$CC/plugins/cache/bluestep/phi-guard"
+cn "phi-guard nudge: a checkout root (dev install) → silent" silent "$ROOT/plugins/bluestep-tools" "$H/canary.sh"
+rm -f "$PJ/scripts/hooks/phi-check.sh"
+cn "phi-guard nudge: no git check in the project → silent" silent "$CR" "$CR/hooks/canary.sh"
+rm -rf "$CC" "$PJ"
 
 echo
 echo "passed=$pass failed=$fail"

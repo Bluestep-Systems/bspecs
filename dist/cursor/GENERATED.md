@@ -1,8 +1,8 @@
 # Generated tree — do not edit
 
-Everything under `dist/cursor/` is generated from `plugin/**` by
+Everything under `dist/cursor/` is generated from `plugins/**` by
 `tools/gen-cross-tool` (the Cursor emitter). Never hand-edit these files:
 the generator wipes and rewrites this whole tree on every run, so edits here
-are lost — edit the source under `plugin/` instead and regenerate with:
+are lost — edit the source under `plugins/<name>/` instead and regenerate with:
 
     npm run gen

@@ -11,6 +11,11 @@
       "name": "bluestep-tools",
       "source": "bluestep-tools",
       "description": "Spec-driven BlueStep (B6P) development tooling for AI coding agents (Claude Code, Cursor, Codex): b6p platform CLI skills, the spec-* workflow, BlueStep subagents, guardrail hooks, and an on-demand platform reference."
+    },
+    {
+      "name": "phi-guard",
+      "source": "phi-guard",
+      "description": "Write-time client-data check for BlueStep (B6P) projects (Claude Code, Cursor, Codex): blocks an agent's Edit or Write that looks like real client data — phone numbers, email addresses, record titles — in a file that gets committed. Opt-in, installed per machine."
     }
   ]
 }

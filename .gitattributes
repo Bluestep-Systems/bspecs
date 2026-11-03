@@ -1,5 +1,5 @@
 # Every text file checks out with LF, whatever core.autocrlf says on the machine. The generator
-# parses plugin/** from the working tree and compares dist/** byte for byte, so a CRLF checkout
+# parses plugins/** from the working tree and compares dist/** byte for byte, so a CRLF checkout
 # (core.autocrlf=true on Windows) makes gen:check fail on every .md and leaves "stale" output;
 # the hooks read .json and run .sh, which break the same way on Linux and macOS.
 * text=auto eol=lf
