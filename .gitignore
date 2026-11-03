@@ -30,3 +30,7 @@ platform/U*/
 # rule was added; they were untracked with `git rm --cached` (local copies kept).
 /TODO.md
 /DONE.md
+
+# Local triage working files (ClickUp dumps, scripts) and scratch notes: never commit.
+.triage/
+.release-email/

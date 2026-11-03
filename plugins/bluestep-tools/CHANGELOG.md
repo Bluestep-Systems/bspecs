@@ -30,7 +30,12 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 - **`set_permissions` and its four modes.** It works on any securable object and requires `mode`:
   `MERGE`, `ADD`, `REMOVE` or `REPLACE`. The authoring page says what each does, that a REPLACE must
   name the entries `list_permissions` reports as not deletable, and that `revoke_permission` still
-  takes off one subject.
+  takes off one subject. A call written for the old replace-only `set_permissions` now needs
+  `mode: REPLACE`.
+- **Smaller corrections from review.** The gateway has four meta-tools (`describe_tool` was
+  missing), the approval-echo example carries the `groupId` that `script_queries` ADD requires,
+  `batch_fields` reports refused items in `errors` while the rest apply, and `script_queries`
+  REMOVE also drops the forms attached to that group.
 - **Field authoring goes through `describe_field_type`.** The page says to ask for one field
   type's settings before sending them, that the server refuses settings a type does not accept,
   that UPDATE refuses `null` (use `clear`), that CREATE takes no `fieldId` and needs a `name`, and

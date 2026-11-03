@@ -13,12 +13,14 @@ the `b6p` CLI**, permanently. See
 
 Connection is the **bundled gateway MCP** — a single global HTTP server (`bluestep-gateway`, shipped in the
 plugin's `.mcp.json`, authed by `$B6PT_TOKEN`) that **relays** to every org the token is authorized for. It
-is a **relay facade** exposing three meta-tools, not a flat aggregation of each org's native tools:
+is a **relay facade** exposing four meta-tools, not a flat aggregation of each org's native tools:
 
 - `mcp__plugin_bluestep-tools_bluestep-gateway__available_tenants` — a curated directory of AI-enabled orgs
   (`orgKey` / `name` / `defaultHost`).
 - `mcp__plugin_bluestep-tools_bluestep-gateway__list_org_tools` — the inner tool set (with schemas) for a
   given org.
+- `mcp__plugin_bluestep-tools_bluestep-gateway__describe_tool` — one inner tool's schema, when you know its
+  name.
 - `mcp__plugin_bluestep-tools_bluestep-gateway__invoke_org_tool` — run one inner tool against one org:
   `invoke_org_tool(org, tool, arguments)`, where `org` is a **U-number** orgKey (`U` plus digits).
 
@@ -115,11 +117,11 @@ If ambiguous or multiple candidates → **ask**; never guess which org to mutate
 Every op runs as an **inner tool** through the facade:
 `invoke_org_tool(org, tool, arguments)`. Determine the inner `tool` + `arguments` from:
 
-- an optional inline **`op:` hint** — e.g. `op: script_queries(action=ADD, script=…, query=allStaff)` — if the task
+- an optional inline **`op:` hint** — e.g. `op: script_queries(action=ADD, scriptId=…, queries=[{queryId: …, groupId: allStaff}])` — if the task
   supplies one, or
 - the free-text description otherwise.
 
-Inner-tool **schemas are no longer surfaced natively** (the harness sees only the 3 meta-tools). When you
+Inner-tool **schemas are no longer surfaced natively** (the harness sees only the 4 meta-tools). When you
 need an inner tool's input schema, call **`list_org_tools(org)`** and read it from there. **Per-org tool
 sets vary** (two orgs checked side by side served 76 and 80 tools) — always `list_org_tools` for the
 resolved org rather than assume a fixed catalogue. When you already know the tool's name, `describe_tool(org,
@@ -139,7 +141,7 @@ mutation.
 Print the **concrete inner call** and **wait for an explicit yes** in the main session — e.g.:
 
 ```
-invoke_org_tool → org=U<number> (<org name>), tool=script_queries, arguments={ scriptId: "…", action: "ADD", queries: [{ queryId: "…" }] }
+invoke_org_tool → org=U<number> (<org name>), tool=script_queries, arguments={ scriptId: "…", action: "ADD", queries: [{ queryId: "…", groupId: "allStaff" }] }
 ```
 
 This is the **key mitigation** for losing the native per-tool approval surface: behind `invoke_org_tool`
@@ -207,7 +209,8 @@ the filter and match by name/type before concluding an object doesn't exist (det
   guardrail. One exception: endpoint ops are additionally gated by the **ENGINEER ENDPOINT** custom
   privilege, so "global-super" does **not** guarantee END_POINT authoring — see
   [Known authoring quirks](#known-authoring-quirks).
-- **Destructive tools** (the `script_*` wiring tools with `action: REMOVE`, `record` delete, `user` deactivate,
+- **Destructive tools** (the `script_*` wiring tools with `action: REMOVE` — `script_queries` REMOVE also drops
+  the form dependencies attached to that group — `record` delete, `user` deactivate,
   `revoke_permission`, and `set_permissions` with `mode: REMOVE` or `mode: REPLACE` — REPLACE **replaces the
   entire** permission set of an object, dropping anything not in the list) run **only** when the task
   explicitly requires them, with **extra** confirmation. Out of default scope. To add or change a permission on
@@ -215,7 +218,8 @@ the filter and match by name/type before concluding an object doesn't exist (det
   is).
 - **Schema creation is not (currently) MCP-reversible.** The wiring tools (`script_*`) undo cleanly with
   `action: REMOVE`, but **schema-authoring** ops (`form` / `batch_fields` / `option_list` / `view` /
-  `record_type`) do **not** — an option list created via `option_list` has no delete, and
+  `record_type`) do **not** — an option list created via `option_list` has no delete,
+  `delete_record_type` removes a category only (never a base type), and
   `discard_pending_change` only rolls back the data-entry staging queue (it errors "requires a chat
   session"), **not** schema objects (verified 2026-07). Treat every schema-authoring op as
   **effectively irreversible via MCP** — removal is a manual step in the platform UI. This raises the bar
@@ -226,9 +230,9 @@ the filter and match by name/type before concluding an object doesn't exist (det
 
 ## Supported tool set
 
-The **gateway** exposes only **3 meta-tools** in-session:
+The **gateway** exposes only **4 meta-tools** in-session:
 `mcp__plugin_bluestep-tools_bluestep-gateway__available_tenants`,
-`…__list_org_tools`, and `…__invoke_org_tool`. The **~70 per-org tools below are reached _through_
+`…__list_org_tools`, `…__describe_tool` and `…__invoke_org_tool`. The **~70 per-org tools below are reached _through_
 `invoke_org_tool`** (`invoke_org_tool(org, tool:"<base name>", arguments:{…})`) and enumerated live via
 `list_org_tools(org)` — the exact set **varies per org**, so treat this as a reference catalogue of inner
 tools, not a fixed inventory.
@@ -239,7 +243,9 @@ became `batch_fields`; `create_option_list` / `update_option_list` became `optio
 `form_permission` / `grant_permission` became `set_permissions` with a required `mode`;
 `list_forms_with_fields` became `list_forms` with `includeFields: true`; and the four script and
 organization log readers became `read_log`. An org on an older platform version may still serve the old
-names — when a call answers `TOOL_NOT_FOUND`, `describe_tool` tells which name the org has.
+names — when a call answers `TOOL_NOT_FOUND`, `list_org_tools(org)` shows which name the org serves.
+Some arguments changed with the names (for example `set_permissions` used to replace the whole set and
+took no `mode`), so read the schema before reusing an old call.
 
 **Wiring / imports**
 - `script_queries`, `script_forms`, `script_field_access`, `script_record_types` — each takes
@@ -299,6 +305,8 @@ names — when a call answers `TOOL_NOT_FOUND`, `describe_tool` tells which name
 
 **Schema authoring**
 - `form`, `batch_fields` (one field or many), `option_list`, `view`, `record_type`
+- **`batch_fields` is not all-or-nothing.** A refused item is reported in `errors` and the other items
+  still apply — read `errors` after every call and fix or report each refused item.
 - siblings: `option_list_item`, `option_group`, `create_mefr`
 - **Ask for a field type's settings before sending them.** `batch_fields` and `form` CREATE no longer
   list every type's settings; `describe_field_type(type, action: CREATE | UPDATE)` returns the exact
@@ -322,20 +330,23 @@ names — when a call answers `TOOL_NOT_FOUND`, `describe_tool` tells which name
   `get_form`, `get_view`, `get_option_list`, `get_record_type`, `lookup_script_by_name`,
   `list_script_scope`, `describe_field_type`, `read_log`
 - `get_form` and `describe_form` take `compact: true` — only `fieldId`, `label` and `fieldType` per
-  field, about half the size. Use it when you only need to find a field.
-- Tool results carry no `null`s: a missing key means "no value".
+  field, half the size or less. Use it when you only need to find a field.
+- Results the server builds carry no `null`s: a missing key means "no value".
 
 **Permissions**
 - `list_permissions`, `set_permissions`, `revoke_permission`, `list_security_subjects` (finds a group's
   subject key). `set_permissions` works on any securable object and **requires** `mode`:
   - `MERGE` — adds each named subject or changes its level; everyone else keeps theirs.
   - `ADD` — adds each named subject that has no local permission; an existing one is left as it is.
-  - `REMOVE` — takes the named subjects off (`type` is required but not read).
+  - `REMOVE` — takes the named subjects off (`type` is required but not read). Naming an entry
+    `list_permissions` reports with `deletableState: NO` refuses the whole call.
   - `REPLACE` — the local list becomes exactly these entries. Read the current list with
     `list_permissions` first: an entry it reports with `deletableState: NO` (the built-in groups a new
     form is seeded with, and its "Relate Users" grant) must be named, or the whole call is refused.
 
-  `revoke_permission` takes one subject off and leaves the rest. A script's permission set is separate
+  `revoke_permission` takes one subject off and leaves the rest; it cannot take off an inherited entry
+  or a `deletableState: NO` one (change that one's level with `mode: MERGE`). The "Relate Users" grant
+  has no alias: name it by the `securitySubjectId` that `list_permissions` reports. A script's permission set is separate
   from its wiring: for a **new** script pass `permissions` to `create_script`, then the
   `list_permissions` read-back (step 6).
 
@@ -374,8 +385,8 @@ verified — the dating key at the top of this page says how to read the markers
   doing exactly this). Whenever a boolean flag is load-bearing (entry mode, updateability,
   visibility), **re-read it with an authoritative reader** after the call and **correct it with a
   solo UPDATE** if it disagrees — the same detect-and-correct shape as the declaration read-back in
-  step 6. When *reading* booleans, remember an untouched one is a missing key (tool results carry
-  no `null`s), not `false` — see the nullable-booleans entry in [gotchas/common-gotchas.md](../gotchas/common-gotchas.md).
+  step 6. When *reading* booleans, remember an untouched one is a missing key over MCP (results
+  carry no `null`s), not `false`; in BsJs code it reads as `null` — see the nullable-booleans entry in [gotchas/common-gotchas.md](../gotchas/common-gotchas.md).
 - **TEXT and MEMO fields require an explicit format type on CREATE** (e.g. `textFormatType: "NONE"`)
   — omitting it fails with a missing-type-id error (it is a serialization discriminator server-side).
   `describe_field_type` gives the exact setting name for each type. (verified 2026-07)

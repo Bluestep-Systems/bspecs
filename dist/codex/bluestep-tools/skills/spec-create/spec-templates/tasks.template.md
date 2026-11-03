@@ -13,7 +13,7 @@ Each task must reference specific file paths or platform artifacts and be small 
 Every task starts with one of two prefixes that says **where** the work happens:
 
 - `[PLATFORM]` — done in the BlueStep UI **or** via the bundled **gateway** MCP (in-session, approval-gated; live once the `bluestep-tools` plugin is enabled and `$B6PT_TOKEN` is set): creating a field, query, formula, component-level config, permissions, etc. **Agent-executable by `/spec-execute` when the gateway MCP is live** (else the user does it manually / it's handed back). See the `bluestep-reference` skill's `conventions/mcp-platform-authoring.md` for the flow. Must be listed before any `[CODE]` task that depends on them, so the ordering encodes the dependency.
-  - **Optional `op:` hint.** A `[PLATFORM]` task MAY carry an inline `op:` hint naming the MCP tool + key args to make the agent's tool-mapping unambiguous, e.g. `op: script_queries(action=ADD, script=…, query=allStaff)`. It's optional — when absent the agent proposes a mapping and the approval echo catches a wrong guess.
+  - **Optional `op:` hint.** A `[PLATFORM]` task MAY carry an inline `op:` hint naming the MCP tool + key args to make the agent's tool-mapping unambiguous, e.g. `op: script_queries(action=ADD, scriptId=…, queries=[{queryId: …, groupId: allStaff}])`. It's optional — when absent the agent proposes a mapping and the approval echo catches a wrong guess.
 - `[CODE]` — done in this workspace (TypeScript, static assets, README updates). **Executable by `/spec-execute`**.
 
 If the design says "no platform-side changes needed," every task is `[CODE]` and the prefix is still required (no implicit type).
@@ -28,7 +28,7 @@ Every task also carries one of three markers, right after the prefix. `/spec-exe
 
 ## Tasks
 
-- [ ] **1. [PLATFORM] [routine]** [Short description, e.g. "Create field `appointment_end_time` on form `Appointment`"] [optional `op:` hint, e.g. `op: script_queries(action=ADD, script=…, query=allStaff)`]
+- [ ] **1. [PLATFORM] [routine]** [Short description, e.g. "Create field `appointment_end_time` on form `Appointment`"] [optional `op:` hint, e.g. `op: script_queries(action=ADD, scriptId=…, queries=[{queryId: …, groupId: allStaff}])`]
 - [ ] **2. [CODE] [judgment]** [Short description — a pattern's first instance, or a task with a design choice left open] — files: `U######/Component/draft/scripts/foo.ts`
 - [ ] **3. [CODE] [routine]** [Short description — a known shape, new content] — files: `U######/Component/draft/scripts/bar.ts`, `U######/Component/draft/README.md`
 - [ ] **4. [CODE] [mechanical]** [Repeat of a pattern a task above already proved, e.g. "Wire component #2 the same way as task 3" — never on a pattern's first instance] — files: `U######/Component2/draft/scripts/bar.ts`
