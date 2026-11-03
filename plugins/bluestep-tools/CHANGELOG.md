@@ -11,6 +11,38 @@ Entries before 0.42.0 were written when this was the repo's only changelog and t
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.43.0] — 2026-11-03
+
+> **The platform reference uses the new gateway MCP tool names**, live since the 2026-11-03 platform
+> deploy. The old names have no alias, so an agent on 0.42.0 or older calls tools that no longer
+> exist. No hook changes — Codex users do not need to re-trust.
+
+### Changed
+
+- **New MCP tool names.** The platform merged overlapping tools: the `add_*` / `remove_*` wiring
+  pairs are now `script_queries`, `script_forms`, `script_field_access` and `script_record_types`
+  with `action: ADD | REMOVE`; `field` is `batch_fields`; `create_option_list` /
+  `update_option_list` are `option_list`; `form_permission` / `grant_permission` are
+  `set_permissions`; `list_forms_with_fields` is `list_forms` with `includeFields`; the four log
+  readers are `read_log`. `conventions/mcp-platform-authoring.md`, the field-access gotcha, the FID
+  reference, the `/b6p-push` live-build check and the tasks template now use them. Checked against
+  the live tool list on a test org.
+- **`set_permissions` and its four modes.** It works on any securable object and requires `mode`:
+  `MERGE`, `ADD`, `REMOVE` or `REPLACE`. The authoring page says what each does, that a REPLACE must
+  name the entries `list_permissions` reports as not deletable, and that `revoke_permission` still
+  takes off one subject.
+- **Field authoring goes through `describe_field_type`.** The page says to ask for one field
+  type's settings before sending them, that the server refuses settings a type does not accept,
+  that UPDATE refuses `null` (use `clear`), that CREATE takes no `fieldId` and needs a `name`, and
+  that tool results carry no `null`s. It also names `compact: true` on `get_form` /
+  `describe_form`.
+
+### Fixed
+
+- **The reference said `create_script` has no permissions parameter.** It has one (the same list
+  `set_permissions` takes), and a create without it warns. The page now says to pass `permissions`
+  at create time and still read them back with `list_permissions` before testing.
+
 ## [plugin 0.42.0] — 2026-11-03
 
 > **The write-time client-data check is now its own plugin, `phi-guard`, and it is off until you

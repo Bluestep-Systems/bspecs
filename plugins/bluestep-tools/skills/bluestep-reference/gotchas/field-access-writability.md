@@ -1,5 +1,5 @@
 ---
-description: "Field access is independent grant ROWS — read and write are separate rows on the same field, add_field_access(writable:true) grants write only, and the form-level 'writable' row is a third, separate flag; change a level by adding the new row BEFORE removing the old one (remove-first drops the field to zero access); verify with list_field_access, never the UI checkboxes or list_applicable_fields"
+description: "Field access is independent grant ROWS — read and write are separate rows on the same field, script_field_access ADD with writable:true grants write only, and the form-level 'writable' row is a third, separate flag; change a level by adding the new row BEFORE removing the old one (remove-first drops the field to zero access); verify with list_field_access, never the UI checkboxes or list_applicable_fields"
 ---
 
 # Field-access writability is independent grant rows, not one flag
@@ -7,13 +7,13 @@ description: "Field access is independent grant ROWS — read and write are sepa
 ## The three things that decide whether a script can write a field
 
 1. **Form-level row** — the per-form "Writable" checkbox on the script setup page: may the script
-   write back to this form at all. This is the `writable` param on the MCP `add_forms` tool.
+   write back to this form at all. This is the `writable` param on the MCP `script_forms` tool.
 2. **Per-field read row** — a grant relationship saying the script may read the field. This is
-   `add_field_access` with `writable: false` (or omitted).
+   `script_field_access` ADD with `writable: false` (or omitted).
 3. **Per-field write row** — a second, separate grant relationship saying the script may write the
-   field. This is `add_field_access` with `writable: true`.
+   field. This is `script_field_access` ADD with `writable: true`.
 
-Rows 2 and 3 are **independent records on the same field**. `add_field_access(writable: true)`
+Rows 2 and 3 are **independent records on the same field**. `script_field_access` ADD with `writable: true`
 grants **write only** — it does not imply read. A field the script both reads and writes needs
 **both** rows, so `list_field_access` lists it **twice**, once `writable: false` and once
 `writable: true` (verified 2026-09-22 on a scratch formula: granting write next to an existing read
@@ -36,23 +36,23 @@ read row underneath". Two consequences, both seen on live orgs:
 
 - A script that later **reads** such a field fails at runtime with a permission error, long after
   the wiring looked verified and the declaration read-back looked clean.
-- `remove_field_access(writable: true)`, meant as "drop to read-only", removes the **only** row, and
+- `script_field_access` REMOVE with `writable: true`, meant as "drop to read-only", removes the **only** row, and
   the field **disappears from the script's access entirely**. On a published component that gap is a
   live failure on the next render.
 
 ## The fix — add the new level first, then remove the old one
 
-Never remove first. `add_field_access` is idempotent per field, so adding a level the field already
+Never remove first. `script_field_access` ADD is idempotent per field, so adding a level the field already
 has is a no-op, and the field is never left with zero access:
 
 ```text
 # make a writable field read-only
-add_field_access(scriptId, [fieldId], writable: false)   # ensure the read row exists
-remove_field_access(scriptId, [fieldId], writable: true) # then drop the write row
+script_field_access(ADD, scriptId, [fieldId], writable: false)    # ensure the read row exists
+script_field_access(REMOVE, scriptId, [fieldId], writable: true)  # then drop the write row
 list_field_access(scriptId)                              # one entry, writable: false
 
 # make a read-only field writable (keep reading it)
-add_field_access(scriptId, [fieldId], writable: true)    # adds the write row; read row survives
+script_field_access(ADD, scriptId, [fieldId], writable: true)     # adds the write row; read row survives
 list_field_access(scriptId)                              # two entries for the field
 ```
 
@@ -69,11 +69,11 @@ presumably, the same gap. Only the MCP order above has been exercised.
 - **Always verify writability with `list_field_access`**, never by reading the UI checkboxes and
   never from `list_applicable_fields`' single `access` value — only `list_field_access` shows both
   rows.
-- A field the script **reads and writes** needs **two** `add_field_access` calls, `writable: false`
+- A field the script **reads and writes** needs **two** `script_field_access` ADD calls, `writable: false`
   and `writable: true`.
 - Changing a level is **add-then-remove**, never remove-then-add.
-- When wiring via MCP, pass the intended `writable` explicitly on **both** `add_forms` and
-  `add_field_access` — don't rely on inheritance you can't see.
+- When wiring via MCP, pass the intended `writable` explicitly on **both** `script_forms` and
+  `script_field_access` — don't rely on inheritance you can't see.
 
 ## Related: MCP reads aren't privilege-gated on endpoints
 

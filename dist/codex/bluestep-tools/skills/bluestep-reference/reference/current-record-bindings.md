@@ -8,7 +8,7 @@ description: "A multi-entry form offers two current-record bindings, [all entrie
 
 Relate auto-creates an `[all entries]` MEFR (an unnamed EntityList view) for every
 multi-entry form — it always exists, no setup needed. Wiring a multi-entry form into a
-script can pass this built-in view's topId to `add_queries`/`add_forms` directly. **No MEFR
+script can pass this built-in view's topId to `script_queries`/`script_forms` directly. **No MEFR
 needs to be created merely to wire a script.**
 
 To find it: call `list_views(formId)` and look for the `queryType: EntityList` entry with a
