@@ -28,13 +28,13 @@ values are printed cut to two characters, so a block message never repeats the d
 
 | Check | Where it runs | What it reads |
 |---|---|---|
-| Write-time hook | Claude Code, on every Edit/Write in a B6P project. Cursor and Codex run it through their generated wrappers, but may not see every write there. | The text being written. Blocks the write; the agent rewrites it. |
+| Write-time hook | The `phi-guard` plugin, when installed: opt-in, installed once per machine (`/b6p-setup` offers it). Claude Code runs it on every Edit/Write in a B6P project; Cursor and Codex run it through their generated wrappers, but may not see every write there. | The text being written. Blocks the write; the agent rewrites it. |
 | `pre-commit` | Every tool and hand edits, once `/b6p-setup` has set `core.hooksPath` in this clone. | Only the lines the commit adds. Data already in history does not block later commits. |
 | `pre-push` | Same hooks path. The regex runs again (it catches commits made with `--no-verify`); the model review runs only if turned on. | Only the lines the pushed commits add. |
 
 All three skip `.claude/scratch/`, `declarations/`, `.build/`, `static/assets/`, `node_modules/`,
-lockfiles, binary files and `.phi-allow` itself. The git hooks live in `scripts/hooks/`, committed,
-so teammates without the plugin get the same gate.
+lockfiles, binary files and `.phi-allow` itself. The git hooks are separate from the plugin: they
+live in `scripts/hooks/`, committed, so teammates without `phi-guard` get the same gate.
 
 ### The optional pre-push model review
 

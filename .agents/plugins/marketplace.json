@@ -13,6 +13,16 @@
       "policy": {
         "installation": "AVAILABLE"
       }
+    },
+    {
+      "name": "phi-guard",
+      "source": {
+        "source": "local",
+        "path": "./dist/codex/phi-guard"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      }
     }
   ]
 }

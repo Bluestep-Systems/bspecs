@@ -1,14 +1,15 @@
-# Migration `phi-guard` — the git check for client data
+# Migration `phi-guard` — the git client-data check
 
 **Says to the user:** "commits are not checked for client data" (never installed), "the
 client-data check is out of date" (an older copy), or "this clone does not run the client-data
 check" (the files are committed, by a teammate or an earlier run, but git here is not pointed at
 them). One line per project, whichever applies.
 
-**What it fixes.** The plugin's write-time hook only sees what an agent writes. Hand edits, other
-tools and pasted files reach git without it. This migration puts the same check in front of every
-commit and push: four small scripts in the project's `scripts/hooks/`, committed, so teammates
-without the plugin get the same gate. What the checks catch, what to do when one blocks and how to
+**What it fixes.** The write-time hook is the phi-guard plugin, a separate install, and it only
+sees what an agent writes. Hand edits, other tools and pasted files reach git without it. This
+migration is the git client-data check: it puts the same detector in front of every commit and
+push, as four small scripts in the project's `scripts/hooks/`, committed, so teammates without
+either plugin get the same gate. What the checks catch, what to do when one blocks and how to
 clean up an old leak are in the `bluestep-reference` skill → `conventions/client-data.md`. Point
 there; do not restate it.
 
@@ -57,7 +58,7 @@ From `../../..` into `scripts/hooks/`, creating the folder if needed:
 | `scripts/hooks/phi-check.sh` | `skills/b6p-setup/assets/phi-guard/phi-check.sh` |
 | `scripts/hooks/pre-commit` | `skills/b6p-setup/assets/phi-guard/pre-commit` |
 | `scripts/hooks/pre-push` | `skills/b6p-setup/assets/phi-guard/pre-push` |
-| `scripts/hooks/phi-detect.sh` | `hooks/lib/phi-detect.sh` |
+| `scripts/hooks/phi-detect.sh` | `skills/b6p-setup/assets/phi-guard/phi-detect.sh` |
 
 Copy byte for byte; nothing in them is filled in. Then `chmod +x` all four: git skips a hook file
 that is not executable. A refresh is a plain overwrite of all four, so they never mix versions.

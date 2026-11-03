@@ -1,0 +1,6 @@
+{
+  "name": "phi-guard",
+  "description": "Write-time client-data check for BlueStep (B6P) projects (Claude Code, Cursor, Codex): blocks an agent's Edit or Write that looks like real client data — phone numbers, email addresses, record titles — in a file that gets committed. Opt-in, installed per machine.",
+  "version": "0.1.0",
+  "hooks": "./hooks/hooks.json"
+}

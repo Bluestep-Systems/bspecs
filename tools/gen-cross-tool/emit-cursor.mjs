@@ -7,37 +7,47 @@
 // channel only — Cursor-only teammates have no Claude Code installed, so the
 // native tree is the real delivery path.
 //
-// Emits:
-//   dist/cursor/GENERATED.md                                (do-not-edit note)
-//   dist/cursor/bluestep-tools/.cursor-plugin/plugin.json   (name/description/
-//       version mirrored from plugin/.claude-plugin/plugin.json; skills/
-//       agents/hooks/mcpServers path fields)
-//   dist/cursor/bluestep-tools/skills/**   (allowed-tools stripped from
-//       SKILL.md frontmatter; ${CLAUDE_PLUGIN_ROOT} refs rewritten relative)
-//   dist/cursor/bluestep-tools/agents/*.md (tools:/model: frontmatter dropped)
-//   dist/cursor/bluestep-tools/hooks/shared/*.sh  (byte-identical copies of
-//       plugin/hooks/*.sh — the logic lives ONCE there, never forked)
-//   dist/cursor/bluestep-tools/hooks/*-cursor.sh  (generated thin wrappers:
-//       pass Cursor's preToolUse stdin straight to the shared script — it is
+// Emits, for every crossTool: true plugin plugins/<name>/ (crossToolPlugins()
+// in lib.mjs; crossTool: false plugins are skipped and left out of the
+// marketplace):
+//   dist/cursor/GENERATED.md                         (do-not-edit note, once)
+//   dist/cursor/<name>/.cursor-plugin/plugin.json    (name/description/
+//       version mirrored from plugins/<name>/.claude-plugin/plugin.json — and
+//       nothing else from it: crossTool is NOT copied, Cursor's plugin
+//       manifest schema is unproven for it; skills/agents/hooks/mcpServers
+//       path fields, each only when that surface is present)
+//   dist/cursor/<name>/skills/**   (allowed-tools stripped from SKILL.md
+//       frontmatter; ${CLAUDE_PLUGIN_ROOT} refs rewritten relative)
+//   dist/cursor/<name>/agents/*.md (tools:/model: frontmatter dropped)
+//   dist/cursor/<name>/hooks/shared/*.sh  (byte-identical copies of
+//       plugins/<name>/hooks/*.sh — the logic lives ONCE there, never forked)
+//   dist/cursor/<name>/hooks/*-cursor.sh  (generated thin wrappers: pass
+//       Cursor's preToolUse stdin straight to the shared script — it is
 //       already {tool_name, tool_input} shaped — and map its exit-2 block to
 //       Cursor's {"permission":"deny"} JSON; POSIX sh, no jq needed)
-//   dist/cursor/bluestep-tools/hooks/hooks.json   (Cursor schema, version 1;
-//       matcher-less on purpose — prove-out lesson: matchers are the fragile
-//       part; each wrapper filters on tool_name itself)
-//   dist/cursor/bluestep-tools/hooks/README.md    (wiring + what each
-//       guardrail does on Cursor, and what is still unproven live)
-//   dist/cursor/bluestep-tools/mcp.json    (plugin/.mcp.json with
+//   dist/cursor/<name>/hooks/hooks.json   (Cursor schema, version 1; each
+//       entry carries a matcher AND the wrapper filters on tool_name itself)
+//   dist/cursor/<name>/hooks/README.md    (wiring + what each guardrail does
+//       on Cursor, derived from the plugin's own hooks.json, and what is
+//       still unproven live)
+//   dist/cursor/<name>/mcp.json    (plugins/<name>/.mcp.json with
 //       ${B6PT_TOKEN} → ${env:B6PT_TOKEN} — Cursor's interpolation syntax,
 //       proven live in prove-out C6)
-//   .cursor-plugin/marketplace.json        (root marketplace; the plugin entry
-//       carries only name/source/description — Cursor's marketplace schema
-//       sets additionalProperties:false on an entry and rejects `version`
-//       (issue #238: the whole import came back with 0 plugins). The plugin
-//       dir is reached through metadata.pluginRoot + a bare source name, the
-//       documented form; a "./"-prefixed source is not.)
+//   .cursor-plugin/marketplace.json        (root marketplace; one entry per
+//       emitted plugin, sorted, carrying only name/source/description —
+//       Cursor's marketplace schema sets additionalProperties:false on an
+//       entry and rejects `version` (issue #238: the whole import came back
+//       with 0 plugins). Each plugin dir is reached through
+//       metadata.pluginRoot + a bare source name, the documented form; a
+//       "./"-prefixed source is not.)
 //
-// Hook wiring strategy: derived from plugin/hooks/hooks.json (discovered, not
-// hardcoded — a 4th hook wired there is picked up automatically). Cursor's
+// Optional surfaces (design §2 surface table): a plugin without
+// skills/*/SKILL.md, agents/*.md, hooks/hooks.json or .mcp.json gets no
+// output for that surface and no manifest field for it, and the matching
+// check() gates are skipped for it.
+//
+// Hook wiring strategy: derived from plugins/<name>/hooks/hooks.json
+// (discovered, not hardcoded — a new hook wired there is picked up automatically). Cursor's
 // preToolUse event runs BEFORE any tool (Shell, Read, Write, Delete, MCP, …),
 // carries {tool_name, tool_input} like Claude Code's PreToolUse, and blocks
 // on {"permission":"deny"} (or exit 2). So every source PreToolUse group maps
@@ -67,11 +77,23 @@
 
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { contentText, parseFrontmatter, rewriteRefs, transformFrontmatter, walkSorted } from './lib.mjs';
+import { contentText, crossToolPlugins, parseFrontmatter, rewriteRefs, transformFrontmatter, walkSorted } from './lib.mjs';
 
 const LABEL = 'emit-cursor';
-const PLUGIN_NAME = 'bluestep-tools';
-const OUT_PLUGIN = `dist/cursor/${PLUGIN_NAME}`;
+const OUT_ROOT = 'dist/cursor';
+const outPluginDir = (plugin) => `${OUT_ROOT}/${plugin.name}`;
+
+// Which optional surfaces a plugin carries (design §2 surface table) —
+// decided by presence, used by emit() and by every check() gate.
+function surfacesOf(tree) {
+  const has = (pred) => tree.files.some((f) => pred(f.rel));
+  return {
+    skills: has((rel) => /^skills\/[^/]+\/SKILL\.md$/.test(rel)),
+    agents: has((rel) => /^agents\/[^/]+\.md$/.test(rel)),
+    hooks: has((rel) => rel === 'hooks/hooks.json'),
+    mcp: has((rel) => rel === '.mcp.json'),
+  };
+}
 
 // Frontmatter keys this emitter understands. Unknown keys pass through to
 // Cursor (it ignores unknown keys per docs) but get a warning, so new Claude
@@ -83,16 +105,18 @@ const KNOWN_AGENT_FM = new Set(['name', 'description', 'tools', 'model']);
 
 const GENERATED_MD = `# Generated tree — do not edit
 
-Everything under \`dist/cursor/\` is generated from \`plugin/**\` by
+Everything under \`dist/cursor/\` is generated from \`plugins/**\` by
 \`tools/gen-cross-tool\` (the Cursor emitter). Never hand-edit these files:
 the generator wipes and rewrites this whole tree on every run, so edits here
-are lost — edit the source under \`plugin/\` instead and regenerate with:
+are lost — edit the source under \`plugins/<name>/\` instead and regenerate with:
 
     npm run gen
 `;
 
 // Map a plugin-root-relative target to its path inside the emitted Cursor
-// plugin dir. Throws on anything without a mapping (fail loudly).
+// plugin dir. Throws on anything without a mapping (fail loudly). Targets are
+// validated against the source tree by rewriteRefs, so a ref to a surface
+// the plugin does not carry fails there.
 function mapTarget(ref, where) {
   if (ref === '') return ''; // the plugin root itself
   if (ref === '.claude-plugin/plugin.json') return '.cursor-plugin/plugin.json';
@@ -101,12 +125,6 @@ function mapTarget(ref, where) {
   if (/^hooks\/[A-Za-z0-9_.-]+\.sh$/.test(ref)) return `hooks/shared/${ref.slice('hooks/'.length)}`;
   if (ref.startsWith('skills/') || ref.startsWith('agents/')) return ref;
   throw new Error(`emit-cursor: ${where}: no Cursor mapping for \${CLAUDE_PLUGIN_ROOT}/${ref} — refusing to emit`);
-}
-
-function readManifest(tree) {
-  const src = tree.files.find((f) => f.rel === '.claude-plugin/plugin.json');
-  if (!src) throw new Error('emit-cursor: plugin/.claude-plugin/plugin.json missing');
-  return JSON.parse(src.text);
 }
 
 // ---------- hook wiring (task 9) ----------
@@ -121,23 +139,29 @@ function readManifest(tree) {
 // and Cursor documents `Write` and `Delete` but not its edit tool's name.
 // Anything unrecognized fails loudly — a new kind of hook needs a deliberate
 // wiring decision, not a silent guess.
-function cursorToolFilterFor(matcher) {
+const SHELL_FILTER = '[Ss]hell|[Bb]ash';
+const EDIT_FILTER = '[Ww]rite|[Ee]dit|[Rr]eplace|[Pp]atch|[Dd]elete';
+
+function cursorToolFilterFor(matcher, hooksRel) {
   const parts = String(matcher ?? '').split('|').map((s) => s.trim()).filter(Boolean);
-  if (parts.length && parts.every((p) => p === 'Bash')) return '[Ss]hell|[Bb]ash';
+  if (parts.length && parts.every((p) => p === 'Bash')) return SHELL_FILTER;
   if (parts.length && parts.every((p) => ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(p))) {
-    return '[Ww]rite|[Ee]dit|[Rr]eplace|[Pp]atch|[Dd]elete';
+    return EDIT_FILTER;
   }
-  throw new Error(`emit-cursor: hooks/hooks.json: no Cursor tool filter for matcher "${matcher}" — refusing to emit`);
+  throw new Error(`emit-cursor: ${hooksRel}: no Cursor tool filter for matcher "${matcher}" — give it a mapping or set crossTool false`);
 }
 
 const CLAUDE_BROWSER_MATCHER = /^mcp__\(?(?:Claude_Browser|claude-in-chrome)\b/;
 
-// Read plugin/hooks/hooks.json and derive [{ script, tools }] — discovered,
-// not hardcoded, so a future 4th hook wired at the source is picked up here
-// with zero emitter changes.
-function readHookWiring(tree) {
+// Read plugins/<name>/hooks/hooks.json and derive [{ script, tools }] —
+// discovered, not hardcoded, so a new hook wired at the source is picked up
+// here with zero emitter changes. Called only when the plugin carries a
+// hooks/hooks.json (surfacesOf().hooks).
+function readHookWiring(plugin) {
+  const { tree } = plugin;
+  const hooksRel = `${plugin.dir}/hooks/hooks.json`;
   const src = tree.files.find((f) => f.rel === 'hooks/hooks.json');
-  if (!src) throw new Error('emit-cursor: plugin/hooks/hooks.json missing');
+  if (!src) throw new Error(`emit-cursor: ${hooksRel} missing`);
   const config = JSON.parse(src.text);
   const wiring = [];
   for (const [event, groups] of Object.entries(config.hooks ?? {})) {
@@ -146,27 +170,27 @@ function readHookWiring(tree) {
     // are a different surface, and the canary's report path is Claude Code's stderr handling.
     if (event === 'SessionStart') continue;
     if (event !== 'PreToolUse') {
-      throw new Error(`emit-cursor: hooks/hooks.json: unmapped source hook event "${event}" — give it a Cursor wiring`);
+      throw new Error(`emit-cursor: ${hooksRel}: unmapped source hook event "${event}" — give it a Cursor wiring or set crossTool false`);
     }
     for (const group of groups) {
       // hooks/tab-guard.sh guards Claude Code's own browser tools (the desktop app's pane and
       // Claude in Chrome). Cursor has neither, so it is not wired here; its script still ships
       // in shared/ like every hooks/*.sh.
       if (CLAUDE_BROWSER_MATCHER.test(String(group.matcher ?? ''))) continue;
-      const tools = cursorToolFilterFor(group.matcher);
+      const tools = cursorToolFilterFor(group.matcher, hooksRel);
       for (const h of group.hooks ?? []) {
         const m = String(h.command ?? '').match(/\/hooks\/([A-Za-z0-9_.-]+\.sh)$/);
         if (!m) {
-          throw new Error(`emit-cursor: hooks/hooks.json: cannot extract a hooks/*.sh script from command "${h.command}"`);
+          throw new Error(`emit-cursor: ${hooksRel}: cannot extract a hooks/*.sh script from command "${h.command}" — give this a mapping or set crossTool false`);
         }
         if (!tree.files.some((f) => f.rel === `hooks/${m[1]}`)) {
-          throw new Error(`emit-cursor: hooks/hooks.json references hooks/${m[1]}, which does not exist`);
+          throw new Error(`emit-cursor: ${hooksRel} references hooks/${m[1]}, which does not exist`);
         }
         wiring.push({ script: m[1], tools });
       }
     }
   }
-  if (!wiring.length) throw new Error('emit-cursor: hooks/hooks.json wires no hooks — unexpected');
+  if (!wiring.length) throw new Error(`emit-cursor: ${hooksRel} wires no hooks Cursor can run — set crossTool false or drop the hooks surface`);
   return wiring;
 }
 
@@ -188,11 +212,12 @@ function readHookWiring(tree) {
 // any exit other than 0/2. Only a wrapper Cursor never starts falls open.
 //
 // String.raw: the body is shell, keep its backslashes as written.
-function preToolUseWrapper(script, toolFilter) {
+function preToolUseWrapper(plugin, script, toolFilter) {
+  const name = plugin.name;
   return String.raw`#!/bin/sh
 # Generated by tools/gen-cross-tool (emit-cursor) — do not edit; see
 # dist/cursor/GENERATED.md. Cursor preToolUse wrapper around
-# shared/${script}, a byte-identical copy of plugin/hooks/${script} —
+# shared/${script}, a byte-identical copy of ${plugin.dir}/hooks/${script} —
 # the guardrail logic lives ONCE there, never forked.
 #
 # Cursor's preToolUse stdin ({"tool_name":...,"tool_input":{...}}) is the
@@ -241,7 +266,7 @@ esac
 
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
 SHARED="$DIR/shared/${script}"
-[ -f "$SHARED" ] || deny "BLOCKED: the $HOOK cannot find its script ($SHARED), so it cannot check this call. Reinstall or update the bluestep-tools plugin."
+[ -f "$SHARED" ] || deny "BLOCKED: the $HOOK cannot find its script ($SHARED), so it cannot check this call. Reinstall or update the ${name} plugin."
 
 # Run through bash explicitly: a lost exec bit must not turn into an allow.
 OUT=$(printf '%s' "$INPUT" | bash "$SHARED" 2>&1 >/dev/null)
@@ -249,18 +274,75 @@ STATUS=$?
 case "$STATUS" in
   0) allow ;;
   2) deny "$OUT" ;;
-  *) deny "BLOCKED: the $HOOK failed to run (exit $STATUS: $OUT), so it cannot tell whether this call is safe. Reinstall or update the bluestep-tools plugin." ;;
+  *) deny "BLOCKED: the $HOOK failed to run (exit $STATUS: $OUT), so it cannot tell whether this call is safe. Reinstall or update the ${name} plugin." ;;
 esac
 `;
 }
 
-const HOOKS_README = `# Cursor hook wiring — generated, do not edit
+// What each source hook script does on Cursor, keyed by script name — the
+// hooks README's "Behavior" column. A script the plugin ships with no entry
+// here fails the run: a new guardrail needs its Cursor story written down.
+const GUARDRAIL_NOTES = {
+  'block-generated-files.sh': '**Blocks** before the edit lands (pending the live check below)',
+  'phi-guard.sh':
+    '**Blocks** a write that looks like real client data in a B6P project (pending the live check below). ' +
+    "The project root is the hook's working directory, since Cursor sets no `CLAUDE_PROJECT_DIR`; if that is " +
+    'not the project, the hook stays silent and the git `pre-commit` check is the gate',
+  'canary.sh': "Claude Code-only SessionStart check; `shared/canary.sh` ships but nothing runs it on Cursor",
+  'tab-guard.sh':
+    "Guards Claude Code's own browser tools, which Cursor does not have; `shared/tab-guard.sh` ships but " +
+    'nothing runs it on Cursor',
+};
 
-Generated by \`tools/gen-cross-tool\` from \`plugin/hooks/\` (see
+// The "Tools checked" column text for each wrapper tool filter.
+const FILTER_NOTES = {
+  [EDIT_FILTER]: 'names containing Write / Edit / Replace / Patch / Delete',
+  [SHELL_FILTER]: 'names containing Shell / Bash',
+};
+
+// The guardrail table, derived from the plugin's own wiring: one row per
+// top-level hooks/*.sh it ships — the scripts wired on Cursor first, in
+// hooks.json order, then the unwired ones sorted by name.
+function guardrailRows(plugin, wiring) {
+  const scripts = plugin.tree.files
+    .map((f) => f.rel.match(/^hooks\/([A-Za-z0-9_.-]+\.sh)$/)?.[1])
+    .filter(Boolean);
+  const wired = [...new Set(wiring.map((w) => w.script))];
+  const unwired = scripts.filter((s) => !wired.includes(s)).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  const note = (script) => {
+    const text = GUARDRAIL_NOTES[script];
+    if (!text) {
+      throw new Error(`emit-cursor: ${plugin.dir}/hooks/${script}: no GUARDRAIL_NOTES entry — say what it does on Cursor`);
+    }
+    return text;
+  };
+  const rows = [];
+  let lastFilter;
+  for (const script of wired) {
+    const filter = wiring.find((w) => w.script === script).tools;
+    const tools = filter === lastFilter ? 'same filter' : FILTER_NOTES[filter];
+    lastFilter = filter;
+    rows.push(`| ${script.replace(/\.sh$/, '')} | \`preToolUse\` | ${tools} | ${note(script)} |`);
+  }
+  for (const script of unwired) {
+    rows.push(`| ${script.replace(/\.sh$/, '')} | *(not wired)* | — | ${note(script)} |`);
+  }
+  return rows.join('\n');
+}
+
+const hooksReadme = (plugin, wiring) => {
+  const hasLib = plugin.tree.files.some((f) => f.rel.startsWith('hooks/lib/'));
+  // The first live test names a write this plugin's own guardrail denies.
+  const liveTest = wiring.some((w) => w.script === 'block-generated-files.sh')
+    ? ' hand-edit a\n  `declarations/` file through the agent and expect a deny.'
+    : '\n  in a B6P project, have the agent write a made-up phone number into a\n  committed file and expect a deny.';
+  return `# Cursor hook wiring — generated, do not edit
+
+Generated by \`tools/gen-cross-tool\` from \`${plugin.dir}/hooks/\` (see
 \`../../GENERATED.md\`); regenerate with \`npm run gen\`. Layout:
 
-- \`shared/\` — byte-identical copies of \`plugin/hooks/*.sh\` (and
-  \`shared/lib/\` of their helper). The guardrail logic lives ONCE, in those
+- \`shared/\` — byte-identical copies of \`${plugin.dir}/hooks/*.sh\`${hasLib ? ` (and
+  \`shared/lib/\` of their helper)` : ''}. The guardrail logic lives ONCE, in those
   sources; never fork or edit the copies.
 - \`*-cursor.sh\` — generated thin wrappers, one per guardrail. Each filters
   on \`tool_name\`, hands Cursor's \`preToolUse\` stdin to its shared script
@@ -273,10 +355,7 @@ Generated by \`tools/gen-cross-tool\` from \`plugin/hooks/\` (see
 
 | Guardrail | Cursor event | Tools checked | Behavior |
 |---|---|---|---|
-| block-generated-files | \`preToolUse\` | names containing Write / Edit / Replace / Patch / Delete | **Blocks** before the edit lands (pending the live check below) |
-| phi-guard | \`preToolUse\` | same filter | **Blocks** a write that looks like real client data in a B6P project (pending the live check below). The project root is the hook's working directory, since Cursor sets no \`CLAUDE_PROJECT_DIR\`; if that is not the project, the hook stays silent and the git \`pre-commit\` check is the gate |
-| canary | *(not wired)* | — | Claude Code-only SessionStart check; \`shared/canary.sh\` ships but nothing runs it on Cursor |
-| tab-guard | *(not wired)* | — | Guards Claude Code's own browser tools, which Cursor does not have; \`shared/tab-guard.sh\` ships but nothing runs it on Cursor |
+${guardrailRows(plugin, wiring)}
 
 \`preToolUse\` runs before any tool and carries \`{tool_name, tool_input}\`, the
 same shape Claude Code's \`PreToolUse\` sends, so the shared script decides
@@ -289,8 +368,7 @@ exactly as it does on Claude Code. The earlier wiring used \`afterFileEdit\`
   for \`Shell\` (\`command\`, \`working_directory\`). The shared script reads
   \`file_path\`, \`path\`, \`target_file\` and \`relative_workspace_path\`; if
   Cursor's edit tool uses another key the check matches nothing and the edit
-  goes through. First thing to confirm on a real Cursor seat: hand-edit a
-  \`declarations/\` file through the agent and expect a deny.
+  goes through. First thing to confirm on a real Cursor seat:${liveTest}
 - **Windows.** Cursor runs hook commands through PowerShell on Windows. With
   the usual Git for Windows setup, PowerShell hands a \`.sh\` file to a separate
   git-bash window, drops stdin and reports exit 0 with no output — so the
@@ -327,9 +405,17 @@ exactly as it does on Claude Code. The earlier wiring used \`afterFileEdit\`
   from the plugin's install directory (documented; \`CURSOR_PLUGIN_ROOT\`
   points there).
 `;
+};
 
-function emit(tree) {
-  const manifest = readManifest(tree);
+const byName = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+
+// One plugin's Cursor tree, as repo-root-relative path → content. Optional
+// surfaces (surfacesOf) produce nothing — no files, no manifest field — when
+// the plugin does not carry them.
+function emitPlugin(plugin) {
+  const { tree, manifest } = plugin;
+  const out = outPluginDir(plugin);
+  const surfaces = surfacesOf(tree);
   const files = {};
 
   for (const f of tree.files) {
@@ -346,36 +432,41 @@ function emit(tree) {
     text = rewriteRefs(text, f.rel, tree.root, mapTarget, LABEL);
     // A skill asset that is a script (shebang: e.g. the git hooks /b6p-setup copies into a
     // project) keeps its exec bit, like the hook scripts below.
-    files[`${OUT_PLUGIN}/${f.rel}`] = isSkill && text.startsWith('#!') ? { text, mode: 0o755 } : text;
+    files[`${out}/${f.rel}`] = isSkill && text.startsWith('#!') ? { text, mode: 0o755 } : text;
   }
 
   // Hooks (task 9): shared scripts verbatim + generated wrappers + Cursor-
   // schema hooks.json + the degradation README. Shared copies are byte-
-  // identical and executable; wrappers are executable POSIX sh.
-  for (const f of tree.files) {
-    if (f.rel.startsWith('hooks/') && f.rel.endsWith('.sh')) {
-      files[`${OUT_PLUGIN}/hooks/shared/${f.rel.slice('hooks/'.length)}`] = { text: f.text, mode: 0o755 };
+  // identical and executable; wrappers are executable POSIX sh. Only when
+  // the plugin carries hooks/hooks.json.
+  if (surfaces.hooks) {
+    for (const f of tree.files) {
+      if (f.rel.startsWith('hooks/') && f.rel.endsWith('.sh')) {
+        files[`${out}/hooks/shared/${f.rel.slice('hooks/'.length)}`] = { text: f.text, mode: 0o755 };
+      }
     }
+    const wiring = readHookWiring(plugin);
+    const hooksConfig = { version: 1, hooks: {} };
+    for (const { script, tools } of wiring) {
+      const wrapper = script.replace(/\.sh$/, '-cursor.sh');
+      files[`${out}/hooks/${wrapper}`] = { text: preToolUseWrapper(plugin, script, tools), mode: 0o755 };
+      (hooksConfig.hooks.preToolUse ??= []).push({ type: 'command', command: `./hooks/${wrapper}`, matcher: tools });
+    }
+    files[`${out}/hooks/hooks.json`] = `${JSON.stringify(hooksConfig, null, 2)}\n`;
+    files[`${out}/hooks/README.md`] = hooksReadme(plugin, wiring);
   }
-  const wiring = readHookWiring(tree);
-  const hooksConfig = { version: 1, hooks: {} };
-  for (const { script, tools } of wiring) {
-    const wrapper = script.replace(/\.sh$/, '-cursor.sh');
-    files[`${OUT_PLUGIN}/hooks/${wrapper}`] = { text: preToolUseWrapper(script, tools), mode: 0o755 };
-    (hooksConfig.hooks.preToolUse ??= []).push({ type: 'command', command: `./hooks/${wrapper}`, matcher: tools });
-  }
-  files[`${OUT_PLUGIN}/hooks/hooks.json`] = `${JSON.stringify(hooksConfig, null, 2)}\n`;
-  files[`${OUT_PLUGIN}/hooks/README.md`] = HOOKS_README;
 
   // MCP (task 9): same server config, Cursor's env-interpolation syntax
-  // (${env:B6PT_TOKEN} — proven live, prove-out C6).
-  const mcpSrc = tree.files.find((f) => f.rel === '.mcp.json');
-  if (!mcpSrc) throw new Error('emit-cursor: plugin/.mcp.json missing');
-  const mcpText = mcpSrc.text.replaceAll('${B6PT_TOKEN}', '${env:B6PT_TOKEN}');
-  if (!mcpText.includes('${env:B6PT_TOKEN}')) {
-    throw new Error('emit-cursor: plugin/.mcp.json carries no ${B6PT_TOKEN} reference — the token rewrite found nothing, refusing to emit');
+  // (${env:B6PT_TOKEN} — proven live, prove-out C6). Only when the plugin
+  // carries .mcp.json.
+  if (surfaces.mcp) {
+    const mcpSrc = tree.files.find((f) => f.rel === '.mcp.json');
+    const mcpText = mcpSrc.text.replaceAll('${B6PT_TOKEN}', '${env:B6PT_TOKEN}');
+    if (!mcpText.includes('${env:B6PT_TOKEN}')) {
+      throw new Error(`emit-cursor: ${plugin.dir}/.mcp.json carries no \${B6PT_TOKEN} reference — the token rewrite found nothing, refusing to emit`);
+    }
+    files[`${out}/mcp.json`] = mcpText;
   }
-  files[`${OUT_PLUGIN}/mcp.json`] = mcpText;
 
   // Belt and suspenders: nothing emitted may still carry the variable.
   for (const [rel, content] of Object.entries(files)) {
@@ -384,50 +475,208 @@ function emit(tree) {
     }
   }
 
-  // Cursor plugin manifest.
-  files[`${OUT_PLUGIN}/.cursor-plugin/plugin.json`] = `${JSON.stringify({
-    name: PLUGIN_NAME,
-    description: manifest.description,
-    version: manifest.version,
-    skills: './skills/',
-    agents: './agents/',
-    hooks: './hooks/hooks.json',
-    mcpServers: './mcp.json',
-  }, null, 2)}\n`;
+  // Cursor plugin manifest. Fields are picked one by one: nothing else from
+  // the Claude manifest is copied (crossTool in particular — task 1 proved
+  // only that Claude Code and a repo import tolerate it, not Cursor's plugin
+  // manifest schema).
+  const cursorManifest = { name: plugin.name, description: manifest.description, version: manifest.version };
+  if (surfaces.skills) cursorManifest.skills = './skills/';
+  if (surfaces.agents) cursorManifest.agents = './agents/';
+  if (surfaces.hooks) cursorManifest.hooks = './hooks/hooks.json';
+  if (surfaces.mcp) cursorManifest.mcpServers = './mcp.json';
+  files[`${out}/.cursor-plugin/plugin.json`] = `${JSON.stringify(cursorManifest, null, 2)}\n`;
 
-  files['dist/cursor/GENERATED.md'] = GENERATED_MD;
+  return files;
+}
 
-  // Root Cursor marketplace. The entry carries ONLY name/source/description:
-  // Cursor's marketplace schema (cursor/plugins, schemas/marketplace.schema.json)
-  // sets additionalProperties:false on a plugin entry, so a `version` key
-  // makes the importer reject it and the import adds 0 plugins (issue #238).
-  // The version lives in the plugin manifest above, where Cursor reads it.
-  // The plugin dir is reached as metadata.pluginRoot + bare source name, the
-  // form the official marketplace and the docs use; "./dist/..." is not.
+function emit(plugins) {
+  const emitted = [...crossToolPlugins(plugins)].sort(byName);
+  const files = {};
+  for (const plugin of emitted) Object.assign(files, emitPlugin(plugin));
+
+  files[`${OUT_ROOT}/GENERATED.md`] = GENERATED_MD;
+
+  // Root Cursor marketplace, one entry per emitted plugin, sorted. An entry
+  // carries ONLY name/source/description: Cursor's marketplace schema
+  // (cursor/plugins, schemas/marketplace.schema.json) sets
+  // additionalProperties:false on a plugin entry, so a `version` key makes
+  // the importer reject it and the import adds 0 plugins (issue #238). The
+  // version lives in each plugin manifest, where Cursor reads it. A plugin
+  // dir is reached as metadata.pluginRoot + bare source name, the form the
+  // official marketplace and the docs use; "./dist/..." is not.
   files['.cursor-plugin/marketplace.json'] = `${JSON.stringify({
     name: 'bluestep',
     owner: { name: 'BlueStep Systems' },
-    metadata: { pluginRoot: 'dist/cursor' },
-    plugins: [
-      {
-        name: PLUGIN_NAME,
-        source: PLUGIN_NAME,
-        description: manifest.description,
-      },
-    ],
+    metadata: { pluginRoot: OUT_ROOT },
+    plugins: emitted.map((plugin) => ({
+      name: plugin.name,
+      source: plugin.name,
+      description: plugin.manifest.description,
+    })),
   }, null, 2)}\n`;
 
   return files;
 }
 
+// Per-plugin contract assertions on the emitted set, each gated on the
+// surfaces the plugin carries (design §2 surface table).
+function checkPlugin(plugin, files, ctx, diskRels, executableOnDisk, canCheckMode) {
+  const problems = [];
+  const { tree } = plugin;
+  const out = outPluginDir(plugin);
+  const surfaces = surfacesOf(tree);
+
+  // Every source skill is present (an empty loop for a plugin without skills).
+  const skillDirs = [...new Set(
+    tree.files.filter((f) => f.rel.startsWith('skills/')).map((f) => f.rel.split('/')[1])
+  )].sort();
+  for (const dir of skillDirs) {
+    if (!(`${out}/skills/${dir}/SKILL.md` in files)) {
+      problems.push(`cursor: source skill ${plugin.dir}/skills/${dir} missing from the output tree`);
+    }
+  }
+
+  // The plugin manifest mirrors the Claude name and version, carries no
+  // crossTool key, and has a path field for exactly the surfaces present.
+  const manifestRel = `${out}/.cursor-plugin/plugin.json`;
+  try {
+    const parsed = JSON.parse(contentText(files[manifestRel]));
+    if (parsed.name !== plugin.name) {
+      problems.push(`cursor: ${manifestRel}: name "${parsed.name}" does not match the plugin folder "${plugin.name}"`);
+    }
+    if (parsed.version !== plugin.manifest.version) {
+      problems.push(`cursor: ${manifestRel}: version "${parsed.version}" does not mirror the Claude manifest ("${plugin.manifest.version}")`);
+    }
+    if ('crossTool' in parsed) {
+      problems.push(`cursor: ${manifestRel}: carries "crossTool" — the Cursor manifest must not copy it (task 1 decision)`);
+    }
+    const fields = [
+      ['skills', surfaces.skills, './skills/'],
+      ['agents', surfaces.agents, './agents/'],
+      ['hooks', surfaces.hooks, './hooks/hooks.json'],
+      ['mcpServers', surfaces.mcp, './mcp.json'],
+    ];
+    for (const [field, present, expected] of fields) {
+      if (present && parsed[field] !== expected) {
+        problems.push(`cursor: ${manifestRel}: "${field}" field missing or wrong (expected "${expected}")`);
+      } else if (!present && field in parsed) {
+        problems.push(`cursor: ${manifestRel}: "${field}" field present, but ${plugin.dir} carries no such surface`);
+      }
+    }
+  } catch (err) {
+    problems.push(`cursor: ${manifestRel}: invalid JSON — ${err.message}`);
+  }
+
+  // An absent surface leaves no output behind.
+  const absentOutputs = [
+    [surfaces.agents, `${out}/agents/`, 'agents/*.md'],
+    [surfaces.hooks, `${out}/hooks/`, 'hooks/hooks.json'],
+    [surfaces.mcp, `${out}/mcp.json`, '.mcp.json'],
+  ];
+  for (const [present, prefix, source] of absentOutputs) {
+    if (present) continue;
+    for (const rel of Object.keys(files)) {
+      if (rel.startsWith(prefix)) problems.push(`cursor: ${rel}: emitted, but ${plugin.dir} has no ${source}`);
+    }
+  }
+
+  // ---- task-9 wiring assertions ----
+
+  // hooks.json parses; every hook sits on preToolUse (the blocking event);
+  // every command it references exists and is executable.
+  if (surfaces.hooks) {
+    const hooksRel = `${out}/hooks/hooks.json`;
+    try {
+      const cfg = JSON.parse(contentText(files[hooksRel] ?? ''));
+      for (const event of Object.keys(cfg.hooks ?? {})) {
+        if (event !== 'preToolUse') {
+          problems.push(`cursor: ${hooksRel}: hook event "${event}" — guardrails must sit on preToolUse, the blocking event`);
+        }
+      }
+      for (const entries of Object.values(cfg.hooks ?? {})) {
+        for (const entry of entries) {
+          if (typeof entry.matcher !== 'string' || !entry.matcher.trim()) {
+            problems.push(`cursor: ${hooksRel}: command "${entry.command}" has no matcher — it would start on every tool call`);
+          }
+          const cmd = String(entry.command ?? '');
+          if (!cmd.startsWith('./')) {
+            problems.push(`cursor: ${hooksRel}: command "${cmd}" is not plugin-relative (./…)`);
+            continue;
+          }
+          const cmdRel = `${out}/${cmd.slice(2)}`;
+          if (!(cmdRel in files)) {
+            problems.push(`cursor: ${hooksRel}: command "${cmd}" has no emitted file at ${cmdRel}`);
+          } else if (canCheckMode && !executableOnDisk(cmdRel)) {
+            problems.push(`cursor: ${cmdRel}: referenced by hooks.json but not executable on disk — run npm run gen`);
+          }
+        }
+      }
+    } catch (err) {
+      problems.push(`cursor: ${hooksRel}: invalid JSON — ${err.message}`);
+    }
+  }
+
+  // No wrapper may bail on a missing parser: the shared script owns parsing
+  // and fails closed; a `command -v jq || allow` in front of it disarms that.
+  for (const [rel, content] of Object.entries(files)) {
+    if (rel.startsWith(`${out}/hooks/`) && rel.endsWith('-cursor.sh') && /\b(command -v|which|type|hash)\s+(jq|python3?|node)\b/.test(contentText(content))) {
+      problems.push(`cursor: ${rel}: wrapper checks for a parser itself — the shared script owns that and fails closed`);
+    }
+  }
+
+  // The SOURCE scripts keep their exec bit too (an edit from Windows over a
+  // UNC path has reset one before; Claude Code runs them directly).
+  if (canCheckMode) {
+    for (const f of tree.files) {
+      if (f.rel.startsWith('hooks/') && f.rel.endsWith('.sh') && !executableOnDisk(`${plugin.dir}/${f.rel}`)) {
+        problems.push(`cursor: ${plugin.dir}/${f.rel}: source hook script is not executable — git update-index --chmod=+x`);
+      }
+    }
+  }
+
+  // Shared scripts are byte-identical to their plugins/<name>/hooks/*.sh sources.
+  if (surfaces.hooks) {
+    for (const f of tree.files) {
+      if (!f.rel.startsWith('hooks/') || !f.rel.endsWith('.sh')) continue;
+      const outRel = `${out}/hooks/shared/${f.rel.slice('hooks/'.length)}`;
+      const emitted = files[outRel];
+      if (!emitted) {
+        problems.push(`cursor: ${outRel}: shared copy of ${plugin.dir}/${f.rel} missing from the output`);
+      } else if (contentText(emitted) !== f.text) {
+        problems.push(`cursor: ${outRel}: not byte-identical to ${plugin.dir}/${f.rel} — shared scripts must never be forked`);
+      }
+    }
+  }
+
+  // mcp.json parses, uses Cursor's ${env:…} token syntax, and carries no
+  // bare ${B6PT_TOKEN} (which Cursor would not interpolate).
+  if (surfaces.mcp) {
+    const mcpRel = `${out}/mcp.json`;
+    const mcpText = contentText(files[mcpRel] ?? '');
+    try {
+      JSON.parse(mcpText);
+    } catch (err) {
+      problems.push(`cursor: ${mcpRel}: invalid JSON — ${err.message}`);
+    }
+    if (!mcpText.includes('${env:B6PT_TOKEN}')) {
+      problems.push(`cursor: ${mcpRel}: missing \${env:B6PT_TOKEN} reference`);
+    }
+    if (/\$\{B6PT_TOKEN\}/.test(mcpText)) {
+      problems.push(`cursor: ${mcpRel}: bare \${B6PT_TOKEN} present — Cursor only interpolates the \${env:…} form`);
+    }
+  }
+
+  return problems;
+}
+
 // --check structural self-test: re-emit in memory (any unmappable ref
 // surfaces here as a finding, not a crash), then assert the on-disk output
-// matches and honors the task-8 + task-9 contracts.
-function check(tree, ctx) {
+// matches and honors the task-8 + task-9 contracts for every emitted plugin.
+function check(plugins, ctx) {
   const problems = [];
   let files;
   try {
-    files = emit(tree, ctx);
+    files = emit(plugins, ctx);
   } catch (err) {
     problems.push(`cursor: emit failed — ${err.message}`);
     return problems;
@@ -435,7 +684,7 @@ function check(tree, ctx) {
 
   // Disk must match a fresh emit exactly (stale output = finding).
   const diskRels = new Set();
-  for (const dir of ['dist/cursor', '.cursor-plugin']) {
+  for (const dir of [OUT_ROOT, '.cursor-plugin']) {
     const abs = join(ctx.repoRoot, ...dir.split('/'));
     if (!existsSync(abs)) {
       problems.push(`cursor: ${dir}/ missing — run npm run gen`);
@@ -454,68 +703,6 @@ function check(tree, ctx) {
     if (!(rel in files)) problems.push(`cursor: ${rel} on disk but not emitted — run npm run gen`);
   }
 
-  // Contract assertions on the emitted set.
-  const skillDirs = [...new Set(
-    tree.files.filter((f) => f.rel.startsWith('skills/')).map((f) => f.rel.split('/')[1])
-  )].sort();
-  for (const dir of skillDirs) {
-    if (!(`${OUT_PLUGIN}/skills/${dir}/SKILL.md` in files)) {
-      problems.push(`cursor: source skill ${dir} missing from the output tree`);
-    }
-  }
-  for (const [rel, content] of Object.entries(files)) {
-    const text = contentText(content);
-    if (text.includes('${CLAUDE_PLUGIN_ROOT}')) {
-      problems.push(`cursor: ${rel}: \${CLAUDE_PLUGIN_ROOT} occurrence in output`);
-    }
-    if (rel.endsWith('/SKILL.md')) {
-      const fm = parseFrontmatter(text);
-      if (fm && 'allowed-tools' in fm.data) problems.push(`cursor: ${rel}: allowed-tools survived in frontmatter`);
-    }
-  }
-  // The plugin manifest mirrors the Claude version; the marketplace entry must
-  // NOT carry one (issue #238: Cursor's importer rejects the entry and the
-  // import adds nothing), and its source must be the documented bare form.
-  const manifestRel = `${OUT_PLUGIN}/.cursor-plugin/plugin.json`;
-  try {
-    const parsed = JSON.parse(contentText(files[manifestRel]));
-    if (parsed.version !== ctx.version) {
-      problems.push(`cursor: ${manifestRel}: version "${parsed.version}" does not mirror the Claude manifest ("${ctx.version}")`);
-    }
-  } catch (err) {
-    problems.push(`cursor: ${manifestRel}: invalid JSON — ${err.message}`);
-  }
-  const marketRel = '.cursor-plugin/marketplace.json';
-  try {
-    const parsed = JSON.parse(contentText(files[marketRel]));
-    const entry = parsed.plugins?.[0] ?? {};
-    const allowed = new Set(['name', 'source', 'description', 'minClientVersions']);
-    for (const key of Object.keys(entry)) {
-      if (!allowed.has(key)) {
-        problems.push(`cursor: ${marketRel}: plugin entry key "${key}" is not in Cursor's marketplace schema (additionalProperties:false) — the importer rejects the entry (#238)`);
-      }
-    }
-    if (typeof entry.source !== 'string' || entry.source.startsWith('./') || entry.source.includes('/')) {
-      problems.push(`cursor: ${marketRel}: source "${entry.source}" must be a bare plugin dir name under metadata.pluginRoot`);
-    }
-    if (parsed.metadata?.pluginRoot !== 'dist/cursor') {
-      problems.push(`cursor: ${marketRel}: metadata.pluginRoot must be "dist/cursor"`);
-    }
-    // pluginRoot + source must land on the emitted plugin manifest — two
-    // wrong values that agree with each other must not pass.
-    const resolved = `${parsed.metadata?.pluginRoot}/${entry.source}/.cursor-plugin/plugin.json`;
-    if (!(resolved in files)) {
-      problems.push(`cursor: ${marketRel}: pluginRoot + source resolve to ${resolved}, which is not an emitted file`);
-    }
-    if (entry.name !== PLUGIN_NAME) {
-      problems.push(`cursor: ${marketRel}: entry name "${entry.name}" must match the plugin manifest name "${PLUGIN_NAME}"`);
-    }
-  } catch (err) {
-    problems.push(`cursor: ${marketRel}: invalid JSON — ${err.message}`);
-  }
-
-  // ---- task-9 wiring assertions ----
-
   // Exec-bit checks only make sense on POSIX (Windows has no mode bits; the
   // committed bits come from POSIX runs and are re-verified by the Linux CI).
   const canCheckMode = process.platform !== 'win32';
@@ -527,53 +714,19 @@ function check(tree, ctx) {
     }
   };
 
-  // hooks.json parses; every hook sits on preToolUse (the blocking event);
-  // every command it references exists and is executable.
-  const hooksRel = `${OUT_PLUGIN}/hooks/hooks.json`;
-  try {
-    const cfg = JSON.parse(contentText(files[hooksRel] ?? ''));
-    for (const event of Object.keys(cfg.hooks ?? {})) {
-      if (event !== 'preToolUse') {
-        problems.push(`cursor: ${hooksRel}: hook event "${event}" — guardrails must sit on preToolUse, the blocking event`);
-      }
-    }
-    for (const entries of Object.values(cfg.hooks ?? {})) {
-      for (const entry of entries) {
-        if (typeof entry.matcher !== 'string' || !entry.matcher.trim()) {
-          problems.push(`cursor: ${hooksRel}: command "${entry.command}" has no matcher — it would start on every tool call`);
-        }
-        const cmd = String(entry.command ?? '');
-        if (!cmd.startsWith('./')) {
-          problems.push(`cursor: ${hooksRel}: command "${cmd}" is not plugin-relative (./…)`);
-          continue;
-        }
-        const cmdRel = `${OUT_PLUGIN}/${cmd.slice(2)}`;
-        if (!(cmdRel in files)) {
-          problems.push(`cursor: ${hooksRel}: command "${cmd}" has no emitted file at ${cmdRel}`);
-        } else if (canCheckMode && !executableOnDisk(cmdRel)) {
-          problems.push(`cursor: ${cmdRel}: referenced by hooks.json but not executable on disk — run npm run gen`);
-        }
-      }
-    }
-  } catch (err) {
-    problems.push(`cursor: ${hooksRel}: invalid JSON — ${err.message}`);
+  const emitted = [...crossToolPlugins(plugins)].sort(byName);
+  for (const plugin of emitted) {
+    problems.push(...checkPlugin(plugin, files, ctx, diskRels, executableOnDisk, canCheckMode));
   }
 
-  // No wrapper may bail on a missing parser: the shared script owns parsing
-  // and fails closed; a `command -v jq || allow` in front of it disarms that.
   for (const [rel, content] of Object.entries(files)) {
-    if (rel.startsWith(`${OUT_PLUGIN}/hooks/`) && rel.endsWith('-cursor.sh') && /\b(command -v|which|type|hash)\s+(jq|python3?|node)\b/.test(contentText(content))) {
-      problems.push(`cursor: ${rel}: wrapper checks for a parser itself — the shared script owns that and fails closed`);
+    const text = contentText(content);
+    if (text.includes('${CLAUDE_PLUGIN_ROOT}')) {
+      problems.push(`cursor: ${rel}: \${CLAUDE_PLUGIN_ROOT} occurrence in output`);
     }
-  }
-
-  // The SOURCE scripts keep their exec bit too (an edit from Windows over a
-  // UNC path has reset one before; Claude Code runs them directly).
-  if (canCheckMode) {
-    for (const f of tree.files) {
-      if (f.rel.startsWith('hooks/') && f.rel.endsWith('.sh') && !executableOnDisk(`plugin/${f.rel}`)) {
-        problems.push(`cursor: plugin/${f.rel}: source hook script is not executable — git update-index --chmod=+x`);
-      }
+    if (rel.endsWith('/SKILL.md')) {
+      const fm = parseFrontmatter(text);
+      if (fm && 'allowed-tools' in fm.data) problems.push(`cursor: ${rel}: allowed-tools survived in frontmatter`);
     }
   }
 
@@ -586,41 +739,54 @@ function check(tree, ctx) {
     }
   }
 
-  // Shared scripts are byte-identical to their plugin/hooks/*.sh sources.
-  for (const f of tree.files) {
-    if (!f.rel.startsWith('hooks/') || !f.rel.endsWith('.sh')) continue;
-    const outRel = `${OUT_PLUGIN}/hooks/shared/${f.rel.slice('hooks/'.length)}`;
-    const out = files[outRel];
-    if (!out) {
-      problems.push(`cursor: ${outRel}: shared copy of ${f.rel} missing from the output`);
-    } else if (contentText(out) !== f.text) {
-      problems.push(`cursor: ${outRel}: not byte-identical to plugin/${f.rel} — shared scripts must never be forked`);
+  // The marketplace lists exactly the emitted plugins. No entry may carry a
+  // version (issue #238: Cursor's importer rejects the entry and the import
+  // adds nothing), and each source must be the documented bare form.
+  const marketRel = '.cursor-plugin/marketplace.json';
+  try {
+    const parsed = JSON.parse(contentText(files[marketRel]));
+    if (parsed.metadata?.pluginRoot !== OUT_ROOT) {
+      problems.push(`cursor: ${marketRel}: metadata.pluginRoot must be "${OUT_ROOT}"`);
     }
-  }
-
-  // mcp.json parses, uses Cursor's ${env:…} token syntax, and carries no
-  // bare ${B6PT_TOKEN} (which Cursor would not interpolate).
-  const mcpRel = `${OUT_PLUGIN}/mcp.json`;
-  const mcpText = contentText(files[mcpRel] ?? '');
-  try {
-    JSON.parse(mcpText);
+    const entries = Array.isArray(parsed.plugins) ? parsed.plugins : [];
+    if (!Array.isArray(parsed.plugins)) problems.push(`cursor: ${marketRel}: "plugins" must be an array`);
+    const want = emitted.map((p) => p.name);
+    const got = entries.map((e) => e?.name).sort();
+    if (JSON.stringify(got) !== JSON.stringify(want)) {
+      problems.push(`cursor: ${marketRel}: entries [${got.join(', ')}] must equal the crossTool plugins [${want.join(', ')}]`);
+    }
+    const allowed = new Set(['name', 'source', 'description', 'minClientVersions']);
+    for (const entry of entries) {
+      const label = `entry "${entry?.name}"`;
+      for (const key of Object.keys(entry ?? {})) {
+        if (!allowed.has(key)) {
+          problems.push(`cursor: ${marketRel}: ${label} key "${key}" is not in Cursor's marketplace schema (additionalProperties:false) — the importer rejects the entry (#238)`);
+        }
+      }
+      if (typeof entry?.source !== 'string' || entry.source.startsWith('./') || entry.source.includes('/')) {
+        problems.push(`cursor: ${marketRel}: ${label} source "${entry?.source}" must be a bare plugin dir name under metadata.pluginRoot`);
+        continue;
+      }
+      // pluginRoot + source must land on an emitted plugin manifest — two
+      // wrong values that agree with each other must not pass — whose name
+      // is the entry name.
+      const resolved = `${parsed.metadata?.pluginRoot}/${entry.source}/.cursor-plugin/plugin.json`;
+      if (!(resolved in files)) {
+        problems.push(`cursor: ${marketRel}: ${label}: pluginRoot + source resolve to ${resolved}, which is not an emitted file`);
+        continue;
+      }
+      let manifestName;
+      try {
+        manifestName = JSON.parse(contentText(files[resolved])).name;
+      } catch {
+        continue; // Already reported as invalid JSON by checkPlugin.
+      }
+      if (entry.name !== manifestName) {
+        problems.push(`cursor: ${marketRel}: ${label} must match the plugin manifest name "${manifestName}"`);
+      }
+    }
   } catch (err) {
-    problems.push(`cursor: ${mcpRel}: invalid JSON — ${err.message}`);
-  }
-  if (!mcpText.includes('${env:B6PT_TOKEN}')) {
-    problems.push(`cursor: ${mcpRel}: missing \${env:B6PT_TOKEN} reference`);
-  }
-  if (/\$\{B6PT_TOKEN\}/.test(mcpText)) {
-    problems.push(`cursor: ${mcpRel}: bare \${B6PT_TOKEN} present — Cursor only interpolates the \${env:…} form`);
-  }
-
-  // The manifest must point at the emitted wiring files.
-  try {
-    const parsed = JSON.parse(contentText(files[`${OUT_PLUGIN}/.cursor-plugin/plugin.json`]));
-    if (parsed.hooks !== './hooks/hooks.json') problems.push('cursor: manifest "hooks" field missing or wrong');
-    if (parsed.mcpServers !== './mcp.json') problems.push('cursor: manifest "mcpServers" field missing or wrong');
-  } catch {
-    // Already reported as invalid JSON above.
+    problems.push(`cursor: ${marketRel}: invalid JSON — ${err.message}`);
   }
 
   return problems;

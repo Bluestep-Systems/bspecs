@@ -6,7 +6,7 @@ description: Draft and queue a BlueStep-branded release-update email across thre
 # /release-email — Draft and queue the release-update digest
 
 A repo-local **maintainer** skill (same tier as `.claude/skills/bspecs-triage/`, **not** shipped in
-`plugin/`). It builds a short, on-brand email covering what changed in the `bluestep-tools` plugin,
+`plugins/`). It builds a short, on-brand email covering what changed in the `bluestep-tools` plugin,
 the `b6p` CLI, and the **gateway MCP**, then queues it as an **entry on the BlueHQ outbox form**.
 The platform does every send: a **post-save formula** on that form sends the test preview when the
 test checkbox is saved, and sends the **real** email when — and only when — a human **signs the
@@ -77,7 +77,8 @@ change nothing. **Fail closed — never draft a digest that silently drops a pro
 - **`gh` is installed and authenticated** (`gh auth status`) — the CLI product depends on it.
 - **`$CLICKUP_TOKEN` works** — the MCP product depends on it. Verify with a cheap authorized call
   (e.g. `curl -s -o /dev/null -w '%{http_code}' -H "Authorization: $CLICKUP_TOKEN" https://api.clickup.com/api/v2/user`
-  → expect `200`). Note the WSL/`~/.profile` sourcing gotcha if it comes back empty.
+  → expect `200`). If it comes back empty, the shell started before the token was set in the
+  Windows user environment — open a new one.
 - **A browser tool can reach the owning org** — the Claude desktop app's browser pane (not
   Chrome). Run the `read` step (step 2): it prints who is signed in and the three watermarks. On
   `NOT SIGNED IN`, ask the human to sign in on the page that is open, then run `read` again. Note
@@ -87,9 +88,9 @@ change nothing. **Fail closed — never draft a digest that silently drops a pro
   hand-pasting HTML through the form editor mangles it, so never instruct the human to complete an
   entry by hand. On failure: keep the draft in the scratch dir (nothing is lost), fix the
   connection, resume at the queue step.
-- **Shell note:** `gh` and `$CLICKUP_TOKEN` live in WSL — run `gh`/`curl` via
-  `wsl -e bash -lc '…'`. Run `outbox.mjs` with Git Bash `node`, so the bridge port is on the same
-  machine as the browser pane.
+- **Shell note:** `gh`, `curl` and `$CLICKUP_TOKEN` all work on Windows (Git Bash or PowerShell;
+  the token is in the Windows user environment). Run `outbox.mjs` with Git Bash `node`, so the
+  bridge port is on the same machine as the browser pane.
 - **Every platform step is three moves:** start `node scripts/outbox.mjs <step> …` in the
   background; open the printed `http://127.0.0.1:<port>/bridge.html` in the browser pane (it moves
   on to the org's site by itself); run the step's tab script in that tab. A tab script that answers
@@ -117,9 +118,11 @@ the real send advances them itself from the entry's `payloadJson.toVersions`.
 
 Diff each product against its own watermark. Keep only **user-facing** changes.
 
-- **Plugin** — parse the local `CHANGELOG.md`: `## [plugin X.Y.Z]` blocks newer than
-  `lastPluginVersion`, their `### Added/Changed/Fixed` entries. Newest version in range =
-  `toVersions.plugin`. *(Coupling: the `## [plugin X.Y.Z]` header shape.)*
+- **Plugin** — parse `plugins/bluestep-tools/CHANGELOG.md` (the root `CHANGELOG.md` is only a
+  pointer): `## [plugin X.Y.Z]` blocks newer than `lastPluginVersion`, their
+  `### Added/Changed/Fixed` entries. Newest version in range = `toVersions.plugin`. *(Coupling:
+  the `## [plugin X.Y.Z]` header shape.)* The other plugins in this repo (`phi-guard`,
+  `core-tools`) are not products of this email.
 - **CLI** — `gh release list --repo Bluestep-Systems/b6p-cli`, then `gh release view <tag>` for
   each release newer than `lastCliVersion`. Newest in range = `toVersions.cli`. Re-check `gh`
   here; stop before drafting if it fails. *(Coupling: the `gh` release shape.)*
@@ -151,6 +154,12 @@ scratch dir — never edit the template itself.
   `[RELEASE_URL]` from `assets.local.json`.
 - Clone the `PRODUCT_SECTION` block per product with changes; clone the `ENTRIES` row per entry.
   - Plugin section: `[UPDATE_INSTRUCTION]` = `/plugin marketplace update`; version cell = version.
+  - Plugin section, when the range crosses 0.42.0: an entry saying the write-time client-data
+    guard is now the opt-in `phi-guard` plugin, with how to install it — Claude Code CLI
+    `claude plugin install phi-guard@bluestep --scope user`; desktop app Customize → Plugins;
+    Cursor and Codex from their marketplaces (Codex users then trust its hook).
+  - Plugin section, when a release in range changed the plugin's hooks (0.42.0 did): a line
+    telling Codex users to re-trust the plugin's hooks after updating.
   - CLI section: the b6p-cli update command; version cell = version.
   - **MCP section:** `[PRODUCT_NAME]` = "BlueStep gateway MCP"; **no update instruction** —
     replace that block with a line saying the changes are already live server-side; version cell =

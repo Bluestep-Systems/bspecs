@@ -1,6 +1,8 @@
 # ADR: Cross-tool plugin output — generated per-tool native trees for Cursor and Codex
 
-**Status:** Accepted
+**Status:** Accepted. **Amended 2026-11**: the source is one folder per plugin under `plugins/`,
+with one version stream and one tag namespace per plugin (see the notes under decisions 2, 5
+and 6).
 
 **Date:** 2026-08-12
 
@@ -53,6 +55,21 @@ lint that keeps the source's de-Claude-ing enforced, not a one-time cleanup). Ou
 function of `plugin/**` — no timestamps, no environment leakage — so diffs stay meaningful and
 the sanitization invariant holds trivially: no content exists in `dist/` that isn't in `plugin/`.
 
+*(**Amended 2026-11:** the source is now `plugins/<name>/`, one folder per plugin
+(bluestep-tools, core-tools, phi-guard), and output is a pure function of `plugins/**`. The
+generator finds every `plugins/*` folder, but emits `dist/cursor/<name>/` and `dist/codex/<name>/`,
+and lists the plugin in the two generated marketplaces, only when that plugin's
+`.claude-plugin/plugin.json` sets `"crossTool": true` — today bluestep-tools and phi-guard.
+core-tools is `false` for now, because its `lane/`, `docs/` and `tools/` folders are not part of
+what the emitters produce. The flag lives only in the Claude manifest and is never copied into an
+emitted manifest. The prove-out for this change (2026-11-02) showed it is safe there:
+`claude plugin validate` warns "Unknown field 'crossTool'. Claude Code ignores it at load time."
+and passes, the plugin installs and loads, and a Cursor repo import still works with the key in
+the Claude manifest. The Claude-ism denylist and CLI-floor lints read only what ships —
+`skills/`, `agents/`, `hooks/`, the manifest and `.mcp.json` — so a plugin's other folders are
+never linted. Files that must live in two plugins (the hook-input parser and the client-data
+detector, in bluestep-tools and phi-guard) are checked byte-identical by `npm run gen:check`.)*
+
 ### 3. No external translator dependency
 
 ruler, rulesync, and acplugin (whole-plugin converter) were surveyed and their emitters read for
@@ -81,6 +98,19 @@ skip an unchanged version on update). Tools whose output didn't change receive a
 update. **Rejected:** per-tool version streams — three release invariants to keep straight buys
 nothing over one accepted no-op cost.
 
+*(**Amended 2026-11:** one version stream **per plugin**. Each generated manifest mirrors the
+version in its own `plugins/<name>/.claude-plugin/plugin.json`. The `plugin-version-bump` job
+loops over the plugins: a PR that changes `plugins/<name>/**` must bump that plugin, unless the
+only change is that plugin's `CHANGELOG.md`; a PR that changes `tools/gen-cross-tool/**` must bump
+every plugin with `"crossTool": true`, for the reason above. The changed-file list comes from
+`git diff --name-only --no-renames`, because with rename detection a moved file lists only its
+new path, and the plugin it left would not be asked for a bump. Only a plugin that needs a bump,
+or whose version changed, has its version checked against the remote tags (`<name>-v<version>`,
+and for bluestep-tools also the legacy `plugin-v<version>`): an unchanged, already-released
+plugin is skipped, or every later PR would fail on its existing tag. A new plugin's first version
+needs no bump. Per-*tool* streams are still rejected: a plugin's Cursor and Codex output carries
+that plugin's one version.)*
+
 ### 6. Tag-on-merge release automation
 
 Merging a version-bumped PR to `main` **is** the release: `release-tag.yml` reads the manifest
@@ -91,6 +121,17 @@ because tags pushed with the default `GITHUB_TOKEN` never trigger other workflow
 recursive-workflow guard) — `publish.yml`'s `on: push: tags` cannot fire from the automation.
 `publish.yml` stays untouched serving the manual path (a human-pushed tag pre-empts the
 automation cleanly), and both paths produce the same Release shape.
+
+*(**Amended 2026-11:** same mechanics, now in a loop over `plugins/*/.claude-plugin/plugin.json`.
+Tags are `<name>-v<version>` (`bluestep-tools-v0.42.0`, `phi-guard-v0.1.0`, …). For each plugin
+whose tag is missing on the remote, the workflow tags, pushes and cuts a Release titled
+`<name> <version>`. For bluestep-tools the legacy `plugin-v<version>` tags still count as released
+(no second tag for the same version) and start its release-notes range until its first
+`bluestep-tools-v*` tag exists; a plugin's first release has no start tag, so GitHub picks the
+range. Only bluestep-tools' Release is marked "Latest"; the others are created with
+`--latest=false`. One plugin's error does not stop the others: errors are collected and fail the
+job after the loop. `publish.yml`, the manual path, now matches any `*-vX.Y.Z` tag, which also
+covers a hand-pushed legacy `plugin-vX.Y.Z`, and still not the frozen npm-era `vX.Y.Z` tags.)*
 
 ### 7. Per-tool content extension point — deliberately not built
 
@@ -164,4 +205,12 @@ Locked by the task-1 live prove-out (`prove-out.md` has the full failure ladders
   `.github/workflows/release-tag.yml`
 - Related ADRs: [`plugin-distribution.md`](plugin-distribution.md) (extended),
   [`content-sanitization-for-public-tooling.md`](content-sanitization-for-public-tooling.md),
-  [`b6p-cli-distribution.md`](b6p-cli-distribution.md)
+  [`b6p-cli-distribution.md`](b6p-cli-distribution.md),
+  [`tooling-repo-consolidation.md`](tooling-repo-consolidation.md) (why the repo holds several
+  plugins)
+- Amended 2026-11 (multi-plugin layout): spec `.claude/specs/multi-plugin-layout/` (its design's
+  "Prove-out" section records the `crossTool` test); source `plugins/<name>/`; shared-copy list
+  `SHARED_COPIES` in `tools/gen-cross-tool/lib.mjs`; CI / release: `.github/workflows/ci.yml`
+  (per-plugin `plugin-version-bump`, `npm run test:hooks` in `cross-tool-drift`),
+  `.github/workflows/release-tag.yml` (loop over plugins), `.github/workflows/publish.yml`
+  (`*-vX.Y.Z` tags)

@@ -1,13 +1,13 @@
 ---
 name: spec-create
-description: Start a new spec-driven feature. Creates requirements.md, then design.md, then tasks.md with explicit user approval between each phase. Use when the user wants to plan a non-trivial change to this repo (the bspecs scaffolder).
+description: Start a new spec-driven feature. Creates requirements.md, then design.md, then tasks.md with explicit user approval between each phase. Use when the user wants to plan a non-trivial change to this repo (BlueStep's agent plugins repo).
 ---
 
 # /spec-create — Start a new feature spec
 
 A spec lives at `.claude/specs/<feature-name>/` and consists of three files: `requirements.md`, `design.md`, `tasks.md`. Each phase requires explicit user approval before moving to the next.
 
-Use this for non-trivial work — a new behavior, a new CLI flag/subcommand, a template restructuring, anything touching several files. For a clearly-scoped fix or a small change, use `/quick-task` instead.
+Use this for non-trivial work — a new behavior, a new skill, hook or plugin, a reference restructuring, anything touching several files. For a clearly-scoped fix or a small change, use `/quick-task` instead.
 
 ## Prerequisite
 
@@ -15,7 +15,7 @@ Skim the project's working-context files before drafting:
 
 - `CLAUDE.md` — architecture, key behaviors, editing conventions.
 - `TODO.md` — open `[ ]` items (the change may already be planned).
-- The latest 3 `## [x.y.z]` blocks of `CHANGELOG.md` (it may already be shipped).
+- The latest 3 `## [...]` blocks of `plugins/bluestep-tools/CHANGELOG.md` (`plugins/core-tools/CHANGELOG.md` for a core-tools change) — it may already be shipped.
 - `docs/decisions/` — an ADR may already cover the area.
 
 Report any match — already planned, already shipped, or covered by an ADR — before starting.
@@ -40,7 +40,7 @@ Report any match — already planned, already shipped, or covered by an ADR — 
 
 1. Copy `.claude/spec-templates/design.template.md` to `.claude/specs/<feature-name>/design.md`.
 2. Fill it in. **MUST include:**
-   - Which files/areas this touches (`cli.js`, `src/*`, `templates/*`, skills, docs).
+   - Which files/areas this touches (`plugins/<name>/` skills/agents/hooks, `tools/gen-cross-tool/`, docs).
    - Approach summary.
    - Alignment with existing patterns and conventions in `CLAUDE.md`.
    - Whether an ADR in `docs/decisions/` is warranted for any non-obvious choice.
@@ -51,7 +51,7 @@ Report any match — already planned, already shipped, or covered by an ADR — 
 1. Copy `.claude/spec-templates/tasks.template.md` to `.claude/specs/<feature-name>/tasks.md`.
 2. Break the work into small tasks, each shippable as one coherent unit. Each task MUST:
    - Have a checkbox `[ ]`.
-   - Reference specific file paths (e.g. `src/scaffold.js`, `templates/claude/skills/.../SKILL.md`).
+   - Reference specific file paths (e.g. `plugins/bluestep-tools/skills/.../SKILL.md`, `tools/gen-cross-tool/index.mjs`).
    - Be small enough that one `/spec-execute` invocation covers exactly one.
 3. **Order matters** — a task that depends on another must come after it.
 4. **Tag a task `[mechanical]` only when it qualifies.** The tag goes right after the task number (e.g. `**4. [mechanical]** Wire skill #2 the same way as task 2 — files: …`). A task qualifies **only when all of these hold:**
@@ -59,7 +59,7 @@ Report any match — already planned, already shipped, or covered by an ADR — 
    - It makes **no new design decisions** and adds **no new structure or dependencies** — pure copy-adapt-verify.
 
    `/spec-execute` maps the tag to a cheaper model tier when delegating, so the user's tasks-phase review is the approval gate for that cheaper tier — adding or removing `[mechanical]` tags is part of reviewing tasks.md. When in doubt, leave the tag off; an untagged task just runs on the session model.
-5. Note in the tasks any docs that must stay in sync: `CLAUDE.md`, `README.md`, `CHANGELOG.md`, `TODO.md`. When adding a file under `templates/claude/instructions/`, remember to add a matching `index.md` entry (Claude-only — there is no `.github/` mirror to keep in sync).
+5. Note in the tasks any docs that must stay in sync: `CLAUDE.md`, the root `README.md` (the plugin catalog) and/or the plugin's own `plugins/<name>/README.md`, the plugin's `CHANGELOG.md`, `TODO.md`. When adding a topic file under `plugins/bluestep-tools/skills/bluestep-reference/`, remember to add a matching one-line entry in its `SKILL.md`. A change under `plugins/**` also needs `npm run gen` and the regenerated `dist/` committed.
 6. **STOP. Ask the user to approve tasks before implementation begins.**
 
 ## After approval

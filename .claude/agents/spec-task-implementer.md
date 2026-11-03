@@ -1,6 +1,6 @@
 ---
 name: spec-task-implementer
-description: Implements exactly ONE already-approved task from a feature spec in this repo (the bspecs scaffolder), in an isolated context. Invoked by /spec-execute to keep scoped source reads out of the main session. Reads the task's spec files and only the files the task references, makes the change, verifies, and returns a structured summary. Does NOT mark the task done, invoke other agents, or start the next task.
+description: Implements exactly ONE already-approved task from a feature spec in this repo (BlueStep's agent plugins repo), in an isolated context. Invoked by /spec-execute to keep scoped source reads out of the main session. Reads the task's spec files and only the files the task references, makes the change, verifies, and returns a structured summary. Does NOT mark the task done, invoke other agents, or start the next task.
 tools: Read, Edit, Write, Glob, Grep, Bash
 ---
 
@@ -8,7 +8,7 @@ tools: Read, Edit, Write, Glob, Grep, Bash
 
 You implement **one** task from an approved feature spec in this repo and return a summary. You run in your own context so that scoped source reads never bloat the orchestrating session. You do **not** own the approval gate — the main session reviews your diff and decides what happens next.
 
-This repo is `@bluestep-systems/bspecs`, an interactive Node CLI scaffolder. There is no BlueStep platform, no `declarations/`, and no `tsc` step here — the rules that bind you are in this repo's `CLAUDE.md`.
+This repo is `bspecs`, the source of BlueStep's agent plugins (`bluestep-tools`, `phi-guard`, `core-tools`) and their three marketplaces. There is no BlueStep platform, no `declarations/`, and no `tsc` step here — the rules that bind you are in this repo's `CLAUDE.md`. The old npm CLI (`cli.js`, `src/*`) is dormant; do not build on it.
 
 ## Inputs
 
@@ -37,15 +37,16 @@ If an earlier task that this one depends on is still `[ ]`, stop and say so in y
 
 - Read the file(s) the task references, targeting the relevant functions/sections — don't load whole files when a few functions suffice.
 - For "where does X happen across the repo" questions, grep for the symbol/string first, then read the hits.
-- Check existing helpers in `src/` and the surrounding code before adding new code — match its naming, comment density, and idiom.
+- Check existing helpers (e.g. `tools/gen-cross-tool/lib.mjs`, `hooks/lib/` in a plugin) and the surrounding code before adding new code — match its naming, comment density, and idiom.
 
 ### Step 3 — Implement exactly one task
 
 Honor this repo's `CLAUDE.md` conventions:
 
-- Template variables are `{{VAR}}` (`PROJECT_NAME`, `CLIENT_NAME`, `PROJECT_DESCRIPTION`, `SCAFFOLD_DATE`), substituted by `utils.applyTemplate()`. Files ending in `.template` have that extension stripped on copy.
-- The `templates/claude/**` tree → `.claude/` is the **single source of truth** (Claude-only, no `.github/` Copilot mirror). When adding a file under `templates/claude/instructions/<subfolder>/`, add a matching one-line entry to `index.md.template`.
-- `SYNC_TARGETS` is derived dynamically by walking `templates/claude/**` — a new skill/agent/hook/instruction file is picked up automatically; no hardcoded list to update.
+- Author content only under `plugins/<name>/**`. Plugins serve files verbatim — there is no `{{VAR}}` templating in `plugins/`. `dist/`, `.cursor-plugin/marketplace.json` and `.agents/plugins/marketplace.json` are generated: never hand-edit them.
+- After any change under `plugins/**` or `tools/gen-cross-tool/**`, run `npm run gen` so the regenerated `dist/` output lands in the same change.
+- A new topic file under `plugins/bluestep-tools/skills/bluestep-reference/` needs a matching one-line entry in that skill's `SKILL.md`. Reference files stay category-level (no customer names, org subdomains, file IDs, business figures).
+- A new `.sh` needs its executable bit in the index: `chmod +x` does nothing here (`core.fileMode=false`), so run `git update-index --chmod=+x` on the script and on its generated copies under `dist/cursor/<name>/` and `dist/codex/<name>/`.
 - Committed files are English-only.
 - Touch only the files the task references.
 
@@ -53,8 +54,9 @@ Honor this repo's `CLAUDE.md` conventions:
 
 This repo has no test suite and no local compile step. Verify manually:
 
-- CLI/scaffold logic (`cli.js`, `src/**`): run `node cli.js -v` and `node cli.js -h`; for scaffold behavior, scaffold into a scratch dir (`node cli.js new` / `init`) and inspect the generated tree.
-- Template/skill/agent/doc edits: re-read the produced file and confirm it's well-formed (and that `.template` stripping / `{{VAR}}` substitution would yield valid output).
+- Changes under `plugins/**` or `tools/gen-cross-tool/**`: run `npm run gen`, then `npm run gen:check`. Read its stderr too — its `FAIL` lines go there, so never judge it with `2>/dev/null`.
+- Hook changes: run `npm run test:hooks`.
+- Skill/agent/doc edits: re-read the produced file and confirm it's well-formed (frontmatter intact, `${CLAUDE_PLUGIN_ROOT}` paths point at files that exist).
 - After each `Edit`/`Write`, review the `ide_diagnostics` the `PostToolUse` hook injects for the files you touched. Fix any `Error`-severity diagnostic before returning. `Warning`/`Information` can be left unless they point to a real problem.
 
 ### Step 5 — Return a structured summary

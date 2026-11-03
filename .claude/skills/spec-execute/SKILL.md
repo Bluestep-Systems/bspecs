@@ -17,7 +17,7 @@ description: Execute one task from a feature spec. By default delegates implemen
    - Identify the task at the given number.
    - Read only the files this task touches — don't pre-load unrelated areas.
 3. **Verify prerequisites are done.** Scan tasks.md for any earlier task the requested task depends on that is still `[ ]`. If one exists, STOP and tell the user which earlier task should be done first.
-4. **Implement exactly one task.** No scope creep — touch only the files the task references, do not start the next task, apply the conventions in `CLAUDE.md` (template variables, `.template` stripping, English-only committed files, single source of truth / `index.md` sync).
+4. **Implement exactly one task.** No scope creep — touch only the files the task references, do not start the next task, apply the conventions in `CLAUDE.md` (author only under `plugins/**` and regenerate `dist/` with `npm run gen`, English-only committed files, a new reference topic file gets its `SKILL.md` entry).
 
    **Default — delegate to the `spec-task-implementer` subagent:**
    - **Pick the model for this launch:**
@@ -31,11 +31,12 @@ description: Execute one task from a feature spec. By default delegates implemen
 
    **`--inline` — implement here:** do the edits directly in this session (the prior behavior), then continue to step 5. No subagent is spawned, so no model override applies.
 5. **Verify the change.** This repo has no test suite — verify manually per `CLAUDE.md`. On the default path, also weigh anything the subagent listed under **Flags for the human** (its edits trigger the same `ide_diagnostics` you check below):
-   - For CLI/scaffold logic: run `node cli.js -v`, `node cli.js -h`, or a scaffold into a scratch dir and inspect the generated tree.
-   - For template/skill/doc edits: re-read the produced file and confirm it's well-formed.
+   - For changes under `plugins/**` or `tools/gen-cross-tool/**`: run `npm run gen`, then `npm run gen:check` and read its stderr too (its `FAIL` lines go there).
+   - For hook changes: run `npm run test:hooks`.
+   - For skill/agent/doc edits: re-read the produced file and confirm it's well-formed.
    - Check the most recent `ide_diagnostics` blocks for any `Error` in a file this task touched. If present, **STOP** — if this was a `[mechanical]` cheap-tier run, escalate per step 4 (one re-run at the session model) instead of patching here; otherwise fix and re-verify before marking done. `Warning`/`Information` can be ignored unless they point to a real problem.
 6. **Mark the task done:** update `.claude/specs/<feature>/tasks.md` — change `[ ]` to `[x]` for the completed task.
-7. **Keep docs in sync.** If this task changed behavior described in `CLAUDE.md` or `README.md`, or completed a `TODO.md` item, update them in the same change. If an instruction file was added under `templates/claude/instructions/`, confirm it has a matching `index.md` entry.
+7. **Keep docs in sync.** If this task changed behavior described in `CLAUDE.md`, the root `README.md` (the plugin catalog) or the plugin's own `plugins/<name>/README.md`, or completed a `TODO.md` item, update them in the same change. If a topic file was added under `plugins/bluestep-tools/skills/bluestep-reference/`, confirm it has a matching entry in its `SKILL.md`.
 8. **STOP.** Tell the user the task is done and to review and approve before running the next one. Present the next command on its own line as a **fenced code block** — with `<feature>` and `<N+1>` filled in with the real values, e.g.
 
    ```
@@ -46,4 +47,4 @@ description: Execute one task from a feature spec. By default delegates implemen
 
 ## When all tasks are done
 
-Once every task is `[x]`, remind the user: propose a commit message (title + body) based on the diff per `CLAUDE.md`, and note any `CHANGELOG.md` / `TODO.md` updates that should accompany it. Do not run `git commit` unless the user says so.
+Once every task is `[x]`, remind the user: propose a commit message (title + body) based on the diff per `CLAUDE.md`, and note any `CHANGELOG.md` (`plugins/bluestep-tools/CHANGELOG.md`, or `plugins/core-tools/CHANGELOG.md` for core-tools) / `TODO.md` updates that should accompany it. Do not run `git commit` unless the user says so.

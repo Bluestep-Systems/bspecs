@@ -88,7 +88,7 @@ else
     done
     # No parser at all: block, loudly, with the fix.
     if [ -z "$_hook_any" ]; then
-      echo "BLOCKED: the ${HOOK_NAME:-BlueStep} guardrail hook cannot read its input — none of jq, python3, python or node runs from PATH, so it cannot tell whether this call is safe. It blocks rather than allow an unchecked call. Install any one of them (jq is smallest) and retry, or disable the bluestep-tools hooks if you accept losing the guardrails. On Windows, a python.exe that only prints \"Python was not found\" is a Store alias, not Python: install a real one or node, or turn the alias off under Settings > Apps > Advanced app settings > App execution aliases." >&2
+      echo "BLOCKED: the ${HOOK_NAME:-BlueStep} guardrail hook cannot read its input — none of jq, python3, python or node runs from PATH, so it cannot tell whether this call is safe. It blocks rather than allow an unchecked call. Install any one of them (jq is smallest) and retry, or disable this plugin's hooks if you accept losing the guardrails. On Windows, a python.exe that only prints \"Python was not found\" is a Store alias, not Python: install a real one or node, or turn the alias off under Settings > Apps > Advanced app settings > App execution aliases." >&2
       exit 2
     fi
     # A parser runs, but the payload is not JSON with a tool_input object: also block.

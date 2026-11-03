@@ -10,6 +10,8 @@ If `/b6p-setup` is running in Cursor, the marketplace is imported and the plugin
 3. **Add the marketplace:** Cursor → plugins → **Add Marketplace → Import from Repo**, with the bspecs repo URL `https://github.com/Bluestep-Systems/bspecs`. A marketplace source must be a **committed git repo** (this one is — a plain local folder does not resolve unless it is a git repo with a commit).
 4. **Install `bluestep-tools`** from that marketplace, and enable it on the Manage screen if it is not on by default.
 
+**phi-guard (opt-in).** A separate plugin in the same imported marketplace, listed next to `bluestep-tools`: it blocks an agent's write that looks like real client data. Cursor runs it through a generated wrapper, which may not see every write. It is installed per machine, acts only in a B6P project (a `U######/` folder or the `AGENTS.md` marker `/b6p-setup` writes), and stays silent everywhere else. Cursor gives the agent no read-only check, so ask the user whether `phi-guard` shows as installed on Cursor's plugin screen, folded into the offer. Missing → offer it, and on a yes hand over the click: install `phi-guard` from the imported marketplace in Cursor. To turn it off for one project on Cursor, a `*` line in that project's `.phi-allow` does it, but it also turns off the git client-data check. That git check, which `/b6p-setup` sets up in step 2, runs with or without the plugin.
+
 Worth saying out loud to the user in front of you:
 
 - **Skills and hooks are workspace-coupled.** Open the project folder before installing/using them — an empty window shows only user-global surfaces (the MCP server), and a project-scoped install needs an open workspace.

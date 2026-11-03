@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "type": "command",
+        "command": "./hooks/phi-guard-cursor.sh",
+        "matcher": "[Ww]rite|[Ee]dit|[Rr]eplace|[Pp]atch|[Dd]elete"
+      }
+    ]
+  }
+}

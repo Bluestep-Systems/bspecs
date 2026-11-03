@@ -1,6 +1,8 @@
 # ADR: Keep client data out of committed project files — block, don't rewrite
 
-**Status:** Accepted (2026-11-02)
+**Status:** Accepted (2026-11-02). **Amended 2026-11**: the write-time hook is now the separate
+opt-in `phi-guard` plugin, and the detector exists as two checked copies (see the note under
+decision 1).
 
 **Date:** 2026-11-02
 
@@ -37,6 +39,19 @@ What the agent tools offer:
    - a `PreToolUse` hook on Edit/Write (`phi-guard.sh`), silent outside B6P projects;
    - a git `pre-commit` hook on the lines a commit adds — **the required gate**;
    - a git `pre-push` hook that runs the regex again and, if turned on, a model review.
+
+   *(**Amended 2026-11:** the write-time hook left bluestep-tools and now ships as its own opt-in
+   plugin, `phi-guard` (`plugins/phi-guard/`, hook `hooks/phi-guard.sh`). Not every client handles
+   PHI, so whoever owns a machine that works on such projects installs it, once per machine (user
+   scope); a project that does not want it turns it off with `"enabledPlugins":
+   {"phi-guard@bluestep": false}` in its `.claude/settings.json`. The detector now exists as two
+   copies, because a plugin cannot read another plugin's files: `hooks/lib/phi-detect.sh` in
+   phi-guard, for the hook, and `skills/b6p-setup/assets/phi-guard/phi-detect.sh` in bluestep-tools,
+   which `/b6p-setup`'s `phi-guard` migration copies into projects for the git checks.
+   `npm run gen:check` fails if the two differ by a byte. The git checks are unchanged and still
+   the required gate. On Claude Code, bluestep-tools' `SessionStart` canary nudges when a project runs the git check but the phi-guard plugin is not
+   installed, so an update that drops the write-time check is announced, not silent. Paths in the
+   text above are the ones of 2026-11-02, when everything lived in bluestep-tools.)*
 2. **Block, never rewrite.** The write-time hook stops the write and tells the agent to use
    placeholders; it does not swap values itself with `updatedInput`. A silent rewrite on a false
    positive changes code or docs without anyone knowing, and mixes test data with replacements. A
@@ -85,4 +100,5 @@ What the agent tools offer:
 Related: [content-sanitization-for-public-tooling.md](content-sanitization-for-public-tooling.md),
 [per-project-migrations.md](per-project-migrations.md),
 [cross-tool-plugin-output.md](cross-tool-plugin-output.md). Reference page:
-`plugin/skills/bluestep-reference/conventions/client-data.md`.
+`plugins/bluestep-tools/skills/bluestep-reference/conventions/client-data.md`. The opt-in hook:
+[`plugins/phi-guard/README.md`](../../plugins/phi-guard/README.md).

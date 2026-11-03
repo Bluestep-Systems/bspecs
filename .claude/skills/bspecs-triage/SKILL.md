@@ -48,10 +48,12 @@ live there, and a claim already retested is not re-run without new cause.
    empty, say so and stop.
 
 2. **Verify before believing.** For every claim that plugin content is wrong, missing, or stale:
-   `grep` the shipped source under `plugin/` (and check the last 3 `CHANGELOG.md` version blocks)
-   before deciding. Reports that look redundant are often genuinely uncovered — and reports that
-   look right can be wrong for a purpose they didn't know existed (see the git-site-spa base
-   precedent: the "fix" would have broken a production pattern). A report can be **right in its
+   `grep` the shipped source under `plugins/` — feedback may be about any plugin — and check the
+   last 3 version blocks of that plugin's changelog (`plugins/bluestep-tools/CHANGELOG.md`,
+   `plugins/core-tools/CHANGELOG.md`; phi-guard's first release is in its README) before deciding.
+   Reports that look redundant are often genuinely uncovered — and reports that look right can be
+   wrong for a purpose they didn't know existed (see the git-site-spa base precedent: the "fix"
+   would have broken a production pattern). A report can be **right in its
    diagnosis and wrong in its proposed fix** — verdict on the diagnosis, not the proposal.
 
 3. **Dedup semantically** against the whole board, closed tasks included — same defect in
@@ -99,7 +101,8 @@ verification waves `check on 20` / `Rejected fix`.
 
 - **Never implement fixes in this pass** — triage routes work; it does not do it.
 - **Never send a `shipped` close for unreleased work** — the email tells the reporter to update
-  to a version that must already exist as a `plugin-v*` tag.
+  to a version that must already exist as that plugin's `<name>-v*` tag (e.g.
+  `bluestep-tools-v0.42.0`; the older `plugin-v*` tags count as bluestep-tools releases).
 - **Wont-fix is a human verdict** — the skill may propose it in step 5, never apply it without
   the user having seen that specific line.
 - One approval gate (step 5) covers the batch; anything discovered after it goes into a second
@@ -127,7 +130,7 @@ notice) does not count and must not block a rerun — a failed run leaves the ta
 precisely so it can be retried.
 
 **Procedure:** run the interactive steps 1–3 above exactly as written — dump the board, verify
-claims against `plugin/` source, dedup semantically — scoped to this one task.
+claims against `plugins/` source, dedup semantically — scoped to this one task.
 
 **Comment first, status last.** Post the triage comment on the ClickUp task — verdict,
 one-paragraph evidence with verified file:line citations, and, when the item looks like a
@@ -183,9 +186,9 @@ ones carry the **`ai-plugin`** tag. For anything beyond a single task, use the R
 the ClickUp MCP burns quota and context on multi-task reads (every read echoes full dropdown option
 lists), and browser scraping truncates long task bodies.
 
-- **Auth:** personal token in `$CLICKUP_TOKEN`, exported from `~/.profile` in WSL. **Not
-  `~/.bashrc`** — Ubuntu's interactive guard returns before the export, so non-interactive
-  `bash -lc` shells never see it. Never commit the token.
+- **Auth:** personal token in `$CLICKUP_TOKEN`, set in the Windows user environment (not WSL);
+  Git Bash and PowerShell both see it. The bot's Actions run gets it from a repo secret. Never
+  commit the token.
 - **Bulk read — the whole list in ~2 calls** (100 tasks/page; loop `page` until the response's
   `last_page` is true):
 

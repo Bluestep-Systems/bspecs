@@ -65,15 +65,61 @@ jobs:
       - name: Smoke-run CLI (help)
         run: node cli.js -h
 
-      # Plugin distribution: the marketplace + plugin manifests must be valid JSON.
+      # Plugin distribution: every plugins/<name>/.claude-plugin/plugin.json and
+      # the marketplace must parse, every plugins/* folder must have a marketplace
+      # entry pointing at it, and folder, manifest "name" and entry name must
+      # agree. Those asserts are the generator's own discovery (discoverPlugins in
+      # tools/gen-cross-tool/lib.mjs, also run by `npm run gen` in the drift job);
+      # this step runs them on every Node in the matrix and adds what discovery
+      # does not cover: every local marketplace source exists (not only the ones
+      # under plugins/), entry names are unique, and every manifest has a version.
       - name: Validate plugin manifests
         run: |
-          node -e "JSON.parse(require('fs').readFileSync('.claude-plugin/marketplace.json','utf8')); console.log('marketplace.json OK')"
-          node -e "JSON.parse(require('fs').readFileSync('plugin/.claude-plugin/plugin.json','utf8')); console.log('plugin.json OK')"
+          node --input-type=module <<'EOF'
+          import { existsSync, readFileSync } from 'node:fs';
+          import { discoverPlugins } from './tools/gen-cross-tool/lib.mjs';
+
+          const { plugins, problems } = discoverPlugins(process.cwd());
+
+          const marketplaceRel = '.claude-plugin/marketplace.json';
+          let entries = [];
+          try {
+            entries = JSON.parse(readFileSync(marketplaceRel, 'utf8')).plugins ?? [];
+          } catch {
+            // discoverPlugins already reported the unreadable marketplace.
+          }
+          if (!Array.isArray(entries)) entries = [];
+          const seen = new Set();
+          for (const e of entries) {
+            if (typeof e?.name !== 'string' || !e.name) {
+              problems.push(`${marketplaceRel}: an entry has no "name"`);
+              continue;
+            }
+            if (seen.has(e.name)) problems.push(`${marketplaceRel}: more than one entry named "${e.name}"`);
+            seen.add(e.name);
+            if (typeof e.source === 'string' && !existsSync(`${e.source.replace(/\/+$/, '')}/.claude-plugin/plugin.json`)) {
+              problems.push(`${marketplaceRel}: entry "${e.name}" has local source ${e.source}, which holds no .claude-plugin/plugin.json`);
+            }
+          }
+          for (const p of plugins) {
+            if (typeof p.manifest.version !== 'string' || !p.manifest.version) {
+              problems.push(`${p.dir}/.claude-plugin/plugin.json: no "version" — every plugin carries an explicit version`);
+            }
+          }
+
+          if (problems.length) {
+            for (const msg of problems) console.log(`::error::${msg}`);
+            process.exit(1);
+          }
+          for (const p of plugins) {
+            console.log(`${p.name} ${p.manifest.version} (crossTool ${p.manifest.crossTool}) OK`);
+          }
+          console.log(`${marketplaceRel}: ${entries.length} entries OK`);
+          EOF
         shell: bash
 
   # Drift gate: the Cursor/Codex output (dist/, .cursor-plugin/, .agents/) is
-  # generated from plugin/** and committed. Regenerate it and fail if the result
+  # generated from plugins/** and committed. Regenerate it and fail if the result
   # differs from what's checked in — stale or hand-edited output can't merge.
   cross-tool-drift:
     name: Cross-tool output drift check
@@ -111,18 +157,26 @@ jobs:
             echo "::error::Generated output includes uncommitted files. Run 'npm run gen' and commit the result (dist/, .cursor-plugin/, .agents/)."
             exit 1
           fi
-          echo "Generated output matches plugin/**. OK."
+          echo "Generated output matches plugins/**. OK."
         shell: bash
 
       # Structural self-test + Claude-ism denylist lint on the emitted trees.
       - name: Run generator checks
         run: npm run gen:check
 
-  # Release gate: any PR that changes plugin/** or tools/gen-cross-tool/** must
-  # bump the plugin version, or installed users never receive the change (all
-  # tools skip an unchanged version on update — an emitter-only fix still needs
-  # the bump so regenerated output ships). See the "Releasing" section of
-  # README.md.
+      # Hook harness. Also the exec-bit gate: gen:check skips mode checks on
+      # Windows, so a hook or wrapper committed as 100644 from there shows here.
+      - name: Run hook tests
+        run: npm run test:hooks
+
+  # Release gate, one version stream per plugin: a PR that changes
+  # plugins/<name>/** (except that plugin's CHANGELOG.md) must bump that
+  # plugin's version, and a PR that changes tools/gen-cross-tool/** must bump
+  # every plugin with "crossTool": true (the emitters shape what their dist/
+  # output ships). Installed users never receive an unchanged version — every
+  # tool skips it on update. A version whose tag (<name>-v<version>, or the
+  # legacy plugin-v<version> for bluestep-tools) is already on the remote was
+  # released before and fails too. See "Releasing" in README.md.
   plugin-version-bump:
     name: Plugin version bump check
     runs-on: ubuntu-latest
@@ -131,50 +185,148 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # need base + head to compare the manifest across the PR
+          fetch-depth: 0  # need base + head to compare the manifests across the PR
           persist-credentials: false
 
-      - name: Require a version bump when plugin/** or tools/gen-cross-tool/** changes
+      - name: Require a version bump per changed plugin
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          MANIFEST="plugin/.claude-plugin/plugin.json"
 
           # Compare against the merge-base so we evaluate only THIS PR's own
           # changes. A two-dot "git diff BASE HEAD" would also flag commits main
           # gained after this branch was cut, misattributing them to the PR.
           MB="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
 
-          # Both paths gate the version: plugin/** is the shipped content, and
-          # tools/gen-cross-tool/** changes what dist/ output ships to
-          # Cursor/Codex installs (single shared version stream).
-          if git diff --name-only "$MB" "$HEAD_SHA" | grep -qE '^(plugin/|tools/gen-cross-tool/)'; then
-            echo "plugin/** or tools/gen-cross-tool/** changed in this PR — a version bump is required."
-          else
-            echo "No plugin/** or tools/gen-cross-tool/** changes — version bump not required."
-            exit 0
+          # --no-renames: with rename detection a moved file lists only its
+          # destination, so a move out of a plugin would not ask that plugin
+          # for a bump. Both sides of every move must count.
+          CHANGED="$(git diff --name-only --no-renames "$MB" "$HEAD_SHA")"
+          EMITTER_CHANGED=0
+          # grep without -q reads all of its input, so printf never takes a
+          # SIGPIPE that pipefail would turn into a false "no match".
+          if printf '%s\n' "$CHANGED" | grep '^tools/gen-cross-tool/' >/dev/null; then
+            EMITTER_CHANGED=1
           fi
 
-          # Read the manifest version at a given ref (empty if absent/unparseable).
-          # fs.readFileSync (not require) avoids Node's module cache across calls.
-          read_ver() {
-            git show "$1:$MANIFEST" 2>/dev/null > /tmp/m.json || echo '{}' > /tmp/m.json
-            node -e "const fs=require('fs');try{process.stdout.write((JSON.parse(fs.readFileSync('/tmp/m.json','utf8')).version)||'')}catch(e){process.stdout.write('')}"
+          # Tags already released. Read once; a failed read fails the job
+          # rather than passing a version that may have shipped.
+          if ! REMOTE_TAGS="$(git ls-remote --tags --refs origin)"; then
+            echo "::error::Cannot list the tags on origin — the released-version check needs them."
+            exit 1
+          fi
+          tag_exists() {
+            printf '%s\n' "$REMOTE_TAGS" | awk -v t="refs/tags/$1" '$2 == t { f = 1 } END { exit !f }'
           }
 
-          BASE_VER="$(read_ver "$MB")"
-          HEAD_VER="$(read_ver "$HEAD_SHA")"
-          echo "version: merge-base='${BASE_VER:-<none>}' head='${HEAD_VER:-<none>}'"
+          has_file() { git cat-file -e "$1:$2" 2>/dev/null; }
+          # read_field REF PATH FIELD — prints the field ('' when missing);
+          # non-zero exit when the file is not valid JSON.
+          read_field() {
+            git show "$1:$2" | node -e '
+              try {
+                const v = JSON.parse(require("fs").readFileSync(0, "utf8"))[process.argv[1]];
+                process.stdout.write(v === undefined || v === null ? "" : String(v));
+              } catch { process.exit(1); }' "$3"
+          }
 
-          if [ -z "$HEAD_VER" ]; then
-            echo "::error file=$MANIFEST::No \"version\" field. This repo uses explicit plugin versions — add and bump it (see README 'Releasing')."
-            exit 1
+          FAILED=0
+          SUMMARY=""
+          # fail_plugin FILE MESSAGE — annotate, mark the job failed, keep looping.
+          fail_plugin() {
+            echo "::error file=$1::$2"
+            FAILED=1
+          }
+
+          for DIR in $(git ls-tree -d --name-only "$HEAD_SHA" plugins/); do
+            NAME="${DIR#plugins/}"
+            MANIFEST="$DIR/.claude-plugin/plugin.json"
+
+            if ! has_file "$HEAD_SHA" "$MANIFEST"; then
+              fail_plugin "$MANIFEST" "$NAME: no manifest at $MANIFEST — every folder under plugins/ must be a plugin."
+              SUMMARY+="$NAME: FAIL no manifest"$'\n'
+              continue
+            fi
+            if ! HEAD_VER="$(read_field "$HEAD_SHA" "$MANIFEST" version)" \
+              || ! CROSS="$(read_field "$HEAD_SHA" "$MANIFEST" crossTool)"; then
+              fail_plugin "$MANIFEST" "$NAME: $MANIFEST is not valid JSON."
+              SUMMARY+="$NAME: FAIL manifest is not valid JSON"$'\n'
+              continue
+            fi
+            if ! [[ "$HEAD_VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              fail_plugin "$MANIFEST" "$NAME: version '${HEAD_VER:-<none>}' does not look like X.Y.Z — this repo uses explicit plugin versions."
+              SUMMARY+="$NAME: FAIL version '${HEAD_VER:-<none>}' is not X.Y.Z"$'\n'
+              continue
+            fi
+
+            # Base version: the manifest at the merge-base; for bluestep-tools,
+            # the pre-plugins/ path when the new one is absent there; otherwise
+            # the plugin is new and its first version needs no bump.
+            BASE_VER=""
+            BASE_FROM="$MANIFEST"
+            if ! has_file "$MB" "$MANIFEST" && [ "$NAME" = "bluestep-tools" ]; then
+              BASE_FROM="plugin/.claude-plugin/plugin.json"
+            fi
+            if has_file "$MB" "$BASE_FROM"; then
+              # An unreadable base manifest must fail, not pass: with BASE_VER
+              # empty the "version unchanged" test below could never fire.
+              if ! BASE_VER="$(read_field "$MB" "$BASE_FROM" version)"; then
+                fail_plugin "$MANIFEST" "$NAME: $BASE_FROM at the merge-base is not valid JSON — cannot tell whether the version was bumped."
+                SUMMARY+="$NAME: FAIL base manifest is not valid JSON"$'\n'
+                continue
+              fi
+              BASE_LABEL="${BASE_VER:-<none>}"
+              [ "$BASE_FROM" = "$MANIFEST" ] || BASE_LABEL="$BASE_LABEL (from $BASE_FROM)"
+              IS_NEW=0
+            else
+              BASE_LABEL="<new>"
+              IS_NEW=1
+            fi
+
+            # Why this PR needs a bump of this plugin, if it does.
+            REASONS=""
+            if printf '%s\n' "$CHANGED" \
+              | awk -v d="$DIR/" -v c="$DIR/CHANGELOG.md" 'index($0, d) == 1 && $0 != c { f = 1 } END { exit !f }'; then
+              REASONS="$DIR/**"
+            fi
+            if [ "$EMITTER_CHANGED" = 1 ] && [ "$CROSS" = "true" ]; then
+              REASONS="${REASONS:+$REASONS, }tools/gen-cross-tool/** (crossTool true)"
+            fi
+
+            STATUS="OK"
+            if [ -n "$REASONS" ] && [ "$IS_NEW" = 0 ] && [ "$HEAD_VER" = "$BASE_VER" ]; then
+              fail_plugin "$MANIFEST" "$NAME: $REASONS changed but the version is still $HEAD_VER. Bump it so installed users receive the update (see README 'Releasing')."
+              STATUS="FAIL bump required"
+            fi
+
+            # A version this PR asks to ship must never have been released.
+            # Skipped when nothing changed and the version stayed: that version
+            # is the plugin's current release and its tag exists by design.
+            if [ -n "$REASONS" ] || [ "$HEAD_VER" != "$BASE_VER" ]; then
+              TAGS="$NAME-v$HEAD_VER"
+              [ "$NAME" = "bluestep-tools" ] && TAGS="$TAGS plugin-v$HEAD_VER"
+              for TAG in $TAGS; do
+                if tag_exists "$TAG"; then
+                  fail_plugin "$MANIFEST" "$NAME: tag $TAG already exists on origin — $HEAD_VER was released before. Pick a new version."
+                  STATUS="${STATUS/#OK/FAIL} (tag $TAG exists)"
+                fi
+              done
+            fi
+
+            if [ -z "$REASONS" ]; then
+              CHANGE_NOTE="no bump needed"
+            else
+              CHANGE_NOTE="bump needed: $REASONS"
+            fi
+            SUMMARY+="$NAME: $BASE_LABEL -> $HEAD_VER; $CHANGE_NOTE; $STATUS"$'\n'
+          done
+
+          echo "merge-base: $MB"
+          printf '%s' "$SUMMARY"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            { echo '### Plugin versions'; echo; printf '%s' "$SUMMARY" | sed 's/^/- /'; } >> "$GITHUB_STEP_SUMMARY"
           fi
-          if [ "$BASE_VER" = "$HEAD_VER" ]; then
-            echo "::error file=$MANIFEST::plugin/** or tools/gen-cross-tool/** changed but version is still $HEAD_VER. Bump it so installed users receive the update (see README 'Releasing')."
-            exit 1
-          fi
-          echo "Version bumped ${BASE_VER:-<none>} -> $HEAD_VER. OK."
+          exit "$FAILED"
         shell: bash

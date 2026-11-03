@@ -6,11 +6,6 @@
         "type": "command",
         "command": "./hooks/block-generated-files-cursor.sh",
         "matcher": "[Ww]rite|[Ee]dit|[Rr]eplace|[Pp]atch|[Dd]elete"
-      },
-      {
-        "type": "command",
-        "command": "./hooks/phi-guard-cursor.sh",
-        "matcher": "[Ww]rite|[Ee]dit|[Rr]eplace|[Pp]atch|[Dd]elete"
       }
     ]
   }

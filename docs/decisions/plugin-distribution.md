@@ -1,6 +1,9 @@
 # ADR: Distribute bspecs tooling as a Claude Code plugin (single delivery path)
 
-**Status:** Accepted
+**Status:** Accepted. **Amended 2026-11:** the plugin folder `plugin/` named below is now
+`plugins/bluestep-tools/`, one of several plugins in this repo, and the marketplace lists each of
+them; see [`tooling-repo-consolidation.md`](tooling-repo-consolidation.md). The delivery decision
+(plugin + in-repo marketplace, no npm, no binary) is unchanged.
 
 **Date:** 2026-06-30
 

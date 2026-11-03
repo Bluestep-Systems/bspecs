@@ -1,0 +1,25 @@
+---
+name: {{SKILL_NAME}}
+description: "{{WHEN_TO_USE}}"
+---
+
+# {{SKILL_TITLE}}
+
+{{ONE_LINE_PURPOSE}}
+
+## Steps
+
+{{STEPS}}
+
+## Checks
+
+{{CHECKS}}
+
+<!--
+Written by /repo-setup from what this repo actually contains. Edit it freely — /repo-setup will
+never overwrite it, and `/repo-setup --check` will tell you if the repo has moved on from what it
+says.
+
+Two things to keep true: every command here is one you have run, and the `description` above says
+*when* to use this, since that line is the only part loaded in every session.
+-->

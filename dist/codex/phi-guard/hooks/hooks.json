@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh -c '\"$PLUGIN_ROOT\"/hooks/phi-guard-codex.sh'"
+          }
+        ]
+      }
+    ]
+  }
+}

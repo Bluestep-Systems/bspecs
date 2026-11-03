@@ -1,8 +1,9 @@
 // tools/gen-cross-tool/lib.mjs — shared helpers for the cross-tool generator:
-// plugin-tree reading, frontmatter parse/strip, ${CLAUDE_PLUGIN_ROOT}
-// reference scanning, the deterministic output writer, the structural
-// self-test, and the Claude-ism denylist lint.
-// Invariant: output is a pure function of plugin/** — sorted walks, no
+// plugin discovery over plugins/*, plugin-tree reading, frontmatter
+// parse/strip, ${CLAUDE_PLUGIN_ROOT} reference scanning, the deterministic
+// output writer, the structural self-test, the shared-copy identity check,
+// and the Claude-ism denylist lint.
+// Invariant: output is a pure function of plugins/** — sorted walks, no
 // timestamps, no environment leakage, LF line endings.
 
 import { chmodSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -32,6 +33,150 @@ export function readPluginTree(pluginRootAbs) {
     return { rel, abs, text: readFileSync(abs, 'utf8') };
   });
   return { root: pluginRootAbs, files };
+}
+
+// ---------- plugin discovery ----------
+
+// The folder under the repo root that holds one folder per plugin.
+export const PLUGINS_DIR = 'plugins';
+
+// Every plugins/<name>/ folder, sorted, as { name, dir, manifest, tree }:
+// dir is the repo-root-relative POSIX path ('plugins/<name>'), manifest the
+// parsed .claude-plugin/plugin.json, tree the readPluginTree() result. Asserts
+// (design §2 "Discovery" / "The flag"): every folder holds a manifest that
+// parses, its "name" equals the folder name, "crossTool" is a boolean, and the
+// Claude marketplace has exactly one entry for it with source
+// ./plugins/<name>; a local ./plugins/* entry naming a missing folder or
+// another name fails too. Returns { plugins, problems } — any problem means
+// the run cannot go on (emitters key everything on these names).
+export function discoverPlugins(repoRootAbs) {
+  const problems = [];
+  const plugins = [];
+  const pluginsAbs = join(repoRootAbs, PLUGINS_DIR);
+  if (!existsSync(pluginsAbs)) {
+    return { plugins, problems: [`${PLUGINS_DIR}/: not found at ${pluginsAbs}`] };
+  }
+
+  const marketplaceRel = '.claude-plugin/marketplace.json';
+  let entries = [];
+  try {
+    entries = JSON.parse(readFileSync(join(repoRootAbs, ...marketplaceRel.split('/')), 'utf8')).plugins ?? [];
+    if (!Array.isArray(entries)) throw new Error('"plugins" is not an array');
+  } catch (err) {
+    problems.push(`${marketplaceRel}: cannot read the marketplace — ${err.message}`);
+    entries = [];
+  }
+  // A local source is a plain string path; remote sources are objects.
+  const localSource = (e) => (typeof e?.source === 'string' ? e.source.replace(/\/+$/, '') : undefined);
+
+  const folders = readdirSync(pluginsAbs, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name)
+    .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  if (folders.length === 0) problems.push(`${PLUGINS_DIR}/: no plugin folders`);
+
+  for (const folder of folders) {
+    const dir = `${PLUGINS_DIR}/${folder}`;
+    const manifestRel = `${dir}/.claude-plugin/plugin.json`;
+    const manifestAbs = join(repoRootAbs, ...manifestRel.split('/'));
+    if (!existsSync(manifestAbs)) {
+      problems.push(`${dir}/: no .claude-plugin/plugin.json — every folder under ${PLUGINS_DIR}/ must be a plugin`);
+      continue;
+    }
+    let manifest;
+    try {
+      manifest = JSON.parse(readFileSync(manifestAbs, 'utf8'));
+    } catch (err) {
+      problems.push(`${manifestRel}: invalid JSON — ${err.message}`);
+      continue;
+    }
+    if (manifest.name !== folder) {
+      problems.push(`${manifestRel}: "name" is ${JSON.stringify(manifest.name)} but the folder is "${folder}" — they must match`);
+    }
+    if (typeof manifest.crossTool !== 'boolean') {
+      problems.push(`${manifestRel}: "crossTool" must be true or false — set crossTool in \`${manifestRel}\``);
+    }
+    const matching = entries.filter((e) => e?.name === folder);
+    if (matching.length === 0) {
+      problems.push(`${marketplaceRel}: no entry for ${dir}/ — add { "name": "${folder}", "source": "./${dir}" }`);
+    } else if (matching.length > 1) {
+      problems.push(`${marketplaceRel}: ${matching.length} entries named "${folder}" — names must be unique`);
+    } else if (localSource(matching[0]) !== `./${dir}`) {
+      problems.push(`${marketplaceRel}: entry "${folder}" has source ${JSON.stringify(matching[0].source)}, expected "./${dir}"`);
+    }
+    plugins.push({ name: folder, dir, manifest, tree: readPluginTree(join(pluginsAbs, folder)) });
+  }
+
+  // Local entries pointing into plugins/ must name an existing folder, under
+  // the folder's own name.
+  for (const e of entries) {
+    const src = localSource(e);
+    const m = src?.match(/^\.\/plugins\/([^/]+)$/);
+    if (!m) continue;
+    if (!folders.includes(m[1])) {
+      problems.push(`${marketplaceRel}: entry "${e.name}" points at ${src}, which does not exist`);
+    } else if (e.name !== m[1]) {
+      problems.push(`${marketplaceRel}: entry "${e.name}" points at ${src} — the entry name must equal the folder name`);
+    }
+  }
+  return { plugins, problems };
+}
+
+// The plugins both emitters build (crossTool: true). Plugins with crossTool
+// false are skipped by the emitters and left out of the generated
+// marketplaces; they still get the structure check and the lints.
+export function crossToolPlugins(plugins) {
+  return plugins.filter((p) => p.manifest.crossTool === true);
+}
+
+// The emitted-shape view of a plugin tree, for the structure check and the
+// lints: only what an emitter can ship — skills/, agents/, hooks/, the
+// manifest and .mcp.json. A plugin's README.md, CHANGELOG.md and any payload
+// folder (lane/, docs/, tools/) are never linted. Same { root, files } shape.
+const EMITTED_DIRS = ['skills/', 'agents/', 'hooks/'];
+const EMITTED_FILES = new Set(['.claude-plugin/plugin.json', '.mcp.json']);
+export function emittedShapeView(tree) {
+  return {
+    root: tree.root,
+    files: tree.files.filter((f) => EMITTED_FILES.has(f.rel) || EMITTED_DIRS.some((d) => f.rel.startsWith(d))),
+  };
+}
+
+// ---------- shared copies ----------
+
+// Files that live in two plugins and must stay byte-identical (each plugin
+// ships standalone, so neither can read the other's copy). Each pair is
+// [bluestep-tools side, phi-guard side]; a pair whose phi-guard side does not
+// exist yet is skipped.
+export const SHARED_COPIES = [
+  [
+    { plugin: 'bluestep-tools', rel: 'hooks/lib/hook-input.sh' },
+    { plugin: 'phi-guard', rel: 'hooks/lib/hook-input.sh' },
+  ],
+  [
+    { plugin: 'bluestep-tools', rel: 'skills/b6p-setup/assets/phi-guard/phi-detect.sh' },
+    { plugin: 'phi-guard', rel: 'hooks/lib/phi-detect.sh' },
+  ],
+];
+
+// Byte-compare every SHARED_COPIES pair across the discovered plugins.
+// Returns problem strings; empty means clean.
+export function checkSharedCopies(plugins) {
+  const problems = [];
+  const find = ({ plugin, rel }) => plugins.find((p) => p.name === plugin)?.tree.files.find((f) => f.rel === rel);
+  for (const [a, b] of SHARED_COPIES) {
+    const fb = find(b);
+    if (!fb) continue; // phi-guard side not there yet
+    const fa = find(a);
+    const labelA = `${PLUGINS_DIR}/${a.plugin}/${a.rel}`;
+    const labelB = `${PLUGINS_DIR}/${b.plugin}/${b.rel}`;
+    if (!fa) {
+      problems.push(`${labelA}: missing — it must be a byte-identical copy of ${labelB}`);
+    } else if (!readFileSync(fa.abs).equals(readFileSync(fb.abs))) {
+      problems.push(`${labelA} and ${labelB} differ — the two copies must be byte-identical`);
+    }
+  }
+  return problems;
 }
 
 // ---------- frontmatter ----------
@@ -261,10 +406,12 @@ export function writeOutputs(repoRootAbs, outputDirs, files) {
 // ---------- structural self-test ----------
 
 // Assert the plugin tree parses: every skill ships a SKILL.md with name +
-// description frontmatter, the three config files parse as JSON, and every
+// description frontmatter, the manifest parses as JSON (and .mcp.json and
+// hooks/hooks.json when present — both surfaces are optional), and every
 // ${CLAUDE_PLUGIN_ROOT} reference points at something that exists (no silent
-// passthrough). Returns problem strings; empty means clean.
-export function checkPluginStructure(tree) {
+// passthrough). Run it on the emitted-shape view; `prefix` ('plugins/<name>/')
+// leads every finding. Returns problem strings; empty means clean.
+export function checkPluginStructure(tree, prefix = '') {
   const problems = [];
   const byRel = new Map(tree.files.map((f) => [f.rel, f]));
 
@@ -274,33 +421,34 @@ export function checkPluginStructure(tree) {
   for (const dir of skillDirs) {
     const skill = byRel.get(`skills/${dir}/SKILL.md`);
     if (!skill) {
-      problems.push(`skills/${dir}: missing SKILL.md`);
+      problems.push(`${prefix}skills/${dir}: missing SKILL.md`);
       continue;
     }
     const fm = parseFrontmatter(skill.text);
     if (!fm) {
-      problems.push(`${skill.rel}: missing YAML frontmatter`);
+      problems.push(`${prefix}${skill.rel}: missing YAML frontmatter`);
     } else {
-      if (!fm.data.name) problems.push(`${skill.rel}: frontmatter has no "name"`);
-      if (!fm.data.description) problems.push(`${skill.rel}: frontmatter has no "description"`);
-      problems.push(...checkFrontmatterStrictYaml(skill.rel, skill.text));
+      if (!fm.data.name) problems.push(`${prefix}${skill.rel}: frontmatter has no "name"`);
+      if (!fm.data.description) problems.push(`${prefix}${skill.rel}: frontmatter has no "description"`);
+      problems.push(...checkFrontmatterStrictYaml(`${prefix}${skill.rel}`, skill.text));
     }
   }
 
   for (const agent of tree.files.filter((f) => f.rel.startsWith('agents/') && f.rel.endsWith('.md'))) {
-    problems.push(...checkFrontmatterStrictYaml(agent.rel, agent.text));
+    problems.push(...checkFrontmatterStrictYaml(`${prefix}${agent.rel}`, agent.text));
   }
 
+  const OPTIONAL_JSON = new Set(['.mcp.json', 'hooks/hooks.json']);
   for (const rel of ['.claude-plugin/plugin.json', '.mcp.json', 'hooks/hooks.json']) {
     const f = byRel.get(rel);
     if (!f) {
-      problems.push(`${rel}: missing`);
+      if (!OPTIONAL_JSON.has(rel)) problems.push(`${prefix}${rel}: missing`);
       continue;
     }
     try {
       JSON.parse(f.text);
     } catch (err) {
-      problems.push(`${rel}: invalid JSON — ${err.message}`);
+      problems.push(`${prefix}${rel}: invalid JSON — ${err.message}`);
     }
   }
 
@@ -308,9 +456,9 @@ export function checkPluginStructure(tree) {
     for (const { line, ref } of scanPluginRootRefs(f.text)) {
       for (const expanded of expandBraces(ref)) {
         if (expanded.split('/').includes('..')) {
-          problems.push(`${f.rel}:${line}: \${CLAUDE_PLUGIN_ROOT} reference escapes the plugin tree: ${expanded}`);
+          problems.push(`${prefix}${f.rel}:${line}: \${CLAUDE_PLUGIN_ROOT} reference escapes the plugin tree: ${expanded}`);
         } else if (expanded !== '' && !existsSync(join(tree.root, ...expanded.split('/')))) {
-          problems.push(`${f.rel}:${line}: \${CLAUDE_PLUGIN_ROOT}/${expanded} does not exist`);
+          problems.push(`${prefix}${f.rel}:${line}: \${CLAUDE_PLUGIN_ROOT}/${expanded} does not exist`);
         }
       }
     }
@@ -329,8 +477,13 @@ export function checkPluginStructure(tree) {
 // version".
 export const B6P_CLI_FLOOR = '0.8.1';
 
-// Repo files outside plugin/** that state the floor.
-const FLOOR_REPO_FILES = ['README.md', 'docs/decisions/b6p-cli-distribution.md'];
+// Repo files outside the linted plugin view (skills/, agents/, hooks/) that
+// state the floor. A plugin's README is outside that view, so it is listed here.
+const FLOOR_REPO_FILES = [
+  'README.md',
+  'plugins/bluestep-tools/README.md',
+  'docs/decisions/b6p-cli-distribution.md',
+];
 
 // A statement of a minimum: "X.Y.Z or later / or newer / or higher / and
 // later / +", or "older than / lower than / below / at least X.Y.Z", with the
@@ -345,17 +498,20 @@ const FLOOR_STATEMENT = new RegExp(
 // A version right after another tool's name is that tool's, not the CLI's.
 const OTHER_TOOL_BEFORE = /\b(?:node(?:\.js)?|npm|typescript|tsc|python|git|vite|preact|java)\s+v?$/i;
 
-// Every .md and .template file under plugin/** (frontmatter included, so
-// `compatibility` is covered) plus FLOOR_REPO_FILES, fenced code blocks
-// skipped. Each line is scanned joined with the next — minus any blockquote
+// Every .md and .template file in each plugin's emitted-shape view
+// (frontmatter included, so `compatibility` is covered) plus FLOOR_REPO_FILES,
+// fenced code blocks skipped. `views` is [{ tree, prefix }], one per plugin,
+// prefix 'plugins/<name>/'. Each line is scanned joined with the next — minus any blockquote
 // markers — so a statement wrapped across lines still matches; a match counts
 // only on the line it starts on.
-export function lintCliFloor(tree, repoRoot) {
+export function lintCliFloor(views, repoRoot) {
   const findings = [];
   const sources = [
-    ...tree.files
-      .filter((f) => f.rel.endsWith('.md') || f.rel.endsWith('.template'))
-      .map((f) => ({ rel: `plugin/${f.rel}`, text: f.text })),
+    ...views.flatMap(({ tree, prefix }) =>
+      tree.files
+        .filter((f) => f.rel.endsWith('.md') || f.rel.endsWith('.template'))
+        .map((f) => ({ rel: `${prefix}${f.rel}`, text: f.text }))
+    ),
     ...FLOOR_REPO_FILES.filter((rel) => existsSync(join(repoRoot, rel))).map((rel) => ({
       rel,
       text: readFileSync(join(repoRoot, rel), 'utf8'),
@@ -402,13 +558,19 @@ const DENYLIST = [
   ['CLAUDE.md', /CLAUDE\.md/],
 ];
 
-// The setup skill owns the Claude Code enablement / bridge-writing prose: b6p-setup's
-// SKILL.md (writes and migrates the CLAUDE.md bridge, project settings) and its Claude Code
-// enablement reference (marketplace + plugin install).
-const INIT_SKILLS = new Set(['skills/b6p-setup/SKILL.md', 'skills/b6p-setup/references/enablement-claude-code.md']);
+// The setup skills own the Claude Code enablement / bridge-writing prose: b6p-setup's
+// SKILL.md (writes and migrates the CLAUDE.md bridge, project settings), its Claude Code
+// enablement reference (marketplace + plugin install), and repo-setup's SKILL.md (the same
+// bridge writing for repos that are not B6P projects). Keyed on the plugin-relative path, so
+// the allowance applies in whichever plugin carries the file.
+const INIT_SKILLS = new Set([
+  'skills/b6p-setup/SKILL.md',
+  'skills/b6p-setup/references/enablement-claude-code.md',
+  'skills/repo-setup/SKILL.md',
+]);
 const PER_TOOL_LINE = /Claude Code|Cursor|Codex/;
 
-// Lint shipped prose — every .md under plugin/**, plus the plugin.json
+// Lint shipped prose — every .md in the emitted-shape view, plus the plugin.json
 // description — for denylisted Claude-isms. An occurrence is allowed when ANY
 // of these apply:
 //   a. it sits in YAML frontmatter (covers allowed-tools, model:, skill
@@ -425,7 +587,8 @@ const PER_TOOL_LINE = /Claude Code|Cursor|Codex/;
 //      job, so the filename there is subject matter, not a Claude-ism.
 // The plugin.json description gets NO allowances: it is the cross-tool
 // storefront text, so any denylisted term there is always a finding.
-export function lintClaudeIsms(tree) {
+// `prefix` ('plugins/<name>/') leads every finding.
+export function lintClaudeIsms(tree, prefix = '') {
   const findings = [];
   for (const f of tree.files) {
     if (!f.rel.endsWith('.md')) continue;
@@ -450,7 +613,7 @@ export function lintClaudeIsms(tree) {
         if (PER_TOOL_LINE.test(line)) continue; // (b)
         if (INIT_SKILLS.has(f.rel) && ccSectionLevel) continue; // (c)
         if (name === 'CLAUDE.md' && (line.includes('AGENTS.md') || INIT_SKILLS.has(f.rel))) continue; // (d)
-        findings.push(`${f.rel}:${lineNo}: denylisted "${name}" — ${line.trim().slice(0, 120)}`);
+        findings.push(`${prefix}${f.rel}:${lineNo}: denylisted "${name}" — ${line.trim().slice(0, 120)}`);
       }
     }
   }
@@ -460,7 +623,7 @@ export function lintClaudeIsms(tree) {
       const description = JSON.parse(manifest.text).description ?? '';
       for (const [name, re] of DENYLIST) {
         if (re.test(description)) {
-          findings.push(`.claude-plugin/plugin.json: denylisted "${name}" in the plugin description`);
+          findings.push(`${prefix}.claude-plugin/plugin.json: denylisted "${name}" in the plugin description`);
         }
       }
     } catch {
