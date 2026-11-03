@@ -151,13 +151,18 @@ jobs:
 
             # Notes start at this plugin's newest earlier release;
             # bluestep-tools falls back to its legacy plugin-v* tags. None
-            # (a plugin's first release) → GitHub picks the range itself.
+            # (a plugin's first release): generated notes would span from the
+            # repo's previous Release, i.e. another plugin's, so write a short
+            # note pointing at the plugin's own changelog instead.
             PREV="$(newest_tag "$NAME-v")"
             if [ -z "$PREV" ] && [ "$NAME" = "bluestep-tools" ]; then
               PREV="$(newest_tag "plugin-v")"
             fi
-            NOTES_ARGS=()
-            [ -z "$PREV" ] || NOTES_ARGS=(--notes-start-tag "$PREV")
+            if [ -n "$PREV" ]; then
+              NOTES_ARGS=(--generate-notes --notes-start-tag "$PREV")
+            else
+              NOTES_ARGS=(--notes "First release of \`$NAME\` ($VERSION). What it is and how to install it: \`plugins/$NAME/README.md\`; changes from here on: \`plugins/$NAME/CHANGELOG.md\`.")
+            fi
             # The repo's "Latest" release stays bluestep-tools'.
             if [ "$NAME" = "bluestep-tools" ]; then
               LATEST_ARGS=(--latest)
@@ -187,9 +192,9 @@ jobs:
             if gh release view "$TAG" >/dev/null 2>&1; then
               echo "::notice::Release $TAG already exists — skipping create"
               SUMMARY+="$NAME $VERSION: tagged $TAG, Release already existed"$'\n'
-            elif gh release create "$TAG" --verify-tag --generate-notes \
+            elif gh release create "$TAG" --verify-tag \
               "${NOTES_ARGS[@]}" --title "$NAME $VERSION" "${LATEST_ARGS[@]}"; then
-              SUMMARY+="$NAME $VERSION: tagged $TAG, Release created (notes from ${PREV:-<start>}, ${LATEST_ARGS[*]})"$'\n'
+              SUMMARY+="$NAME $VERSION: tagged $TAG, Release created (notes ${PREV:+from }${PREV:-for a first release}, ${LATEST_ARGS[*]})"$'\n'
             else
               fail_plugin "$MANIFEST" "$NAME: tag $TAG pushed but creating its Release failed — create it by hand"
               SUMMARY+="$NAME $VERSION: FAIL Release for $TAG"$'\n'

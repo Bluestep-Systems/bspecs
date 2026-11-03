@@ -40,7 +40,13 @@ fi
 # the write-time check on update unless phi-guard is installed. The sibling test only means
 # something in the marketplace cache layout ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/,
 # so it runs only when the plugin root sits there (backslashes normalised for Windows); a dev
-# install from a checkout prints nothing.
+# install from a checkout prints nothing. This is the one place a hook looks past its own plugin
+# root (the ADR tooling-repo-consolidation.md names the exception): it tests whether the sibling
+# cache folder exists and reads nothing in it. A phi-guard that reached the machine by another
+# path than that cache (an account-synced install) is not seen here, and the line prints anyway;
+# the line says so, so the user can answer "it is installed" once and move on.
+# Only in a project that already runs the git check: a project that never ran /b6p-setup since
+# 0.41.0 gets no line (nothing here tells the two apart from a project with no client data).
 _root="${CLAUDE_PLUGIN_ROOT//\\//}"
 _root="${_root%/}"
 case "$_root" in
@@ -48,7 +54,7 @@ case "$_root" in
     if [ -f scripts/hooks/phi-check.sh ] \
       && ! grep -qE '^[[:space:]]*\*[[:space:]]*$' .phi-allow 2>/dev/null \
       && [ ! -d "$_root/../../phi-guard" ]; then
-      echo "bluestep-tools: this project runs the git client-data check, but the write-time check now comes from the phi-guard plugin, which is not installed — \`claude plugin install phi-guard@bluestep --scope user\`, or add \`*\` to \`.phi-allow\` if this project has no client data."
+      echo "bluestep-tools: this project runs the git client-data check, but the write-time check now comes from the phi-guard plugin, which is not in this machine's plugin cache — \`claude plugin install phi-guard@bluestep --scope user\` (desktop app: Customize → Plugins → phi-guard), or add \`*\` to \`.phi-allow\` if this project has no client data. If phi-guard is installed another way, tell the user once and move on."
     fi
     ;;
 esac

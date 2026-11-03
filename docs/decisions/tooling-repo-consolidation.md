@@ -56,16 +56,24 @@ hold no client data.
      renamed without breaking every reference to its tools. Plugin names do not change.
    - **`${CLAUDE_PLUGIN_ROOT}` never crosses plugins.** A plugin reads only its own files. A file
      two plugins need exists once in each, and `npm run gen:check` fails if the copies differ by a
-     byte (today: the client-data detector and the hook input helper).
+     byte (today: the client-data detector and the hook input helper). One stated exception: the
+     bluestep-tools canary tests whether a `phi-guard` folder exists next to its own plugin root in
+     the marketplace cache (`plugins/cache/<marketplace>/<plugin>/<version>/`) and reads nothing in
+     it. There is no hook-side signal for "is this other plugin installed"; the folder test is the
+     cheapest one, it is skipped outside that layout, and the nudge line admits it can be wrong
+     for an install that reached the machine another way.
 5. **phi-guard is its own opt-in plugin.** Not every client handles PHI, so the write-time check
    is installed by whoever owns a machine that works on such projects, once per machine (user
    scope). It acts only inside B6P projects, and a project turns it off with
    `"enabledPlugins": { "phi-guard@bluestep": false }`. The git client-data check that
    `/b6p-setup` installs in every B6P project is not part of the plugin and stays the required
    gate. The cost is that an update to bluestep-tools 0.42.0 drops the write-time check from
-   machines that had it; that loss is announced, not silent: bluestep-tools' `SessionStart` canary
-   prints one line in a project that runs the git check without phi-guard installed (Claude Code),
-   and `/b6p-setup` offers the install on every tool.
+   machines that had it; that loss is announced where it can be: bluestep-tools' `SessionStart`
+   canary prints one line in a project that runs the git check without phi-guard installed (Claude
+   Code), and `/b6p-setup` offers the install on every tool. A project that never ran `/b6p-setup`
+   since 0.41.0 has no git check and gets no line; it hears about phi-guard the next time
+   `/b6p-setup` runs there. 0.41.0 shipped one day before this decision, so few machines are in
+   that state.
 6. **core-tools moves in, Claude Code-only for now.** It is copied into `plugins/core-tools/` (a
    copy, not a subtree) and ships from here from 0.5.0. Its rule set lives in a `lane/` folder the
    cross-tool emitters do not carry, so on Cursor and Codex it would ship broken; it sets
@@ -82,7 +90,10 @@ hold no client data.
       delete the dormant npm CLI. Depends on 1.
    3. **The internal repo copies this layout**: one-tools moves to `plugins/one-tools/` under its
       own marketplace, with the same CI and tag scheme (no generator, Claude Code only). Depends
-      on 1, not on 2. When it is live, the `one-tools` entry leaves this marketplace.
+      on 1, not on 2. When it is live, the `one-tools` entry leaves this marketplace. One CI
+      difference to plan for: the bump and release jobs here read the remote's tags with
+      `git ls-remote` on a checkout without credentials, which works because this repo is public;
+      the internal repo's copies need the token kept on the checkout.
    4. **History purge** of the public repo (optional, an admin runbook), any time after 2.
    5. **Split one-tools** into a public plugin and an internal one, after 1 to 3 and a
       sanitization audit. A shared public tab-guard mod is a candidate for the same phase.

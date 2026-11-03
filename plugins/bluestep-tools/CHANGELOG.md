@@ -49,7 +49,10 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   the git client-data check and has not turned it off (no `*` line in `.phi-allow`), the canary
   says the write-time check now comes from phi-guard, with the install command, or to add `*` to
   `.phi-allow` if the project has no client data. It only speaks for a plugin installed from the
-  marketplace, not for a dev install from a checkout.
+  marketplace, not for a dev install from a checkout, and it looks for phi-guard in the same
+  plugin cache: a phi-guard that was installed another way still gets the line, and the line says
+  so. A project that never ran `/b6p-setup` since 0.41.0 has no git check and gets no line; it
+  hears about phi-guard when `/b6p-setup` next runs there.
 - **core-tools joins the `bluestep` marketplace.** `core-tools@bluestep` 0.5.0 (`/plan`, `/task`,
   `/repo-setup`) now lives in this repo under `plugins/core-tools/`, Claude Code only for now. It
   keeps its own changelog there.

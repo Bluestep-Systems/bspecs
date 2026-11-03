@@ -270,8 +270,14 @@ jobs:
               BASE_FROM="plugin/.claude-plugin/plugin.json"
             fi
             if has_file "$MB" "$BASE_FROM"; then
-              BASE_VER="$(read_field "$MB" "$BASE_FROM" version)" || BASE_VER=""
-              BASE_LABEL="${BASE_VER:-<unreadable>}"
+              # An unreadable base manifest must fail, not pass: with BASE_VER
+              # empty the "version unchanged" test below could never fire.
+              if ! BASE_VER="$(read_field "$MB" "$BASE_FROM" version)"; then
+                fail_plugin "$MANIFEST" "$NAME: $BASE_FROM at the merge-base is not valid JSON — cannot tell whether the version was bumped."
+                SUMMARY+="$NAME: FAIL base manifest is not valid JSON"$'\n'
+                continue
+              fi
+              BASE_LABEL="${BASE_VER:-<none>}"
               [ "$BASE_FROM" = "$MANIFEST" ] || BASE_LABEL="$BASE_LABEL (from $BASE_FROM)"
               IS_NEW=0
             else
