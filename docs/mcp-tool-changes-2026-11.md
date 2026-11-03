@@ -1,10 +1,10 @@
-# Gateway MCP: a smaller, faster tool list (November 9, 2026)
+# Gateway MCP: a smaller, faster tool list (November 3, 2026)
 
 The tool list your AI client loads on every turn is about 40% smaller: from 83 tools and ~179 KB to
-71 tools and ~103 KB. Tool results are also leaner. Nothing you could do before has been taken away,
+71 tools and ~104 KB. Tool results are also leaner. Nothing you could do before has been taken away,
 but some tools were merged or renamed, and **the old names have no alias**. Update any saved
-prompts, scripts or agent configs that use them. The `bluestep-tools` plugin 0.42.0 uses the new
-names; run `/plugin marketplace update` after the deploy.
+prompts, scripts or agent configs that use them. The `bluestep-tools` plugin 0.43.0 uses the new
+names; run `/plugin marketplace update` to get it.
 
 ## Renamed or merged tools
 
@@ -17,8 +17,24 @@ names; run `/plugin marketplace update` after the deploy.
 | `read_script_log`, `search_script_log`, `read_organization_log`, `search_organization_log` | `read_log` with `scope: SCRIPT \| ORGANIZATION` and an optional `query` (default is now 80 lines) |
 | `list_forms_with_fields` | `list_forms` with `includeFields: true` |
 | `create_option_list`, `update_option_list` | `option_list` |
-| `form_permission`, `grant_permission` | `set_permissions`, which now **requires** `mode: MERGE \| REPLACE` |
+| `form_permission`, `grant_permission` | `set_permissions`, which now **requires** a `mode` (see below) |
 | `field` | `batch_fields` (handles one field or many) |
+
+## Permissions
+
+`set_permissions` works on any securable object (form, field, folder, script, option list, and so
+on) and needs a `mode`, which decides what happens to the permissions you do **not** name:
+
+- `MERGE` adds each named subject or changes its level. Everyone else keeps theirs.
+- `ADD` adds each named subject that has no permission yet. An existing one is left as it is.
+- `REMOVE` takes the named subjects off. Everyone else keeps theirs.
+- `REPLACE` makes the list exactly what you send. Anyone not named is removed. Read the current
+  list with `list_permissions` first: the built-in groups a new form starts with cannot be
+  removed, so a REPLACE that leaves one out is refused.
+
+`revoke_permission` still takes one subject off, and `list_permissions` and
+`list_security_subjects` are unchanged. `create_script` takes the same `permissions` list, so a new
+script can be runnable from the start.
 
 ## Creating and editing fields
 
