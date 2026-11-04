@@ -1,7 +1,7 @@
 # ADR: One tooling repo per visibility, several plugins per repo
 
-**Status:** Accepted (2026-11-03). Phase 1 is built in this repo. Phase 2 is built, rollout
-pending (see "Phase 2 amendment"). Phases 3 to 5 are planned.
+**Status:** Accepted (2026-11-03). Phases 1 and 2 are done (phase 2 rolled out 2026-11-04; see
+"Phase 2 amendment"). Phases 3 to 5 are planned.
 
 **Date:** 2026-11-03
 
@@ -142,9 +142,10 @@ settings set `extraKnownMarketplaces`, they need the new repo name.
 
 ## Phase 2 amendment
 
-Built 2026-11-04 on a branch; **rollout pending** (the two renames, the endpoint publish and the
-admin steps below have not run). Spec: `.claude/specs/marketplace-rename/`. The evidence for every
-tool-behavior claim here is the "Prove-out (phase 2)" section that follows.
+Built and rolled out 2026-11-04 (PR #258, bluestep-tools 0.44.0 and core-tools 0.5.1; one-tools
+0.8.0 in its own repo); the record is "Rollout (phase 2)" below. Spec:
+`.claude/specs/marketplace-rename/`. The evidence for every tool-behavior claim here is the
+"Prove-out (phase 2)" section that follows.
 
 This repo becomes `Bluestep-Systems/bluestep-ai`. The marketplace stays `bluestep` and every plugin,
 skill and MCP tool keeps its name (decision 4). It ships as bluestep-tools 0.44.0 and core-tools
@@ -243,8 +244,46 @@ it ships after this release, `/one-setup` asks about the source on each run unti
    managed machine with it and the registration both moved loads the plugins.
 
 Between steps 3.2 and 4, released plugins still write the old name; the redirect covers it, and
-this release moves it. Merging before step 3.2 would write a source that does not exist yet. When
-step 5 passes, this section and the status line say phase 2 is done.
+this release moves it. Merging before step 3.2 would write a source that does not exist yet.
+
+### Rollout (phase 2)
+
+Run 2026-11-04, in the order above.
+
+- **3.1–3.2.** The old core-tools repo got its pointer README, was renamed `bluestep-ai-legacy`
+  and archived. Then this repo was renamed `bluestep-ai`, with its topic and description. The old
+  name serves the same `main` through the redirect.
+- **3.3.** The endpoint was published. The live endpoint sends requests with
+  `followRedirects: false`, so between the rename and the publish an intake would fail at the
+  GitHub step; publish right after the rename. A test intake with `routing.repo = "bspecs"`
+  opened its issue on `bluestep-ai`. The triage bot run for it failed, as every run has since
+  2026-10-23; that is unrelated to the rename and tracked on its own.
+- **3.4–3.5.** The admin reported managed settings handled (not readable from a session).
+  `NPM_TOKEN` is deleted.
+- **4.** `origin` was repointed, PR #258 merged, and the `bluestep-tools-v0.44.0` and
+  `core-tools-v0.5.1` tags were cut. The one-tools PR merged as 0.8.0.
+- **5. Live check.**
+  - Claude Code, a `git`/`url` registration on the old name: `marketplace update` and
+    `plugin update` brought 0.44.0, core-tools 0.5.1 and one-tools 0.8.0.
+  - Claude Code, a scratch `github`/`repo` registration on the old name: add, install and update
+    reached 0.44.0. A fresh add of the new name lists all four plugins.
+  - Codex, a scratch add of the new URL: works and serves all three manifests.
+  - `/b6p-setup` in an existing project:
+    - it rewrote the source without asking, changing that one value;
+    - it printed the machine note and wrote no machine file;
+    - the next session loaded 0.44.0, and `marketplace update` from that folder works;
+    - the project's debug log shows the reconcile error from prove-out step 4. It was already
+      there before the rewrite, because the project and user entries were in different shapes.
+  - Cursor:
+    - a new import from the `bluestep-ai` URL serves 0.44.0;
+    - this machine's older copies were frozen at commits from 2026-11-02, before the rename and
+      before 0.42.0, so they did not show whether an old import follows the rename;
+    - that case rests on prove-out step 8.
+  - NOT OBSERVED:
+    - an existing Cursor import of the old URL updating;
+    - an existing Codex registration upgrading;
+    - a desktop-app install added from claude.ai;
+    - a managed machine.
 
 ## Prove-out (phase 2)
 
