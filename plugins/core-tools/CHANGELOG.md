@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 — 2026-11-03
+
+**The install line points at the renamed repo, `Bluestep-Systems/bluestep-ai`.** The marketplace
+is still `bluestep` and the plugin is still `core-tools@bluestep`. An existing install keeps
+updating through GitHub's redirect from the old name. Nothing else changed; nothing to do but
+update.
+
 ## 0.5.0 — 2026-11-03
 
 **core-tools now lives in the `bluestep` marketplace repo, under `plugins/core-tools/`.** Same

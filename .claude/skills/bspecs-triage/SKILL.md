@@ -88,7 +88,8 @@ verification waves `check on 20` / `Rejected fix`.
      file:line evidence, not the reports' own claims.
 
 7. **Sweep the mirrored GitHub issues.** Each feedback task has a routed issue on
-   `Bluestep-Systems/bspecs`; ClickUp closes do not close them. For every task closed in step 6,
+   `Bluestep-Systems/bluestep-ai` (older tasks link it under the repo's old name, `bspecs`, which
+   redirects); ClickUp closes do not close them. For every task closed in step 6,
    close the linked issue (`completed` for shipped, `not planned` for duplicate/wont-fix) with a
    one-paragraph comment naming the resolution. (Standing gap — see the `TODO.md` item about the
    close hook.)

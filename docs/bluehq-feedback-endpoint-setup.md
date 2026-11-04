@@ -54,8 +54,9 @@ Actions secrets.
 - [ ] **Permissions:** grant **Repository → Issues: Read & write** and **nothing else**. No
       label-management scope is needed (the endpoint only applies the pre-existing `feedback` label — see
       section 2). Leave all other permissions at *No access*.
-- [ ] **Install** the App on the org, scoped to exactly three repositories: **`bspecs`**, **`b6p-cli`**,
-      and **`web`**. (Do not grant *All repositories* — least privilege.)
+- [ ] **Install** the App on the org, scoped to exactly three repositories: **`bluestep-ai`** (this
+      repo, called `bspecs` before the rename), **`b6p-cli`**, and **`web`**. (Do not grant *All
+      repositories* — least privilege.)
 - [ ] **Capture** these three values for section 3 — treat all three as secrets, do not paste them into
       any committed file:
   - **App ID** (shown on the App's settings page).
@@ -144,7 +145,7 @@ GitHub **silently drops labels that don't exist** in the target repo, and issues
 three repos. The generated issue carries **only** the single `feedback` label (the axes ride as a body
 text-line, not as labels), so that one label must exist on every routable repo.
 
-- [ ] `bspecs` — **already has** the `feedback` label (nothing to do; verify it is still present).
+- [ ] `bluestep-ai` — **already has** the `feedback` label (nothing to do; verify it is still present).
 - [ ] `b6p-cli` — **create** a `feedback` label (Issues → Labels → New label).
 - [ ] `web` — **create** a `feedback` label.
 
@@ -156,8 +157,10 @@ This subsection records what the endpoint actually accepts for `routing`, so the
 payload examples have a single source of truth. **Nothing to create here** — it is the contract enforced
 in code, listed so it stays in sync.
 
-- **`routing.repo`** — validated against a fixed set: `bspecs`, `b6p-cli`, `web`. Anything else (or
-  absent) falls back to **`bspecs`**.
+- **`routing.repo`** — validated against a fixed set: `bluestep-ai`, `bspecs`, `b6p-cli`, `web`.
+  `bspecs` is this repo's old name: plugin installs from before the rename send it (and so does
+  `/bspecs-feedback` today), and the endpoint sends it to **`bluestep-ai`**. The key stays accepted
+  for good. Anything else (or absent) falls back to **`bluestep-ai`**.
 - **`routing.labels`** — validated by **prefix only**, against these four allowed prefixes:
 
   | prefix | meaning |
@@ -262,8 +265,8 @@ Run these two checks against the deployed endpoint. (`$ENDPOINT_URL` = the deplo
   Expect a JSON response of the shape `{ "taskUrl": "…", "issueUrl": "…" }`. Verify:
   - [ ] a task exists on **AI.List** (`901414350506`) with the description and `kind` / `target` / `version`
         set;
-  - [ ] a GitHub issue exists on the routed repo (`bspecs` here) carrying **only** the `feedback` label and
-        an axes body text-line;
+  - [ ] a GitHub issue exists on the routed repo (`bluestep-ai` here: the `bspecs` key maps to it)
+        carrying **only** the `feedback` label and an axes body text-line;
   - [ ] the issue URL is commented back on the ClickUp task.
   - [ ] **Clean up** the smoke-test task and issue afterward.
 

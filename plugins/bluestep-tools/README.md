@@ -127,28 +127,28 @@ Component sync (`/b6p-*`) stays on the `b6p` CLI; MCP owns only what the CLI can
 The Get started prompt gives the agent these; they are here for the record.
 
 **Claude desktop app (Mac/Windows).** Customize (left sidebar) → **Plugins** → under Personal plugins
-**+** → **Add marketplace** → **From repository** → `https://github.com/Bluestep-Systems/bspecs` →
+**+** → **Add marketplace** → **From repository** → `https://github.com/Bluestep-Systems/bluestep-ai` →
 Done → **Browse plugins** → **bluestep-tools** → **Install**. Turn on **Sync automatically** in the
 marketplace's settings so releases install on their own. Plugins on the desktop app are managed by
 your claude.ai account, not by local files.
 
-**Claude Code CLI.** `/plugin marketplace add Bluestep-Systems/bspecs` then
+**Claude Code CLI.** `/plugin marketplace add Bluestep-Systems/bluestep-ai` then
 `/plugin install bluestep-tools@bluestep` — or from a shell, `claude plugin marketplace add …` and
 `claude plugin install bluestep-tools@bluestep --scope user`. **VS Code extension:** `/plugins` →
-Marketplaces → add `Bluestep-Systems/bspecs` → Plugins → install **bluestep-tools** → restart or
+Marketplaces → add `Bluestep-Systems/bluestep-ai` → Plugins → install **bluestep-tools** → restart or
 `/reload-plugins`. JetBrains has no plugin GUI: use the CLI in its terminal.
 
 **Cursor.** Git must be installed first: without it the plugin page shows `Failed to resolve git ref
 "main" … spawn git ENOENT` (install Git, then fully restart Cursor). Connect GitHub to Cursor too (the
 **Connect GitHub** button in the sidebar): without it the import adds nothing and shows no error, even
-though the repo is public. Then Plugins → **Add Marketplace → Import from Repo** → `https://github.com/Bluestep-Systems/bspecs`
+though the repo is public. Then Plugins → **Add Marketplace → Import from Repo** → `https://github.com/Bluestep-Systems/bluestep-ai`
 → install **bluestep-tools** (enable it on the Manage screen if it is off). Open your project folder
 first — skills and hooks are workspace-coupled. Updates arrive on their own. The edit guardrail runs
 on Cursor's `preToolUse` event, wired to block before the edit lands (not yet confirmed on a live
 seat; on Windows the `.sh` wrapper does not run under PowerShell, so there it does not protect). Do not judge the install by
 the plugin page's skill count; the composer's slash menu with your project open is the truth.
 
-**Codex.** `codex plugin marketplace add Bluestep-Systems/bspecs`, install **bluestep-tools** from it,
+**Codex.** `codex plugin marketplace add Bluestep-Systems/bluestep-ai`, install **bluestep-tools** from it,
 start a fresh session. Then two steps the tooling depends on: **trust the hooks** (plugin page →
 Review → trust, or `/hooks` in the CLI — an untrusted hook does nothing, silently, and needs
 re-trust after any release that changes one), and **copy the three subagents** from the installed

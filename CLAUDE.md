@@ -1,11 +1,13 @@
-# bspecs — BlueStep tooling for spec-driven development
+# bluestep-ai — BlueStep tooling for spec-driven development
 
-This repo ships BlueStep's agent plugins: **`bluestep-tools`** (Claude Code, Cursor, Codex) sets up
-BlueStep projects with skills, subagents, hooks, an on-demand platform reference, and spec-driven
-conventions; **`phi-guard`** is the opt-in write-time client-data hook; **`core-tools`** is the
-base workflow set for non-BlueStep repos (Claude Code only). It is a plain git repo — no npm, no
-binary — and doubles as **three marketplaces**. The old npm CLI (`cli.js`, `src/*`) is
-**dormant**: it loads but scaffolds nothing; all tooling lives in `plugins/`.
+This repo (`Bluestep-Systems/bluestep-ai`) ships BlueStep's agent plugins: **`bluestep-tools`**
+(Claude Code, Cursor, Codex) sets up BlueStep projects with skills, subagents, hooks, an on-demand
+platform reference, and spec-driven conventions; **`phi-guard`** is the opt-in write-time
+client-data hook; **`core-tools`** is the base workflow set for non-BlueStep repos (Claude Code
+only). It is a plain git repo — no npm package, no binary — and doubles as **three marketplaces**.
+All tooling lives in `plugins/`. The repo was called `bspecs` until phase 2 of
+`tooling-repo-consolidation.md`; old registrations reach it through GitHub's redirect, so no repo
+may ever take the old name again.
 
 **Every "why" below is an ADR.** `docs/decisions/` is the source of truth for the reasoning; this
 file carries only what a session needs before touching anything.
@@ -28,7 +30,6 @@ plugins/core-tools/               ← crossTool false (Claude Code only) — ski
 tools/gen-cross-tool/             ← the generator over plugins/* — npm run gen / gen:check
 dist/{cursor,codex}/<name>/       ← GENERATED per crossTool plugin, committed, never hand-edited
 .github/workflows/                ← ci.yml, release-tag.yml, publish.yml (manual-tag path)
-cli.js, src/                      ← DORMANT npm CLI (templates/ was deleted outright)
 ```
 
 Plugins serve content **verbatim** — there is no `{{VAR}}` templating anywhere in `plugins/`. The

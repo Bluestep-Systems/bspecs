@@ -3,7 +3,9 @@
 **Status:** Accepted. **Amended 2026-11:** the plugin folder `plugin/` named below is now
 `plugins/bluestep-tools/`, one of several plugins in this repo, and the marketplace lists each of
 them; see [`tooling-repo-consolidation.md`](tooling-repo-consolidation.md). The delivery decision
-(plugin + in-repo marketplace, no npm, no binary) is unchanged.
+(plugin + in-repo marketplace, no npm, no binary) is unchanged. **Amended again in phase 2** of that
+ADR: the dormant npm CLI (`cli.js`/`src/*`, kept below as a fallback) is deleted, its historic
+`vX.Y.Z` tags stay, and the repo is renamed `Bluestep-Systems/bluestep-ai`.
 
 **Date:** 2026-06-30
 

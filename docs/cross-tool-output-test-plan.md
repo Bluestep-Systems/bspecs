@@ -52,7 +52,7 @@ Fill in per run (copy the row):
 
 ## 2. Shared prerequisites (before any tool)
 
-- [ ] **The release is actually out.** The repo (`github.com/Bluestep-Systems/bspecs`) has
+- [ ] **The release is actually out.** The repo (`github.com/Bluestep-Systems/bluestep-ai`) has
       the `bluestep-tools-vX.Y.Z` tag (`plugin-vX.Y.Z` up to 0.41.0) and GitHub Release
       for the version under test, and that
       version is what `plugins/bluestep-tools/.claude-plugin/plugin.json` on `main` says.
@@ -86,7 +86,7 @@ serves a Claude Code marketplace (`.claude-plugin/marketplace.json`), a Cursor m
 
 ### 3.1 Claude Code
 
-1. Add the marketplace (once per machine): `/plugin marketplace add Bluestep-Systems/bspecs`.
+1. Add the marketplace (once per machine): `/plugin marketplace add Bluestep-Systems/bluestep-ai`.
 2. Install: `/plugin install bluestep-tools@bluestep`. Already installed? Run
    `/plugin marketplace update` instead.
 3. Start a **fresh session** (or `/reload-plugins`) — plugin MCP servers and hooks load at
@@ -100,7 +100,7 @@ serves a Claude Code marketplace (`.claude-plugin/marketplace.json`), a Cursor m
 1. **Open the scratch project folder first** (skills/hooks are workspace-coupled; a
    project-scoped install needs an open workspace).
 2. Plugins → **Add Marketplace → Import from Repo**, URL
-   `https://github.com/Bluestep-Systems/bspecs`.
+   `https://github.com/Bluestep-Systems/bluestep-ai`.
 3. Install `bluestep-tools` from that marketplace; enable it on the Manage screen if it is
    not on by default.
 
@@ -113,7 +113,7 @@ serves a Claude Code marketplace (`.claude-plugin/marketplace.json`), a Cursor m
 
 ### 3.3 Codex
 
-1. Add the marketplace: `codex plugin marketplace add Bluestep-Systems/bspecs` (CLI), or
+1. Add the marketplace: `codex plugin marketplace add Bluestep-Systems/bluestep-ai` (CLI), or
    add the same repo from the plugins screen in the IDE / desktop app.
 2. Install `bluestep-tools`.
 3. **Trust the hooks — mandatory, and easy to miss.** Open the plugin's page; the Hooks

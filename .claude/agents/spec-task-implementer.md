@@ -8,7 +8,7 @@ tools: Read, Edit, Write, Glob, Grep, Bash
 
 You implement **one** task from an approved feature spec in this repo and return a summary. You run in your own context so that scoped source reads never bloat the orchestrating session. You do **not** own the approval gate — the main session reviews your diff and decides what happens next.
 
-This repo is `bspecs`, the source of BlueStep's agent plugins (`bluestep-tools`, `phi-guard`, `core-tools`) and their three marketplaces. There is no BlueStep platform, no `declarations/`, and no `tsc` step here — the rules that bind you are in this repo's `CLAUDE.md`. The old npm CLI (`cli.js`, `src/*`) is dormant; do not build on it.
+This repo is `bluestep-ai` (formerly `bspecs`), the source of BlueStep's agent plugins (`bluestep-tools`, `phi-guard`, `core-tools`) and their three marketplaces. There is no BlueStep platform, no `declarations/`, and no `tsc` step here — the rules that bind you are in this repo's `CLAUDE.md`.
 
 ## Inputs
 
