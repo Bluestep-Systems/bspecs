@@ -11,6 +11,37 @@ Entries before 0.42.0 were written when this was the repo's only changelog and t
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.44.0] — 2026-11-03
+
+> **The repo is now `Bluestep-Systems/bluestep-ai`.** The marketplace is still `bluestep`, and the
+> plugin names, skill names and MCP tool names do not change. Existing installs keep updating
+> through GitHub's redirect from the old name, so there is nothing you have to do. No hook changes,
+> but Codex asks to re-trust the plugin's hooks after any update that changes its files, this one
+> included: open the plugin's page and **Review → trust** once.
+
+### Changed
+
+- **`/b6p-setup` moves a project's marketplace source to the new name.** When a project's
+  `.claude/settings.json` registers the `bluestep` marketplace from `Bluestep-Systems/bspecs` (as a
+  `github` repo or a `git` URL in its HTTPS or SSH form, with or without `.git`), the next
+  `/b6p-setup` run changes that one value to `Bluestep-Systems/bluestep-ai` without asking, keeps a
+  pinned `ref` or `path` and every other key, and says so in the
+  report. A source naming anything else (a fork, a local path) is still asked about. New projects
+  get the new name from the start.
+- **`/b6p-setup` notes when this machine still registers the old name.** It reads the tool's own
+  registration, never writes it, and puts one note in the report: nothing is needed, and how to move
+  anyway if you want to. Claude Code (CLI and the desktop app's Code tab): change the `bluestep`
+  source in `~/.claude/settings.json` and run `claude plugin marketplace add
+  Bluestep-Systems/bluestep-ai`, both steps together, because either one alone stops the plugins
+  loading. If the marketplace comes from your organization's managed settings, leave it: the admin
+  moves it. Codex: `codex plugin marketplace remove bluestep`, then `codex plugin marketplace add
+  Bluestep-Systems/bluestep-ai`; the plugins stay installed and their hooks stay trusted. Cursor:
+  nothing to do, it follows the rename on restart.
+- **Install lines use the new name.** The plugin README, the README template `/b6p-setup` writes
+  into new projects, and the Claude Code, Cursor and Codex enablement pages now say
+  `Bluestep-Systems/bluestep-ai`. A project's existing `README.md` keeps its old line, which still
+  works.
+
 ## [plugin 0.43.0] — 2026-11-03
 
 > **The platform reference uses the new gateway MCP tool names**, live since the 2026-11-03 platform

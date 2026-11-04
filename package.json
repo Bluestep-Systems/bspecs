@@ -1,33 +1,18 @@
 {
-  "name": "@bluestep-systems/bspecs",
-  "version": "0.15.0",
-  "description": "Spec-driven BlueStep development with AI agents — scaffolder and project conventions for Claude Code",
+  "name": "bluestep-ai",
+  "private": true,
+  "description": "BlueStep's agent plugins for Claude Code, Cursor and Codex, and the marketplaces that serve them",
   "type": "module",
-  "bin": {
-    "bspecs": "./cli.js"
-  },
-  "files": [
-    "cli.js",
-    "src/",
-    "templates/"
-  ],
   "scripts": {
-    "start": "node cli.js",
     "gen": "node tools/gen-cross-tool/index.mjs",
     "gen:check": "node tools/gen-cross-tool/index.mjs --check",
     "test:hooks": "bash tools/test-hooks.sh"
   },
-  "dependencies": {
-    "@clack/prompts": "^0.9.0"
-  },
   "engines": {
     "node": ">=18.0.0"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Bluestep-Systems/bspecs.git"
+    "url": "https://github.com/Bluestep-Systems/bluestep-ai.git"
   }
 }

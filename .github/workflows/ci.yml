@@ -1,11 +1,11 @@
 # ============================================================================
-# bspecs CI
+# bluestep-ai CI
 # ============================================================================
-# Purpose: Validate the scaffolder on pull requests and pushes to the default
-#          branch. bspecs is plain ESM JS with no build/test suite, so this is
-#          a smoke check: the CLI must start and print version/help, and a
-#          scratch scaffold must succeed. No secrets — the @bluestep-systems
-#          scope resolves from public npm via .npmrc.
+# Purpose: Validate the plugins on pull requests and pushes to the default
+#          branch. bluestep-ai has no dependencies and no build/test suite,
+#          so nothing is installed: the validate job checks the plugin
+#          manifests and the marketplace on every Node in the matrix. No
+#          secrets.
 #          The cross-tool-drift job regenerates the committed Cursor/Codex
 #          output and fails if it doesn't match what's checked in.
 # ============================================================================
@@ -46,24 +46,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
-          cache: 'npm'
-          cache-dependency-path: package-lock.json
-
-      - name: Install dependencies
-        run: |
-          for i in 1 2 3; do
-            npm ci --prefer-offline --no-audit && break
-            echo "Attempt $i failed, retrying..."
-            sleep 5
-          done
-        shell: bash
-
-      # Smoke test: the CLI must start and print version + usage.
-      - name: Smoke-run CLI (version)
-        run: node cli.js -v
-
-      - name: Smoke-run CLI (help)
-        run: node cli.js -h
 
       # Plugin distribution: every plugins/<name>/.claude-plugin/plugin.json and
       # the marketplace must parse, every plugins/* folder must have a marketplace

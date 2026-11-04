@@ -1,7 +1,7 @@
 {
   "name": "core-tools",
   "description": "Base workflow tooling for AI coding agents in repos that are not BlueStep components: the core rule set, /repo-setup for a repo's own AGENTS.md and skills, /task and /plan, and the session-cost measurement script.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "author": { "name": "BlueStep Systems" },
   "crossTool": false
 }

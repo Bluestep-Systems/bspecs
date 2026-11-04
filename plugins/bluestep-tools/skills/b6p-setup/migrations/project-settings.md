@@ -1,10 +1,11 @@
 # Migration `project-settings` — reconcile the keys `/b6p-setup` step 2b owns
 
-**Says to the user:** "settings are missing N keys", or "one setting differs from the current
-default". Name the count, not the id.
+**Says to the user:** "settings are missing N keys", "one setting differs from the current
+default", or "the marketplace still points at the repo's old name". Name the count, not the id.
 
 **Detect.** The project's settings file for the tool you are running in is missing a key
-`/b6p-setup` step 2b writes, or holds one in a shape a later release replaced.
+`/b6p-setup` step 2b writes, holds one in a shape a later release replaced, or registers the
+`bluestep` marketplace from the repo's old name (below).
 
 **Read the current shape from `/b6p-setup` step 2b, not from here.** That step is the source of
 truth for which keys belong in a project and what each is worth. Read that skill's settings section
@@ -54,6 +55,33 @@ Before adding it, **read** (never write) the Claude Code settings `~/.claude/set
 A project that removed the key is not something this migration can tell apart from one that never
 had it. If the user says they removed it on purpose, leave it out and tell them that the next run
 will offer it again until opt-outs are recorded.
+
+## The marketplace source on the repo's old name? Change it.
+
+This is the one exception to the next section: the only differing value this asset changes without
+asking. The repo `Bluestep-Systems/bspecs` was renamed `Bluestep-Systems/bluestep-ai`, so the old
+name is the same repo and the user has nothing to weigh.
+
+Look at the `source` object of the `bluestep` entry in `extraKnownMarketplaces`. It names the old
+repo in either shape, compared without regard to case:
+
+- `"source": "github"` with `"repo": "Bluestep-Systems/bspecs"`;
+- `"source": "git"` with a `url` on `github.com` whose repo path is `Bluestep-Systems/bspecs`:
+  `https://github.com/…`, `ssh://git@github.com/…` or `git@github.com:…`, with or without `.git`
+  or a trailing `/`. The repo name must end there: `bspecs-something` is another repo.
+
+Replace that one `source` object with `{ "source": "github", "repo": "Bluestep-Systems/bluestep-ai" }`,
+carrying over a `ref` or `path` the old object had, and leave every other key as it is. Report it
+in one line:
+
+> `riverside-forms` — moved the marketplace source to the repo's new name
+> (`Bluestep-Systems/bluestep-ai`); the old name kept working through GitHub's redirect.
+
+A source naming anything else (a fork, another repo, a local path) is not this case: it falls to the
+next section and is asked about. An opt-out project is skipped here like every other key (below).
+
+Remove this section when no project detects the old name for a full release cycle. The rest of the
+asset stays.
 
 ## A key that already holds a different value? Ask.
 

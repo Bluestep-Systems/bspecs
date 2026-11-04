@@ -6,7 +6,7 @@ workspaces (those use `bluestep-tools`). One plugin, one install per machine.
 ## Install
 
 ```
-/plugin marketplace add Bluestep-Systems/bspecs
+/plugin marketplace add Bluestep-Systems/bluestep-ai
 /plugin install core-tools@bluestep
 ```
 

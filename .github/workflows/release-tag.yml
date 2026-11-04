@@ -1,5 +1,5 @@
 # ============================================================================
-# bspecs Release tagging
+# bluestep-ai Release tagging
 # ============================================================================
 # Purpose: On every push to main, read every plugins/<name>/.claude-plugin/
 #          plugin.json and, for each plugin whose `<name>-v<version>` tag
@@ -40,7 +40,7 @@ on:
     # confuse paths filters). Running always + the tag-exists check is the
     # simpler, safer idempotency mechanism.
 
-# The ONLY bspecs workflow with write access at the top level: it must push
+# The ONLY bluestep-ai workflow with write access at the top level: it must push
 # the release tags and create the GitHub Releases. Everything else in this
 # repo (ci.yml validation; publish.yml elevates per-job) stays read-only.
 permissions:

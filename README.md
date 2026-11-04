@@ -10,12 +10,12 @@ tooling for every other repo, and the BlueStep One team tooling, which lives in 
 
 Add the marketplace once per machine, then install the plugins you need:
 
-- **Claude Code CLI:** `claude plugin marketplace add Bluestep-Systems/bspecs`
+- **Claude Code CLI:** `claude plugin marketplace add Bluestep-Systems/bluestep-ai`
 - **Claude desktop app:** Customize → Plugins → **+** → Add marketplace → From repository →
-  `https://github.com/Bluestep-Systems/bspecs` → Browse plugins
+  `https://github.com/Bluestep-Systems/bluestep-ai` → Browse plugins
 - **Cursor:** connect GitHub first (without it the import silently adds nothing), then Plugins →
-  Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bspecs`
-- **Codex:** `codex plugin marketplace add Bluestep-Systems/bspecs`
+  Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bluestep-ai`
+- **Codex:** `codex plugin marketplace add Bluestep-Systems/bluestep-ai`
 
 | Plugin | For whom | Claude Code | Cursor | Codex | Docs |
 | --- | --- | --- | --- | --- | --- |
@@ -37,19 +37,21 @@ this, press enter:
 > Set up the BlueStep developer tooling on this machine. Work it out by checking, not by asking me;
 > the one question to ask me is in step 3.
 > 1. Find out which agent tool you are running in (Claude Code CLI, the Claude desktop app, Cursor,
->    or Codex) and whether the `bluestep-tools` plugin from the `Bluestep-Systems/bspecs` marketplace
->    is already installed. Check `git --version` too: the tools download the plugin with git, and on
+>    or Codex) and whether the `bluestep-tools` plugin from the `bluestep` marketplace
+>    (`Bluestep-Systems/bluestep-ai`; an older install may show the repo's old name, `bspecs`, which
+>    is the same marketplace) is already installed. Check `git --version` too: the tools download the plugin with git, and on
 >    Windows its hooks run in Git Bash. If git is missing, tell me to install it (Windows: Git for
 >    Windows from `https://git-scm.com/download/win`, default options) and fully restart the app.
-> 2. If it is not: on the Claude Code CLI run `claude plugin marketplace add Bluestep-Systems/bspecs`
+> 2. If it is not: on the Claude Code CLI run `claude plugin marketplace add Bluestep-Systems/bluestep-ai`
 >    and then `claude plugin install bluestep-tools@bluestep --scope user`. On Codex run
->    `codex plugin marketplace add Bluestep-Systems/bspecs` and tell me to install bluestep-tools from
+>    `codex plugin marketplace add Bluestep-Systems/bluestep-ai` and tell me to install bluestep-tools from
 >    it, trust its hooks, and copy its three subagents from the installed plugin's `agents/` folder
 >    into `~/.codex/agents/`. On the Claude desktop app or Cursor you cannot install it yourself: give
 >    me the exact clicks (desktop app: Customize → Plugins → + → Add marketplace → From repository
->    `https://github.com/Bluestep-Systems/bspecs` → Browse plugins → install bluestep-tools; Cursor:
->    Connect GitHub first (without it the import silently adds nothing) → Plugins → Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bspecs` →
->    install bluestep-tools).
+>    `https://github.com/Bluestep-Systems/bluestep-ai` → Browse plugins → install bluestep-tools; Cursor:
+>    Connect GitHub first (without it the import silently adds nothing) → Plugins → Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bluestep-ai` →
+>    install bluestep-tools). If the `bluestep` marketplace is already registered, under either
+>    name, skip adding it (the add is refused) and only install the plugin.
 > 3. If the `phi-guard` plugin from the same marketplace is not installed, offer it in one line and
 >    ask me whether this machine works on projects with client data: phi-guard blocks an agent's
 >    Edit or Write that looks like real client data (phone numbers, email addresses, record titles);
@@ -109,8 +111,7 @@ emitted from `plugins/**` by `tools/gen-cross-tool/` (`npm run gen`, from PowerS
 a Windows checkout). The output is committed because git-based marketplace imports need it in the
 tree, and never hand-edited — CI regenerates and diffs. There is **no npm publish and no binary
 build** — each marketplace is a plain git repo tracking this repo's default branch. The npm CLI
-that previously scaffolded these files (`cli.js`/`src/*`) is retained but **dormant** (unpublished,
-unsupported). See
+that once scaffolded these files has been deleted; its old `vX.Y.Z` tags stay (see **Tags**). See
 [`docs/decisions/plugin-distribution.md`](docs/decisions/plugin-distribution.md),
 [`docs/decisions/cross-tool-plugin-output.md`](docs/decisions/cross-tool-plugin-output.md),
 [`docs/decisions/setup-consolidation.md`](docs/decisions/setup-consolidation.md),
@@ -162,7 +163,7 @@ same Release shape).
 CI's `plugin-version-bump` job fails a PR that changes `plugins/<name>/**` (other than that
 plugin's `CHANGELOG.md`) without bumping that plugin, or `tools/gen-cross-tool/**` without bumping
 every `crossTool` plugin, and fails a version whose tag already exists. Repo-only changes (docs,
-CI, this README, the dormant CLI) need no bump and don't affect installs — and a merge to `main`
+CI, this README) need no bump and don't affect installs — and a merge to `main`
 without a version change creates no tag and no Release, which is correct: nothing shipped.
 
 **Adding a plugin.** Create `plugins/<name>/` with a `.claude-plugin/plugin.json` (`name` equal to

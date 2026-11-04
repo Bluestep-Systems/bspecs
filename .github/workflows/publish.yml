@@ -1,9 +1,9 @@
 # ============================================================================
-# bspecs Release
+# bluestep-ai Release
 # ============================================================================
 # Purpose: On a plugin version tag (<name>-vX.Y.Z), create a GitHub Release.
 #
-# bspecs is distributed as plugins (plugins/<name>/) via the in-repo
+# bluestep-ai is distributed as plugins (plugins/<name>/) via the in-repo
 # marketplaces — there is no npm publish and no binary build. Tagging a
 # version cuts a Release (users/marketplaces can pin to it). Each plugin has
 # its own tag namespace, `<name>-vX.Y.Z` (bluestep-tools-v0.42.0,
@@ -15,8 +15,7 @@
 # `plugin-vX.Y.Z` (its leading `*` matches `plugin`), so a hand-pushed
 # legacy tag still gets its Release. It does not match the historic
 # npm-package tags (`v0.2.0`..`v0.15.0`, nothing before the `-v`), which
-# are frozen. The npm CLI is retained dormant in the repo but is no longer
-# published.
+# are frozen.
 # ============================================================================
 
 name: Release
