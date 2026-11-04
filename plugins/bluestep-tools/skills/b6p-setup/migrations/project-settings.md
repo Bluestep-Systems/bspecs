@@ -66,10 +66,13 @@ Look at the `source` object of the `bluestep` entry in `extraKnownMarketplaces`.
 repo in either shape, compared without regard to case:
 
 - `"source": "github"` with `"repo": "Bluestep-Systems/bspecs"`;
-- `"source": "git"` with a `url` naming `github.com/Bluestep-Systems/bspecs`, with or without `.git`.
+- `"source": "git"` with a `url` on `github.com` whose repo path is `Bluestep-Systems/bspecs`:
+  `https://github.com/…`, `ssh://git@github.com/…` or `git@github.com:…`, with or without `.git`
+  or a trailing `/`. The repo name must end there: `bspecs-something` is another repo.
 
-Replace that one `source` object with `{ "source": "github", "repo": "Bluestep-Systems/bluestep-ai" }`
-and leave every other key as it is. Report it in one line:
+Replace that one `source` object with `{ "source": "github", "repo": "Bluestep-Systems/bluestep-ai" }`,
+carrying over a `ref` or `path` the old object had, and leave every other key as it is. Report it
+in one line:
 
 > `riverside-forms` — moved the marketplace source to the repo's new name
 > (`Bluestep-Systems/bluestep-ai`); the old name kept working through GitHub's redirect.

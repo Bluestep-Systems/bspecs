@@ -50,7 +50,8 @@ this, press enter:
 >    me the exact clicks (desktop app: Customize → Plugins → + → Add marketplace → From repository
 >    `https://github.com/Bluestep-Systems/bluestep-ai` → Browse plugins → install bluestep-tools; Cursor:
 >    Connect GitHub first (without it the import silently adds nothing) → Plugins → Add Marketplace → Import from Repo → `https://github.com/Bluestep-Systems/bluestep-ai` →
->    install bluestep-tools).
+>    install bluestep-tools). If the `bluestep` marketplace is already registered, under either
+>    name, skip adding it (the add is refused) and only install the plugin.
 > 3. If the `phi-guard` plugin from the same marketplace is not installed, offer it in one line and
 >    ask me whether this machine works on projects with client data: phi-guard blocks an agent's
 >    Edit or Write that looks like real client data (phone numbers, email addresses, record titles);

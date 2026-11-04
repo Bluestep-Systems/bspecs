@@ -16,7 +16,7 @@ A question the user cannot answer better than you is not a safety measure — it
 | A file or key is **missing** and adding it conflicts with nothing | **Just do it.** Say what you wrote. |
 | The old rules file is **entirely template text** — no project rules were ever added | **Just do it.** Swap it and say so in the report. |
 | The old rules file **has project-specific lines** | Decide where each goes, show one table, take **one** approval for that project. |
-| A settings key **already has a different value** | Ask. Their value may be deliberate. |
+| A settings key **already has a different value** | Ask. Their value may be deliberate. (One exception: the `bluestep` marketplace source on the repo's old name, which `project-settings` changes without asking.) |
 | Both `AGENTS.md` and the tool's bridge file hold real rules | Ask. Only they know which is the real one. |
 | The folder is not empty and shows no sign of being a BlueStep workspace | Ask once (step 2a) — three options, no free text. |
 | You cannot tell whether a line is a project rule or template text | **Keep it.** Mark it kept in the table and move on. |

@@ -23,8 +23,9 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
 
 - **`/b6p-setup` moves a project's marketplace source to the new name.** When a project's
   `.claude/settings.json` registers the `bluestep` marketplace from `Bluestep-Systems/bspecs` (as a
-  `github` repo or a `git` URL, with or without `.git`), the next `/b6p-setup` run changes that one
-  value to `Bluestep-Systems/bluestep-ai` without asking, keeps every other key, and says so in the
+  `github` repo or a `git` URL in its HTTPS or SSH form, with or without `.git`), the next
+  `/b6p-setup` run changes that one value to `Bluestep-Systems/bluestep-ai` without asking, keeps a
+  pinned `ref` or `path` and every other key, and says so in the
   report. A source naming anything else (a fork, a local path) is still asked about. New projects
   get the new name from the start.
 - **`/b6p-setup` notes when this machine still registers the old name.** It reads the tool's own
@@ -32,7 +33,8 @@ This project follows [Semantic Versioning](https://semver.org/). While the major
   anyway if you want to. Claude Code (CLI and the desktop app's Code tab): change the `bluestep`
   source in `~/.claude/settings.json` and run `claude plugin marketplace add
   Bluestep-Systems/bluestep-ai`, both steps together, because either one alone stops the plugins
-  loading. Codex: `codex plugin marketplace remove bluestep`, then `codex plugin marketplace add
+  loading. If the marketplace comes from your organization's managed settings, leave it: the admin
+  moves it. Codex: `codex plugin marketplace remove bluestep`, then `codex plugin marketplace add
   Bluestep-Systems/bluestep-ai`; the plugins stay installed and their hooks stay trusted. Cursor:
   nothing to do, it follows the rename on restart.
 - **Install lines use the new name.** The plugin README, the README template `/b6p-setup` writes

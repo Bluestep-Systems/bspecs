@@ -155,8 +155,10 @@ a `/b6p-setup` migration". The change is a value, not a missing key, and the `pr
 asset already compares a project against step 2b's block, so its Detect text (the catalogue row and
 the asset) is widened instead. A `bluestep` source that names the old repo, in the
 `github`/`repo` shape (`Bluestep-Systems/bspecs`) or the `git`/`url` shape
-(`github.com/Bluestep-Systems/bspecs`, with or without `.git`, any case), becomes
-`{ "source": "github", "repo": "Bluestep-Systems/bluestep-ai" }`; every other key stays. It is the
+(that repo on `github.com` in the `https://`, `ssh://` or `git@…:` form, with or without `.git`
+or a trailing `/`, any case), becomes
+`{ "source": "github", "repo": "Bluestep-Systems/bluestep-ai" }`, keeping a `ref` or `path`;
+every other key stays. It is the
 one value the asset changes without asking, because the old name is the same repo; any other
 differing source (a fork, a path) is still asked about. The section has its own "remove when": no
 project detects it for a full release cycle. Step 2b writes the new source in new projects. Only
@@ -207,7 +209,7 @@ is deleted in the rollout; deprecating the package on the npm registry is a sepa
 
 **one-tools in the same window.** Its own PR in its own repo: its setup template writes the new
 source and `/one-setup` treats the old one as the same marketplace (rewrites it, does not ask). If
-it ships after this release, `/one-setup` asks once per project until it does.
+it ships after this release, `/one-setup` asks about the source on each run until it does.
 
 **Rollout order.**
 
@@ -221,18 +223,24 @@ it ships after this release, `/one-setup` asks once per project until it does.
    2. Rename `bspecs` to `bluestep-ai`; set the `claude-code-plugin` topic and the description.
    3. Publish the endpoint change; send one test intake with `routing.repo = "bspecs"`; the issue
       lands in `bluestep-ai` and the triage bot runs.
-   4. Managed settings (`extraKnownMarketplaces`, `strictKnownMarketplaces`,
-      `blockedMarketplaces`; server-managed, MDM and file) and the claude.ai organization plugin
-      settings, each moved to the new name if set. A managed entry overrides the project's, and
-      under `strictKnownMarketplaces` a plugin whose source no longer matches does not load, so
-      this comes before the merge.
+   4. Managed settings (server-managed, MDM and file) and the claude.ai organization plugin
+      settings, if set. **Add, do not replace:** `strictKnownMarketplaces` gets the new name next
+      to the old one, and `blockedMarketplaces` must not name the new repo. A managed
+      `extraKnownMarketplaces` entry **stays on the old name** for now: every machine still
+      registers the old source, and an entry that differs from the registration stops the plugins
+      loading (prove-out step 3, whose error names managed settings too). It moves only after the
+      live check (step 5) shows a managed machine loading the plugins with both moved; the old
+      name drops out of the strict list after that.
    5. Delete `NPM_TOKEN`.
 4. Repoint this checkout's `origin`; merge this PR (`release-tag.yml` tags `bluestep-tools-v0.44.0`
    and `core-tools-v0.5.1`); merge and release one-tools.
-5. Live check on one machine: an old-source registration still updates; `/b6p-setup` in an
-   existing project rewrites the source and reports the machine step; a fresh
-   `marketplace add Bluestep-Systems/bluestep-ai` lists all four plugins; Cursor and Codex imports
-   from the new URL work.
+5. Live check on one machine: an old-source registration still updates, in both shapes
+   (`github`/`repo` and `git`/`url`); `/b6p-setup` in an existing project rewrites the source and
+   reports the machine step, and the next session in that project still loads the plugins; a
+   fresh `marketplace add Bluestep-Systems/bluestep-ai` lists all four plugins; Cursor and Codex
+   imports from the new URL work; a desktop-app install added from claude.ai still updates (not
+   covered by the prove-out); if the organization sets a managed `extraKnownMarketplaces`, one
+   managed machine with it and the registration both moved loads the plugins.
 
 Between steps 3.2 and 4, released plugins still write the old name; the redirect covers it, and
 this release moves it. Merging before step 3.2 would write a source that does not exist yet. When
