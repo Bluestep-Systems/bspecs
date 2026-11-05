@@ -22,7 +22,7 @@ Add the marketplace once per machine, then install the plugins you need:
 | **`bluestep-tools`** | Anyone working in a BlueStep component workspace | `claude plugin install bluestep-tools@bluestep --scope user` | install **bluestep-tools** | install **bluestep-tools**, trust its hooks, copy its subagents | [README](plugins/bluestep-tools/README.md) |
 | **`phi-guard`** | Machines that work on B6P projects with client data (opt-in) | `claude plugin install phi-guard@bluestep --scope user` | install **phi-guard** | install **phi-guard**, trust its hook | [README](plugins/phi-guard/README.md) |
 | **`core-tools`** | Every repo that is not a BlueStep component workspace | `claude plugin install core-tools@bluestep --scope user` | not yet | not yet | [README](plugins/core-tools/README.md) |
-| **`one-tools`** | Teams moving a Manage system into BlueStep One; needs bluestep-tools and core-tools | `claude plugin install one-tools@bluestep --scope user` | not listed | not listed | in its own repo (staff access) |
+| **`one-tools`** | Teams moving a Manage system into BlueStep One; needs bluestep-tools and core-tools | `claude plugin install one-tools@bluestep --scope user` | not listed | not listed | in its own repo (staff access), which is now also the `bluestep-internal` marketplace; one-tools is moving there |
 
 On the Claude desktop app, install each one from **Browse plugins** instead; plugins there are
 managed by your claude.ai account, so the CLI commands do not apply. The per-tool details (VS Code,
