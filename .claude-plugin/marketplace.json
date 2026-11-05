@@ -3,7 +3,7 @@
   "owner": {
     "name": "BlueStep Systems"
   },
-  "description": "BlueStep tooling for Claude Code — bluestep-tools for B6P component workspaces (spec-driven skills, b6p CLI integration, subagents, hooks, platform reference), core-tools for every other repo (core rule set, /repo-setup, /task, /plan), and phi-guard for the write-time client-data check in B6P projects.",
+  "description": "BlueStep tooling for Claude Code — bluestep-tools for B6P component workspaces (spec-driven skills, b6p CLI integration, subagents, hooks, platform reference), core-tools for every other repo (core rule set, /repo-setup, /task, /plan), phi-guard for the write-time client-data check in B6P projects, and bluestep-one for building BlueStep One components.",
   "plugins": [
     {
       "name": "bluestep-tools",
@@ -19,6 +19,11 @@
       "name": "phi-guard",
       "source": "./plugins/phi-guard",
       "description": "Write-time client-data check for B6P projects: blocks an agent's Edit or Write that looks like real client data in a committed file. Opt-in, installed per machine; acts only in B6P projects."
+    },
+    {
+      "name": "bluestep-one",
+      "source": "./plugins/bluestep-one",
+      "description": "Build BlueStep One components on Claude Code: /bluestep-one:setup for a component workspace, /bluestep-one:build to build, publish and check a component one gate at a time, an on-demand BlueStep One reference, and a tab guard for browser GraphQL calls. Needs bluestep-tools."
     }
   ]
 }

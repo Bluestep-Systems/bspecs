@@ -4,8 +4,9 @@ This repo (`Bluestep-Systems/bluestep-ai`) ships BlueStep's agent plugins: **`bl
 (Claude Code, Cursor, Codex) sets up BlueStep projects with skills, subagents, hooks, an on-demand
 platform reference, and spec-driven conventions; **`phi-guard`** is the opt-in write-time
 client-data hook; **`core-tools`** is the base workflow set for non-BlueStep repos (Claude Code
-only). It is a plain git repo — no npm package, no binary — and doubles as **three marketplaces**.
-All tooling lives in `plugins/`. The repo was called `bspecs` until phase 2 of
+only); **`bluestep-one`** builds BlueStep One components (Claude Code only). It is a plain git
+repo — no npm package, no binary — and doubles as **three marketplaces**. All tooling lives in
+`plugins/`. The repo was called `bspecs` until phase 2 of
 `tooling-repo-consolidation.md`; old registrations reach it through GitHub's redirect, so no repo
 may ever take the old name again.
 
@@ -15,7 +16,7 @@ file carries only what a session needs before touching anything.
 ## Architecture
 
 ```text
-.claude-plugin/marketplace.json   ← Claude Code marketplace ("bluestep"): the three plugins (one-tools is internal since phase 3)
+.claude-plugin/marketplace.json   ← Claude Code marketplace ("bluestep"): the four plugins (one-tools is internal since phase 3)
 .cursor-plugin/marketplace.json   ← GENERATED Cursor marketplace, serves dist/cursor/
 .agents/plugins/marketplace.json  ← GENERATED Codex marketplace, serves dist/codex/
 plugins/<name>/                   ← THE SOURCE OF TRUTH — author only here
@@ -27,6 +28,7 @@ plugins/bluestep-tools/           ← crossTool true
   .mcp.json                       ← bundles the bluestep-gateway MCP server ($B6PT_TOKEN)
 plugins/phi-guard/                ← crossTool true — hooks/phi-guard.sh + hooks/lib/{hook-input,phi-detect}.sh
 plugins/core-tools/               ← crossTool false (Claude Code only) — skills/, lane/, docs/, tools/
+plugins/bluestep-one/             ← crossTool false (Claude Code only) — skills/, tools/, hooks/ (Node + mod), config/
 tools/gen-cross-tool/             ← the generator over plugins/* — npm run gen / gen:check
 bootstrap/                        ← bootstrap.ps1, the machine setup the user runs; bootstrap-v* tags from version.json
 dist/{cursor,codex}/<name>/       ← GENERATED per crossTool plugin, committed, never hand-edited

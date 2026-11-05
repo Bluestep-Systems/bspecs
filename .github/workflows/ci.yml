@@ -12,6 +12,7 @@
 #          The bootstrap-version job checks the bootstrap scripts' version
 #          stream; bootstrap-smoke runs the scripts on GitHub's Windows and
 #          macOS runners when a PR touches them or the versions file.
+#          The node-tests job runs the plugins' own Node tests (node --test).
 # ============================================================================
 
 name: CI
@@ -302,6 +303,27 @@ jobs:
       # Windows, so a hook or wrapper committed as 100644 from there shows here.
       - name: Run hook tests
         run: npm run test:hooks
+
+  # Node tests of the plugins' hooks and tools (bluestep-one's today): every
+  # *.test.mjs under plugins/*/hooks/ and plugins/*/tools/. node --test takes
+  # glob arguments from Node 21, so this job pins 22. Dependency-free, so no
+  # npm ci.
+  node-tests:
+    name: Plugin Node tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run plugin Node tests
+        run: node --test "plugins/*/hooks/**/*.test.mjs" "plugins/*/tools/**/*.test.mjs"
 
   # Release gate, one version stream per plugin: a PR that changes
   # plugins/<name>/** (except that plugin's CHANGELOG.md) must bump that

@@ -4,7 +4,7 @@ A public **plugin marketplace** for BlueStep (B6P) development, serving **Claude
 OpenAI Codex**. This repo *is* the marketplace — three of them, one per tool, all built from the
 same source in `plugins/`. Each plugin is installed on its own and released on its own: the one for
 BlueStep component workspaces, an opt-in check that keeps client data out of committed files, base
-tooling for every other repo, and the BlueStep One team tooling, which lives in its own repo.
+tooling for every other repo, and BlueStep One component building (Claude Code only).
 
 ## Set up a machine in one step (Windows)
 
@@ -39,9 +39,12 @@ Add the marketplace once per machine, then install the plugins you need:
 | **`bluestep-tools`** | Anyone working in a BlueStep component workspace | `claude plugin install bluestep-tools@bluestep --scope user` | install **bluestep-tools** | install **bluestep-tools**, trust its hooks, copy its subagents | [README](plugins/bluestep-tools/README.md) |
 | **`phi-guard`** | Machines that work on B6P projects with client data (opt-in) | `claude plugin install phi-guard@bluestep --scope user` | install **phi-guard** | install **phi-guard**, trust its hook | [README](plugins/phi-guard/README.md) |
 | **`core-tools`** | Every repo that is not a BlueStep component workspace | `claude plugin install core-tools@bluestep --scope user` | not yet | not yet | [README](plugins/core-tools/README.md) |
+| **`bluestep-one`** | Anyone building BlueStep One components (with `bluestep-tools`, which it installs) | `claude plugin install bluestep-one@bluestep --scope user` | no (Claude Code only) | no (Claude Code only) | [README](plugins/bluestep-one/README.md) |
 
-BlueStep staff: `one-tools` (BlueStep One work) is in the internal `bluestep-internal` marketplace,
-`Bluestep-Systems/bluestep-ai-internal` (staff access); its README there has the install.
+BlueStep staff: `one-tools` (BlueStep One migration work) is in the internal `bluestep-internal`
+marketplace, `Bluestep-Systems/bluestep-ai-internal` (staff access); its README there has the install. Wait
+for its release that drops its own build skill before installing `bluestep-one`, so the build
+skill and the mod do not load twice.
 
 On the Claude desktop app, install each one from **Browse plugins** instead; plugins there are
 managed by your claude.ai account, so the CLI commands do not apply. The per-tool details (VS Code,
@@ -142,7 +145,8 @@ and
 **`crossTool`.** Each manifest carries `"crossTool": true` or `false`. With `true`, the generator
 emits that plugin for Cursor and Codex and lists it in their marketplaces (bluestep-tools,
 phi-guard). With `false`, it is Claude Code-only: nothing under `dist/` and no generated
-marketplace entry (core-tools, until its `lane/`, `docs/` and `tools/` folders are emitted too).
+marketplace entry (core-tools, until its `lane/`, `docs/` and `tools/` folders are emitted too;
+bluestep-one, whose Node hooks and mod are Claude Code features).
 
 **Releasing.** Merging a version-bumped PR to `main` **is** the release — the tag and GitHub
 Release are automated, one version stream per plugin. The `version` in
@@ -157,7 +161,8 @@ plugin on update when it is unchanged**. Merged changes stay dormant until a ver
    output did not change gets a harmless no-op update).
 2. Add the entry to that plugin's `CHANGELOG.md`
    ([bluestep-tools](plugins/bluestep-tools/CHANGELOG.md),
-   [core-tools](plugins/core-tools/CHANGELOG.md); phi-guard's first release is described in its
+   [core-tools](plugins/core-tools/CHANGELOG.md),
+   [bluestep-one](plugins/bluestep-one/CHANGELOG.md); phi-guard's first release is described in its
    README). If the release changes a **hook**, say so — Codex users must re-trust hooks after a
    hook-changing update or the guardrails silently stop running.
 3. Run `npm run gen` and commit the regenerated `dist/` and marketplace manifests alongside the

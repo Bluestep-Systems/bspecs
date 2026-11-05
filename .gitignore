@@ -1,5 +1,5 @@
 node_modules/
-build/
+/build/
 .env
 .env.local
 # Non-secret but org-specific local config the skills read (logo / release-notes URLs, platform

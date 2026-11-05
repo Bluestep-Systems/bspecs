@@ -11,6 +11,37 @@ Entries before 0.42.0 were written when this was the repo's only changelog and t
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.46.0] — 2026-11-05
+
+> **A hook changed**, so Codex users re-trust bluestep-tools' hooks once: open the plugin's page and
+> **Review → trust**. This release goes out with the new `bluestep-one` plugin (BlueStep One
+> component builds, Claude Code only), which depends on this release.
+
+### Changed
+
+- **The tab guard honours the bluestep-one mod's ticket.** When the `bluestep-one` plugin's card
+  has asked about a browser script that changes data and the user pressed Proceed, it leaves a
+  ticket for that exact call in `bluestep-one-tab-guard/` under the system temp folder, and
+  `tab-guard.sh` lets the call go on instead of asking a second time. For this release only it
+  also reads `one-tools-tab-guard/`, the folder the earlier private one-tools plugin wrote; a later
+  release drops it.
+- **`reference/gql-in-a-tab.md` covers what the gateway lost.** It names the six tools release
+  26.10.21.02 took off an org's MCP, has a table of the gateway tools that cover a read instead,
+  lists what only `/gql` reads, and says how to ask the user as few times as possible for a write.
+  Building and publishing a BlueStep One component points at `/bluestep-one:reference`.
+- **`/bspecs-feedback` covers bluestep-one.** A request about the `bluestep-one` plugin is in
+  scope, and the skill sends that plugin's installed version with it.
+
+### Added
+
+- **`/b6p-setup` knows a BlueStep One workspace.** A non-empty folder with no `U######/` unit
+  folder and no rules-file marker that holds `.claude/bluestep-one.json` gets no B6P files: on
+  Claude Code the skill names `/bluestep-one:setup` and stops; on Cursor and Codex it says the
+  BlueStep One plugin is Claude Code only. A migration workspace (it has a `U######/` folder) is set
+  up as before.
+- **The plugin README** says BlueStep One component builders install `bluestep-one` from the same
+  marketplace (Claude Code only).
+
 ## [plugin 0.45.0] — 2026-11-05
 
 > **On Windows, `/b6p-setup` now hands over a one-step machine setup.** When the `b6p` CLI, its

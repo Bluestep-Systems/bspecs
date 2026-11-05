@@ -50,7 +50,8 @@ live there, and a claim already retested is not re-run without new cause.
 2. **Verify before believing.** For every claim that plugin content is wrong, missing, or stale:
    `grep` the shipped source under `plugins/` — feedback may be about any plugin — and check the
    last 3 version blocks of that plugin's changelog (`plugins/bluestep-tools/CHANGELOG.md`,
-   `plugins/core-tools/CHANGELOG.md`; phi-guard's first release is in its README) before deciding.
+   `plugins/core-tools/CHANGELOG.md`, `plugins/bluestep-one/CHANGELOG.md`; phi-guard's first
+   release is in its README) before deciding.
    Reports that look redundant are often genuinely uncovered — and reports that look right can be
    wrong for a purpose they didn't know existed (see the git-site-spa base precedent: the "fix"
    would have broken a production pattern). A report can be **right in its

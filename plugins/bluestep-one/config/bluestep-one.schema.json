@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Bluestep-Systems/bluestep-ai/plugins/bluestep-one/config/bluestep-one.schema.json",
+  "title": "bluestep-one project config",
+  "description": "The project's .claude/bluestep-one.json. The build skill, the tools and the hooks of bluestep-one read it; a folder without it is not a BlueStep One project, and the hooks do nothing there. uxCheck may be left out: config/defaults.json holds the defaults.",
+  "type": "object",
+  "required": ["one", "components", "testPrefix"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "one": {
+      "description": "The BlueStep One host the components are served from, and the host whose git serves the component repos.",
+      "type": "object",
+      "required": ["host", "gitHost"],
+      "additionalProperties": false,
+      "properties": {
+        "host": { "type": "string", "format": "hostname" },
+        "gitHost": { "type": "string", "format": "hostname" }
+      }
+    },
+    "components": {
+      "description": "The BlueStep One components this folder builds. A build or publish runs only on these ids, and the tab guard lets a lone build or publish of one of them on to the normal permission prompt.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "repo"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[0-9]+___[0-9]+$" },
+          "name": { "type": "string" },
+          "repo": { "description": "Path to the component's checkout, relative to this folder.", "type": "string" }
+        }
+      }
+    },
+    "testPrefix": {
+      "description": "Name prefix for test data, written out in full (no placeholders). The live check runs on test records whose names start with it.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^{}]+$"
+    },
+    "uxCheck": {
+      "description": "Thresholds of the build skill's UX check (tools/ux-check.mjs), judged on the served screen. A key left out takes the tool's default, the same as config/defaults.json.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "firstContentMs": { "description": "ms from a step's start to the first text drawn inside main that is not a skeleton.", "type": "number", "minimum": 0 },
+        "lastSkeletonMs": { "description": "ms from a step's start to the last skeleton gone; one still showing at idle stops.", "type": "number", "minimum": 0 },
+        "gqlPosts": { "description": "/gql POSTs from a step's start until idle.", "type": "integer", "minimum": 0 },
+        "layoutShift": { "description": "Cumulative layout shift of a step, the browser's metric (0.1 is its 'good' bound).", "type": "number", "minimum": 0 },
+        "consoleErrors": { "description": "console.error calls, uncaught errors and rejections during a step.", "type": "integer", "minimum": 0 },
+        "failedRequests": { "description": "Requests answered 400 or over, or not answered, during a step.", "type": "integer", "minimum": 0 },
+        "duplicateNames": { "description": "Pairs of focusable controls with one accessible name inside one card or form section.", "type": "integer", "minimum": 0 },
+        "idleMs": { "description": "Quiet (no DOM change in main, no /gql call) that ends a step.", "type": "number", "minimum": 0 },
+        "maxMs": { "description": "A step not idle by then stops the gate.", "type": "number", "minimum": 0 },
+        "skeleton": { "description": "CSS selector of what counts as a skeleton.", "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

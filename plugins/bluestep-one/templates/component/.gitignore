@@ -1,0 +1,18 @@
+# The app's published ComponentHost types — downloaded, never committed.
+# README.md has the command. They describe the host that is deployed, so a copy
+# pinned in git would be a snapshot of a contract that keeps moving.
+#
+# Anchored with a leading slash, all of these: an unanchored `types/` would also
+# swallow `src/types/`, so a perfectly ordinary source directory of that name
+# would go unpushed and the build would fail on a file that exists on your disk.
+/types/
+
+# Editor-only tooling. The build refuses a repo that DECLARES dependencies (any
+# of the four fields), so anything installed to make an editor happy has to stay
+# uncommitted. A dependency-free package.json is legal — un-ignore it if you
+# have a reason to commit one.
+/node_modules/
+/package.json
+/package-lock.json
+/pnpm-lock.yaml
+/yarn.lock
