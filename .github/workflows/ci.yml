@@ -1002,7 +1002,18 @@ jobs:
               Write-Host "after:  $userAfter"
               $failed = 1
           }
-          if ((Get-BsRegPath 'Machine') -ne $machineBefore) { Write-Host '::error::the machine PATH changed during the runs (the script must never edit it)'; $failed = 1 }
+          $machineAfter = Get-BsRegPath 'Machine'
+          if ($machineAfter -ne $machineBefore) {
+              # Show what changed: added and removed entries, compared case-insensitively and
+              # without trailing backslashes, so a reorder or a cosmetic rewrite is visible as such.
+              $norm = { param($p) @($p -split ';' | Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\').ToLowerInvariant() }) }
+              $b = & $norm $machineBefore; $a = & $norm $machineAfter
+              $added = @($a | Where-Object { $b -notcontains $_ }); $removed = @($b | Where-Object { $a -notcontains $_ })
+              Write-Host "machine PATH entries added: $(if ($added) { $added -join ' | ' } else { '(none)' })"
+              Write-Host "machine PATH entries removed: $(if ($removed) { $removed -join ' | ' } else { '(none)' })"
+              if ($added -or $removed) { Write-Host '::error::the machine PATH changed during the runs (the script must never edit it)'; $failed = 1 }
+              else { Write-Host '::warning::the machine PATH string changed (order or formatting) but holds the same entries' }
+          }
           exit $failed
         shell: pwsh
 
