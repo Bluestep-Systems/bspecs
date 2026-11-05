@@ -32,23 +32,26 @@ case $? in
   1) exit 0 ;; # no mutation: reads and page checks go on
 esac
 
-# The one-tools plugin's tab-guard mod shows its own card first. When the user presses Proceed
+# The bluestep-one plugin's tab-guard mod shows its own card first. When the user presses Proceed
 # there, it leaves a ticket for this exact call: a file named by the call's tool_use_id, in
-# one-tools-tab-guard/ under the system temp folder, fresh for two minutes. one-tools' own hook
-# checks what the ticket holds; this one only needs to know the user already said yes to this
+# bluestep-one-tab-guard/ under the system temp folder, fresh for two minutes. bluestep-one's own
+# hook checks what the ticket holds; this one only needs to know the user already said yes to this
 # call, so it goes on when a fresh ticket by that name exists and asks otherwise. Without this,
 # Proceed was followed by this hook's prompt for the same call. Keep the folder name and the age
-# in step with one-tools (hooks/lib/tab-script.mjs).
+# in step with bluestep-one (hooks/lib/tab-script.mjs). one-tools-tab-guard/ is the folder the
+# old private one-tools plugin wrote; drop it after one release cycle.
 # Only the real top-level key counts: inside the script's text a quote arrives escaped (\").
 ids=$(printf '%s' "$HOOK_INPUT" | grep -Eo '"tool_use_id"[[:space:]]*:[[:space:]]*"[A-Za-z0-9_-]+"' | sed -E 's/.*"([A-Za-z0-9_-]+)"$/\1/' | sort -u)
 if [ -n "$ids" ] && [ "$(printf '%s\n' "$ids" | wc -l)" -eq 1 ]; then
   for dir in "$TMPDIR" "$TEMP" "$TMP" /tmp; do
     [ -n "$dir" ] || continue
     command -v cygpath >/dev/null 2>&1 && dir=$(cygpath -u "$dir")
-    ticket="${dir%/}/one-tools-tab-guard/$ids"
-    if [ -f "$ticket" ] && [ -n "$(find "$ticket" -mmin -2 2>/dev/null)" ]; then
-      exit 0
-    fi
+    for folder in bluestep-one-tab-guard one-tools-tab-guard; do
+      ticket="${dir%/}/$folder/$ids"
+      if [ -f "$ticket" ] && [ -n "$(find "$ticket" -mmin -2 2>/dev/null)" ]; then
+        exit 0
+      fi
+    done
   done
 fi
 

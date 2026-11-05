@@ -1,0 +1,16 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "<name>-canvas",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "<absolute path of the plugin's tools/serve-canvas.mjs>",
+        "<absolute path of the build repo>/mockups/<name>",
+        "<port>",
+        "<first screen frame>.html (an unpacked Design artifact export; a standalone zip export: its .dc.html)"
+      ],
+      "port": "<the same port, as a number>"
+    }
+  ]
+}

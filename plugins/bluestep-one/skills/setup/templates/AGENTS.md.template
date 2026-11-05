@@ -1,0 +1,21 @@
+# {{PROJECT_NAME}}
+
+<!-- bluestep-one project-template 1 -->
+
+> Always-on rules for AI coding agents in this project. Cursor, Codex and most agents read
+> `AGENTS.md` natively; Claude Code reads it through the one-line bridge file next to it.
+> Project rules go here.
+
+**Rule sets.** This is a BlueStep One component workspace. Components are built, published and
+checked with `/bluestep-one:build`, one gate at a time; the details of each gate and the BlueStep
+One rules, patterns and gotchas are in `/bluestep-one:reference`. The project's values (the
+BlueStep One host and git host, the components, the test-data prefix) are in
+`.claude/bluestep-one.json`; no rule below repeats them. The B6P platform rules and the GraphQL
+reference come from the `bluestep-tools` plugin.
+
+- Never edit `types/`: the seven type files are downloaded before every publish.
+- Stage files by name; never `git add .` in a component repo (its remote is the platform's git).
+- Publish only on the user's yes for that publish, unless a rule below says otherwise.
+- Live checks run only on test records named with the test-data prefix.
+
+Add the project's own rules below this line, one bullet each, with who decided and when.

@@ -1,0 +1,9 @@
+{
+  "name": "bluestep-one",
+  "description": "Build BlueStep One components on Claude Code: set up a component workspace, then build, publish and check a component one gate at a time (fresh types, type check and tests, copies, required fields, draft push, build and publish from a signed-in tab, served-sha, UX and design checks), with an on-demand BlueStep One reference and a tab guard for browser GraphQL calls. Needs bluestep-tools.",
+  "version": "0.1.0",
+  "types": "./types/index.d.ts",
+  "author": { "name": "BlueStep Systems" },
+  "crossTool": false,
+  "dependencies": [{ "name": "bluestep-tools", "version": ">=0.46.0" }]
+}

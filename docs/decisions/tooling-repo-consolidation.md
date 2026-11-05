@@ -1,7 +1,8 @@
 # ADR: One tooling repo per visibility, several plugins per repo
 
-**Status:** Accepted (2026-11-03). Phases 1 to 3 are done (phase 2 rolled out 2026-11-04, phase 3
-on 2026-11-05; see "Phase 2 amendment" and "Phase 3 amendment"). Phases 4 and 5 are planned.
+**Status:** Accepted (2026-11-03). Phases 1 to 3 and 5 are done (phase 2 rolled out 2026-11-04,
+phases 3 and 5 on 2026-11-05; see "Phase 2 amendment", "Phase 3 amendment" and "Phase 5
+amendment"). Phase 4 (optional) is still planned.
 
 **Date:** 2026-11-03
 
@@ -63,6 +64,8 @@ hold no client data.
      it. There is no hook-side signal for "is this other plugin installed"; the folder test is the
      cheapest one, it is skipped outside that layout, and the nudge line admits it can be wrong
      for an install that reached the machine another way.
+     Amended in the "Phase 5 amendment": a plugin may run another plugin's tool through the root
+     that plugin's loaded skill shows.
 5. **phi-guard is its own opt-in plugin.** Not every client handles PHI, so the write-time check
    is installed by whoever owns a machine that works on such projects, once per machine (user
    scope). It acts only inside B6P projects, and a project turns it off with
@@ -134,6 +137,8 @@ settings set `extraKnownMarketplaces`, they need the new repo name.
   its prove-out is the "Prove-out (phase 2)" section below, since the spec folder is not committed)
 - Spec: `.claude/specs/internal-marketplace/` in the internal repo's checkout (phase 3; not
   committed; its record is the "Phase 3 amendment" below)
+- Spec: `.claude/specs/bluestep-one-public/` in the internal repo's checkout (phase 5; not
+  committed; its record is the "Phase 5 amendment" below)
 - Layout: `plugins/bluestep-tools/`, `plugins/core-tools/`, `plugins/phi-guard/`;
   marketplace `.claude-plugin/marketplace.json`; catalog [`README.md`](../../README.md)
 - phi-guard: [`plugins/phi-guard/README.md`](../../plugins/phi-guard/README.md); canary nudge in
@@ -525,3 +530,73 @@ internal repo; HTTPS-only runs used environment-only git config with the SSH key
 - The desktop app's chat side past *Connect GitHub*.
 - What `autoUpdate` defaults to when no value is set, on the CLI.
 - How a plugin skill is named in `skillOverrides` (relevant to a later one-tools change).
+
+## Phase 5 amendment
+
+Built 2026-11-05. Phase 5 (decision 8, item 5) is done as a new public plugin, **`bluestep-one`**,
+in `plugins/bluestep-one/` and in the `bluestep` marketplace. It is Claude Code only
+(`crossTool: false`): its tools, tab guard and mod are Node code, which the cross-tool emitters do
+not carry. Spec: `.claude/specs/bluestep-one-public/` in the internal repo's checkout (not
+committed); this section is its record.
+
+**What went public.**
+
+- The build skill (`/bluestep-one:build`) with its gates, the tools those gates run, the component
+  and spec templates, and a setup skill (`/bluestep-one:setup`) that writes the plugin's own
+  `.claude/bluestep-one.json`.
+- The on-demand BlueStep One reference (`/bluestep-one:reference`). Entries moved one by one, by
+  their "Applies to" line: an entry that applies to any BlueStep One component went public, from
+  whatever file held it; an entry that applies to a migration stayed. Moved entries keep their ids
+  in their headings, so existing citations still find them.
+- The tab guard and its mod.
+- A dependency on `bluestep-tools`, `>=0.46.0` (the release whose bash tab guard reads the new
+  ticket folder). A dependency in the same marketplace is installed for the user, and the range is
+  a hard gate: below it the plugin does not load (prove-out 1).
+
+**What stayed private, and why.** The migration method and the migration team's process
+(discovery, claims, cards, server asks, contribute) stay in `one-tools` on the `bluestep-internal`
+marketplace, which becomes migration-only. They are one team's way of running one migration, tied
+to its own lists and people; an outside team gets the public build and keeps its own process, and a
+build-only helper installs no one-tools. one-tools does **not** declare a dependency on
+bluestep-one: a dependency from another marketplace is not installed for the user, and the plugin
+that declares it does not load at all, its setup skill included (prove-out 1). one-tools' setup
+check and README are the gate instead.
+
+**The mod lives inside the plugin.** The Context above pictured every mod as its own plugin entry.
+This one ships inside bluestep-one, with the tab-guard hook it shares a script reader with, so the
+two cannot drift apart or be installed one without the other. Its state key and its ticket folder
+carry the plugin's own name (`bluestep-one`, `bluestep-one-tab-guard`): a mod may only set state
+under its own plugin's name (prove-out 2). bluestep-tools' bash tab guard reads both the new and
+the old ticket folder for one release cycle, then only the new one.
+
+**Audit before the first public commit.** The content was copied, cut loose from its migration
+context and sanitized in a worktree with no commits. The audit of
+[`content-sanitization-for-public-tooling.md`](content-sanitization-for-public-tooling.md) ran over
+the full diff, every commit message and the PR text before the first push: org hosts and ids,
+record, component and file ids, private repo names, people's names and sector terms became
+placeholders or generic examples. No earlier version of these files is in the public history.
+
+**Decision 4 amended.** A plugin may run another plugin's tool through the root that the other
+plugin's loaded skill shows (that skill's base directory, two folders up), never through its own
+`${CLAUDE_PLUGIN_ROOT}`. one-tools' canvas skill uses this to run bluestep-one's canvas tools.
+
+**Prove-out** (Claude Code 2.1.318, a scratch profile, local marketplaces):
+
+1. A dependency by bare name (same marketplace) is installed with the plugin; the object form with
+   a version range is a hard gate. A dependency from another marketplace is not installed, and the
+   plugin shows "failed to load" until it is.
+2. A `crossTool: false` plugin with Node hooks and a mod loads, and the mod is admitted. Its tests
+   pass only once the mod's state key carries the plugin's own name.
+3. Two `PreToolUse` hooks that both answer "ask" on one call make one prompt, showing one guard's
+   reason (not always the same one).
+4. A `PreToolUse` hook with matcher `Skill` fires for a plugin skill, and its input names the
+   skill.
+5. `gen:check` lints a `crossTool: false` plugin; a line that names a Claude-Code-only file passes
+   when it starts "On Claude Code".
+6. The decision 4 amendment: a skill that loads another plugin's skill and runs a tool from that
+   root works in a `-p` session, and after the other plugin updates, the root points at the new
+   version.
+
+**Release.** One PR in this repo: `plugins/bluestep-one/`, its marketplace entry, the bluestep-tools
+tab-guard change and this amendment. Its merge produces the tags `bluestep-one-v0.1.0` and
+`bluestep-tools-v0.46.0`; the migration-only one-tools release follows in its own repo.

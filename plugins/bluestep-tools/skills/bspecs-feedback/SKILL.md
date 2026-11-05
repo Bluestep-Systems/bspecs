@@ -1,11 +1,11 @@
 ---
 name: bspecs-feedback
-description: Send a bspecs tooling-change request (a rule, skill, subagent, hook, reference file, spec/module template, or a shipped AGENTS.md rule) upstream to the team's tracker. Use when you or the user notice something about the bluestep-tools plugin itself that should change — the plugin is a read-only shared install, so a lasting fix has to land upstream in the repo.
+description: Send a bspecs tooling-change request (a rule, skill, subagent, hook, reference file, spec/module template, or a shipped AGENTS.md rule) upstream to the team's tracker. Use when you or the user notice something about the bluestep-tools or bluestep-one plugin itself that should change — the plugin is a read-only shared install, so a lasting fix has to land upstream in the repo.
 ---
 
 # /bspecs-feedback — Send a tooling-change request upstream
 
-Use this to send a change to the `bluestep-tools` plugin upstream. The installed plugin files are read-only, so editing them doesn't reach the canonical repo — a lasting fix has to land there. The skill POSTs the feedback to the **BlueHQ intake endpoint**, which files a ClickUp task and a GitHub issue on the right repo (`bspecs` / `b6p-cli` / `web`) and returns their links. No GitHub/ClickUp account needed.
+Use this to send a change to the `bluestep-tools` plugin (or the `bluestep-one` plugin) upstream. The installed plugin files are read-only, so editing them doesn't reach the canonical repo — a lasting fix has to land there. The skill POSTs the feedback to the **BlueHQ intake endpoint**, which files a ClickUp task and a GitHub issue on the right repo (`bspecs` / `b6p-cli` / `web`) and returns their links. No GitHub/ClickUp account needed.
 
 The skill POSTs to this endpoint (a concrete, live URL — not a placeholder). Assign it to a shell variable so the `curl` step below can reference `$FEEDBACK_ENDPOINT_URL`:
 
@@ -13,7 +13,7 @@ The skill POSTs to this endpoint (a concrete, live URL — not a placeholder). A
 FEEDBACK_ENDPOINT_URL="https://bluehq.bluestep.net/b/bspecs-feedback"
 ```
 
-**Scope check first.** This skill is for the **bluestep-tools plugin** (a skill is wrong, a hook misfires, a `bluestep-reference` file is misleading, a shipped `AGENTS.md` rule is stale, a missing capability), or for a B6P rule general enough to belong in **every** project. For project-local B6P domain knowledge that only matters here, capture it locally instead — a rule specific to the project goes in the project's own `AGENTS.md`.
+**Scope check first.** This skill is for the **bluestep-tools plugin** (a skill is wrong, a hook misfires, a `bluestep-reference` file is misleading, a shipped `AGENTS.md` rule is stale, a missing capability), for the **bluestep-one plugin** (its build, reference or setup skill, its tab guard, a BlueStep One rule that holds for any component), or for a B6P rule general enough to belong in **every** project. For project-local B6P domain knowledge that only matters here, capture it locally instead — a rule specific to the project goes in the project's own `AGENTS.md`.
 
 ## Steps
 
@@ -42,7 +42,7 @@ The kind set drives what you collect (pull from the conversation first; read the
 
 Fold the proposal/rationale/repro/use-case into the **`description`** field (the submitter's authoritative words). `filePath` and `currentText` are separate structured fields.
 
-Always capture the **plugin version** — `Read` `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and take its `version` field. Use the Read tool, not a shelled-out runtime (the POST step assumes only a shell is present). Fall back to `unknown` if the manifest is missing or unreadable; never block on it.
+Always capture the **plugin version** — `Read` `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` and take its `version` field. Use the Read tool, not a shelled-out runtime (the POST step assumes only a shell is present). Fall back to `unknown` if the manifest is missing or unreadable; never block on it. When the request is about the **bluestep-one** plugin (Claude Code only), read its manifest instead: a loaded `/bluestep-one:*` skill shows its base directory (`…/bluestep-one/<version>/skills/<skill>`), so `Read` `.claude-plugin/plugin.json` two folders above it (load `/bluestep-one:reference` first when no bluestep-one skill is loaded), never through this plugin's own root, and send `pluginVersion` as `bluestep-one X.Y.Z` so triage knows which plugin it is.
 
 Always capture the **runtime environment** — you know which tool you are running in (a Claude Code session knows it's Claude Code; a Cursor agent knows it's Cursor; a Codex agent knows it's Codex). State it as one short string: the tool, the tool version when known, and the surface (desktop app / CLI / IDE extension) — e.g. `Claude Code (desktop app)`, `Cursor 2.4 (IDE)`, `Codex (ChatGPT desktop app)`. Ask the user only if genuinely unsure; fall back to `unknown` rather than blocking. Older endpoint deployments ignore this key, so sending it is always safe.
 

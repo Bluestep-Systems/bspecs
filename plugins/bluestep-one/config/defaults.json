@@ -1,0 +1,14 @@
+{
+  "uxCheck": {
+    "firstContentMs": 1000,
+    "lastSkeletonMs": 3000,
+    "gqlPosts": 10,
+    "layoutShift": 0.1,
+    "consoleErrors": 0,
+    "failedRequests": 0,
+    "duplicateNames": 0,
+    "idleMs": 1500,
+    "maxMs": 30000,
+    "skeleton": ".animate-pulse, [aria-busy=\"true\"]"
+  }
+}

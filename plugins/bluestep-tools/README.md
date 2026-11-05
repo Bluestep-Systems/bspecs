@@ -4,6 +4,9 @@ The BlueStep (B6P) development plugin for **Claude Code, Cursor and OpenAI Codex
 component workspaces. It is one of the plugins in the `bluestep` marketplace; the
 [repo README](../../README.md) lists the others and has the machine setup prompt.
 
+If you build BlueStep One components, install [`bluestep-one`](../bluestep-one/README.md) from the
+same marketplace too (Claude Code only); it needs this plugin and installs it when it is missing.
+
 ## Get started
 
 Paste the prompt under **Get started** in the [repo README](../../README.md#get-started) into your AI

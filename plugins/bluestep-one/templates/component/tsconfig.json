@@ -1,0 +1,45 @@
+{
+  "//": "Copied into a component repo as tsconfig.json by /bluestep-one:build's clone step, over the platform scaffold's own.",
+  "//2": "The seven paths resolve through the repo's types link to the shared folder fetch-types.mjs fills.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "lib": [
+      "ESNext",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "paths": {
+      "#component-host": [
+        "./types/component-host"
+      ],
+      "@bluestep/form-kit": [
+        "./types/form-kit"
+      ],
+      "@bluestep/ui": [
+        "./types/ui"
+      ],
+      "@bluestep/ui/primitives": [
+        "./types/ui.primitives"
+      ],
+      "@bluestep/ui/structural": [
+        "./types/ui.structural"
+      ],
+      "@bluestep/ui/tokens": [
+        "./types/ui.tokens"
+      ],
+      "@bluestep/ui/icons": [
+        "./types/ui.icons"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}
