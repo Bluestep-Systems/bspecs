@@ -22,7 +22,9 @@ Add the marketplace once per machine, then install the plugins you need:
 | **`bluestep-tools`** | Anyone working in a BlueStep component workspace | `claude plugin install bluestep-tools@bluestep --scope user` | install **bluestep-tools** | install **bluestep-tools**, trust its hooks, copy its subagents | [README](plugins/bluestep-tools/README.md) |
 | **`phi-guard`** | Machines that work on B6P projects with client data (opt-in) | `claude plugin install phi-guard@bluestep --scope user` | install **phi-guard** | install **phi-guard**, trust its hook | [README](plugins/phi-guard/README.md) |
 | **`core-tools`** | Every repo that is not a BlueStep component workspace | `claude plugin install core-tools@bluestep --scope user` | not yet | not yet | [README](plugins/core-tools/README.md) |
-| **`one-tools`** | Teams moving a Manage system into BlueStep One; needs bluestep-tools and core-tools | `claude plugin install one-tools@bluestep --scope user` | not listed | not listed | in its own repo (staff access) |
+
+BlueStep staff: `one-tools` (BlueStep One work) is in the internal `bluestep-internal` marketplace,
+`Bluestep-Systems/one-tools` (staff access); its README there has the install.
 
 On the Claude desktop app, install each one from **Browse plugins** instead; plugins there are
 managed by your claude.ai account, so the CLI commands do not apply. The per-tool details (VS Code,
@@ -103,7 +105,7 @@ and how to keep it updated.
 **Layout and distribution.** Each plugin is a folder under `plugins/<name>/` with its own
 `.claude-plugin/plugin.json`. This repo doubles as **three marketplaces**, one per tool:
 [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) for Claude Code (one entry per
-`plugins/<name>/`, plus one-tools as a GitHub-source entry),
+`plugins/<name>/`),
 [`.cursor-plugin/marketplace.json`](.cursor-plugin/marketplace.json) for Cursor and
 [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json) for Codex — the latter two
 are **generated**, and serve the trees under `dist/cursor/<name>/` and `dist/codex/<name>/`,
