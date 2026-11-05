@@ -7,6 +7,10 @@
 #          Release — so merging a version-bump PR is the whole release step.
 #          One version stream per plugin. See the "Releasing" section of
 #          README.md.
+#          The bootstrap scripts (bootstrap/) are one more stream: the
+#          version in bootstrap/version.json is tagged bootstrap-v<version>
+#          with the same rules, and its Release (never "Latest") carries the
+#          SHA-256 of each script and the commands pinned to that tag.
 #
 # Dual-path design (GITHUB_TOKEN caveat): tags pushed with the default
 # GITHUB_TOKEN do NOT trigger other workflows — GitHub's recursive-workflow
@@ -52,7 +56,7 @@ concurrency:
 
 jobs:
   tag-and-release:
-    name: Tag plugin versions and create Releases
+    name: Tag plugin and bootstrap versions and create Releases
     runs-on: ubuntu-latest
     steps:
       # Shallow checkout is enough: we tag the checked-out HEAD of main, and
@@ -64,7 +68,7 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Tag each plugin version and create its Release if missing
+      - name: Tag each plugin and bootstrap version and create its Release if missing
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -201,9 +205,164 @@ jobs:
             fi
           done
 
+          # ---------------------------------------------------------------
+          # The bootstrap scripts: one more version stream, read from
+          # bootstrap/version.json and tagged bootstrap-v<version> with the
+          # same rules as above (tag-exists skip, race-safe push, never
+          # --force, errors collected). Its Release notes carry the SHA-256
+          # of each script at the tag and the commands pinned to that tag.
+          # ---------------------------------------------------------------
+          BS_FILE="bootstrap/version.json"
+          BS_PS1="bootstrap/bootstrap.ps1"
+          BS_SH="bootstrap/bootstrap.sh"
+          BS_RAW="https://raw.githubusercontent.com/${GITHUB_REPOSITORY:-Bluestep-Systems/bluestep-ai}"
+
+          # blob_sha256 PATH — SHA-256 of the file as committed (the bytes
+          # raw.githubusercontent.com serves), not of the working-tree copy.
+          blob_sha256() {
+            git cat-file blob "HEAD:$1" | sha256sum | awk '{ print $1 }'
+          }
+
+          # script_version FILE — the $ScriptVersion = '<v>' literal in the
+          # .ps1 ('' when absent). Same regex as ci.yml's bootstrap-version job.
+          script_version() {
+            node -e '
+              const m = /^[ \t]*\$ScriptVersion = \x27([^\x27]*)\x27/m.exec(require("fs").readFileSync(process.argv[1], "utf8"));
+              process.stdout.write(m ? m[1] : "");' "$1"
+          }
+
+          # bootstrap_notes TAG VERSION — the Release body, on stdout.
+          bootstrap_notes() {
+            local tag="$1" ver="$2" url_ps1 url_sh h_ps1 h_sh
+            url_ps1="$BS_RAW/$tag/$BS_PS1"
+            url_sh="$BS_RAW/$tag/$BS_SH"
+            h_ps1="$(blob_sha256 "$BS_PS1")"
+            cat <<NOTES
+          BlueStep machine bootstrap $ver. It installs the tools the BlueStep agent plugins need, per user and with no admin rights. Run it in your own terminal, never from an agent.
+
+          ## SHA-256
+
+          | File | SHA-256 |
+          |---|---|
+          | \`$BS_PS1\` | \`$h_ps1\` |
+          NOTES
+            if git cat-file -e "HEAD:$BS_SH" 2>/dev/null; then
+              h_sh="$(blob_sha256 "$BS_SH")"
+              echo "| \`$BS_SH\` | \`$h_sh\` |"
+            fi
+            cat <<NOTES
+
+          ## Windows (PowerShell)
+
+          One-liner:
+
+          \`\`\`powershell
+          irm $url_ps1 | iex
+          \`\`\`
+
+          With options (\`iex\` cannot pass parameters; a script block can):
+
+          \`\`\`powershell
+          & ([scriptblock]::Create((irm $url_ps1))) -DryRun
+          \`\`\`
+
+          Download, check the hash, read, run:
+
+          \`\`\`powershell
+          irm $url_ps1 -OutFile bootstrap.ps1
+          if ((Get-FileHash .\\bootstrap.ps1 -Algorithm SHA256).Hash -eq '$h_ps1') { 'hash ok' } else { 'HASH MISMATCH - do not run it' }
+          notepad .\\bootstrap.ps1
+          powershell -NoProfile -ExecutionPolicy Bypass -File .\\bootstrap.ps1
+          \`\`\`
+          NOTES
+            if [ -n "${h_sh:-}" ]; then
+              cat <<NOTES
+
+          ## macOS and Linux (bash)
+
+          One-liner:
+
+          \`\`\`bash
+          curl -fsSL $url_sh | bash
+          \`\`\`
+
+          With options:
+
+          \`\`\`bash
+          curl -fsSL $url_sh | bash -s -- --dry-run
+          \`\`\`
+
+          Download, check the hash, read, run:
+
+          \`\`\`bash
+          curl -fsSLo bootstrap.sh $url_sh
+          echo '$h_sh  bootstrap.sh' | shasum -a 256 -c -
+          less bootstrap.sh
+          bash bootstrap.sh
+          \`\`\`
+          NOTES
+            fi
+            if git cat-file -e "HEAD:bootstrap/README.md" 2>/dev/null; then
+              printf '\nWhat a run does, how to undo it, supported platforms: [`bootstrap/README.md`](%s).\n' \
+                "https://github.com/${GITHUB_REPOSITORY:-Bluestep-Systems/bluestep-ai}/blob/$tag/bootstrap/README.md"
+            fi
+          }
+
+          if [ -f "$BS_FILE" ]; then
+            BS_TAG=""
+            if ! BS_VERSION="$(read_field "$BS_FILE" version)"; then
+              fail_plugin "$BS_FILE" "bootstrap: $BS_FILE is not valid JSON — cannot tag"
+              SUMMARY+="bootstrap: FAIL version.json is not valid JSON"$'\n'
+            elif ! [[ "$BS_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+              fail_plugin "$BS_FILE" "bootstrap: version '${BS_VERSION:-<none>}' does not look like X.Y.Z — cannot tag"
+              SUMMARY+="bootstrap: FAIL version '${BS_VERSION:-<none>}' is not X.Y.Z"$'\n'
+            elif ! git cat-file -e "HEAD:$BS_PS1" 2>/dev/null; then
+              fail_plugin "$BS_FILE" "bootstrap: $BS_PS1 is missing — nothing to release"
+              SUMMARY+="bootstrap $BS_VERSION: FAIL $BS_PS1 missing"$'\n'
+            elif [ "$(script_version "$BS_PS1")" != "$BS_VERSION" ]; then
+              # ci.yml blocks this on the PR; checked again so a mismatch is never tagged.
+              fail_plugin "$BS_PS1" "bootstrap: \$ScriptVersion in $BS_PS1 differs from $BS_FILE ($BS_VERSION) — cannot tag"
+              SUMMARY+="bootstrap $BS_VERSION: FAIL \$ScriptVersion mismatch"$'\n'
+            else
+              BS_TAG="bootstrap-v$BS_VERSION"
+            fi
+
+            if [ -n "$BS_TAG" ] && tag_exists "$BS_TAG"; then
+              SUMMARY+="bootstrap $BS_VERSION: tag $BS_TAG exists, skipped"$'\n'
+            elif [ -n "$BS_TAG" ]; then
+              BS_NOTES="$(mktemp)"
+              bootstrap_notes "$BS_TAG" "$BS_VERSION" > "$BS_NOTES"
+              git tag -a "$BS_TAG" -m "bootstrap $BS_VERSION"
+              # Never --force; a concurrent push of the same tag is success.
+              if ! git push origin "refs/tags/$BS_TAG"; then
+                if [ -n "$(git ls-remote --tags origin "refs/tags/$BS_TAG")" ]; then
+                  echo "::notice::Tag $BS_TAG was pushed concurrently — nothing to do."
+                  SUMMARY+="bootstrap $BS_VERSION: tag $BS_TAG pushed concurrently, skipped"$'\n'
+                else
+                  fail_plugin "$BS_FILE" "bootstrap: failed to push tag $BS_TAG"
+                  SUMMARY+="bootstrap $BS_VERSION: FAIL push of $BS_TAG"$'\n'
+                fi
+              else
+                echo "Pushed tag $BS_TAG."
+                # Never "Latest": the repo's Latest release stays bluestep-tools'.
+                if gh release view "$BS_TAG" >/dev/null 2>&1; then
+                  echo "::notice::Release $BS_TAG already exists — skipping create"
+                  SUMMARY+="bootstrap $BS_VERSION: tagged $BS_TAG, Release already existed"$'\n'
+                elif gh release create "$BS_TAG" --verify-tag \
+                  --notes-file "$BS_NOTES" --title "bootstrap $BS_VERSION" --latest=false; then
+                  SUMMARY+="bootstrap $BS_VERSION: tagged $BS_TAG, Release created with the script hashes (--latest=false)"$'\n'
+                else
+                  fail_plugin "$BS_FILE" "bootstrap: tag $BS_TAG pushed but creating its Release failed — create it by hand"
+                  SUMMARY+="bootstrap $BS_VERSION: FAIL Release for $BS_TAG"$'\n'
+                fi
+              fi
+              rm -f "$BS_NOTES"
+            fi
+          fi
+
           printf '%s' "$SUMMARY"
           if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-            { echo '### Plugin releases'; echo; printf '%s' "$SUMMARY" | sed 's/^/- /'; } >> "$GITHUB_STEP_SUMMARY"
+            { echo '### Releases'; echo; printf '%s' "$SUMMARY" | sed 's/^/- /'; } >> "$GITHUB_STEP_SUMMARY"
           fi
           exit "$FAILED"
         shell: bash

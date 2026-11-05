@@ -50,7 +50,10 @@ variable exported in a shell never reaches a GUI-launched app.
 ## Requirements
 
 - **git** — every tool downloads the plugin with git, and on Windows the hooks run in Git Bash.
-- **The `b6p` CLI, 0.8.1 or later, on PATH** — the `/b6p-*` skills call a bare `b6p`. With Node.js:
+- **The `b6p` CLI on PATH, at or above `tools.b6p.min`** in
+  [`skills/b6p-setup/assets/tool-versions.json`](skills/b6p-setup/assets/tool-versions.json) (the
+  one file that holds every tool's minimum and pinned version) — the `/b6p-*` skills call a bare
+  `b6p`. With Node.js:
   `npm i -g @bluestep-systems/b6p-cli@latest`; without it, a binary from
   `https://github.com/Bluestep-Systems/b6p-cli/releases` (macOS arm64 and Windows x64).
 - **`B6PT_TOKEN`** in your environment, for the bundled gateway MCP (see above).

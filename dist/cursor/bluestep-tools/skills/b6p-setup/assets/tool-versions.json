@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "tools": {
+    "node": {
+      "min": "20.0.0",
+      "pinned": "26.13.0",
+      "assets": {
+        "windows-x64": { "url": "https://nodejs.org/dist/v26.13.0/node-v26.13.0-win-x64.zip", "sha256": "dcc60d59a0746999f99064a01c020445d54d84228c691cdbf25b49ac3b59150a" },
+        "macos-arm64": { "url": "https://nodejs.org/dist/v26.13.0/node-v26.13.0-darwin-arm64.tar.gz", "sha256": "d38bd5e5a2ddce6bbb5ce45e46e208337da4d51fffe611e567fd32073d6439f6" },
+        "macos-x64": { "url": "https://nodejs.org/dist/v26.13.0/node-v26.13.0-darwin-x64.tar.gz", "sha256": "525c9b29bb0263d687de60a4cec0e2a6db876a8eb032369e5795eca71e7c358e" },
+        "linux-x64": { "url": "https://nodejs.org/dist/v26.13.0/node-v26.13.0-linux-x64.tar.gz", "sha256": "5848553868b402d3fabb5b09270649977780a390f832155721025a08b5104455" }
+      }
+    },
+    "git": {
+      "min": "2.40.0",
+      "pinned": "2.56.0.4",
+      "assets": {
+        "windows-x64": { "url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.4/Git-2.56.0.4-64-bit.exe", "sha256": "4961a4a8cc778d8b6e00a5819e5fe4d078b754555aff7aedc2d77a5d74c2de80", "args": ["/VERYSILENT", "/NORESTART", "/CURRENTUSER"] }
+      }
+    },
+    "gh": {
+      "min": "2.40.0",
+      "pinned": "2.103.3",
+      "assets": {
+        "windows-x64": { "url": "https://github.com/cli/cli/releases/download/v2.103.3/gh_2.103.3_windows_amd64.zip", "sha256": "98d0cfa794721665d7973dd728c78aff7bd836d58f10f6d7a03568eccb0a22e0" },
+        "macos-arm64": { "url": "https://github.com/cli/cli/releases/download/v2.103.3/gh_2.103.3_macOS_arm64.zip", "sha256": "d700207eae9ae98fe2b89535c2c087c07823d4628c56364695a5a07ef311c062" },
+        "macos-x64": { "url": "https://github.com/cli/cli/releases/download/v2.103.3/gh_2.103.3_macOS_amd64.zip", "sha256": "a2f86418f4350ae6e9ec60d5000bdf7665728436946a97fc27fe50e6ae752682" },
+        "linux-x64": { "url": "https://github.com/cli/cli/releases/download/v2.103.3/gh_2.103.3_linux_amd64.tar.gz", "sha256": "4c806978ffce1cec70853302a56d70ac6da4f19bae7adca4e1a8ab00633dd91d" }
+      }
+    },
+    "b6p": {
+      "min": "0.8.1",
+      "pinned": "0.8.2",
+      "assets": {
+        "windows-x64": { "url": "https://github.com/Bluestep-Systems/b6p-cli/releases/download/v0.8.2/b6p-windows-x64.exe", "sha256": "2169bcc7c7fc75a9d341c7f0d1d9381a6147ea7e7374ced9232caeb1e8adf573" },
+        "macos-arm64": { "url": "https://github.com/Bluestep-Systems/b6p-cli/releases/download/v0.8.2/b6p-macos-arm64", "sha256": "7b0fb12539d1b0d35ada7708cad8d7ec5c8b65697d77fa19feacc4b269fae19d" }
+      },
+      "npm": {
+        "package": "@bluestep-systems/b6p-cli",
+        "version": "0.8.2",
+        "integrity": "sha512-c1sLCHP5xG1N8+KaQ8Er+hrf9uq86QheKXab8NZaaTPQiQwEAUDqxN+v6VzNyWVWHKrpGKOjoAurXM7PLhmkGA=="
+      }
+    },
+    "claude": {
+      "min": "2.1.316",
+      "pinned": "2.1.318",
+      "assets": {
+        "windows-x64": { "url": "https://downloads.claude.ai/claude-code-releases/2.1.318/win32-x64/claude.exe", "sha256": "b9aa5b08dc2cc46ea77d334dce792d1b8fdbb3a43bb290efdebdc905b1181082" },
+        "macos-arm64": { "url": "https://downloads.claude.ai/claude-code-releases/2.1.318/darwin-arm64/claude", "sha256": "677a2ea7bf576cedd20e191d973914ed8a41796f53a63b1923381ddc4d5b5e7d" },
+        "macos-x64": { "url": "https://downloads.claude.ai/claude-code-releases/2.1.318/darwin-x64/claude", "sha256": "ee9c8577a528aa8efa478bf552b17efa40bb58aa4981d2913c13d383a4d409a4" },
+        "linux-x64": { "url": "https://downloads.claude.ai/claude-code-releases/2.1.318/linux-x64/claude", "sha256": "708c77b204db30086ff6f1ed34577bda03e1be74ced80557cbf7b54249ebf0bd" }
+      }
+    }
+  },
+  "plugins": {
+    "one-tools": {
+      "id": "one-tools@bluestep-internal",
+      "marketplace": { "name": "bluestep-internal", "source": "https://github.com/Bluestep-Systems/one-tools.git" },
+      "accessRepo": "Bluestep-Systems/one-tools"
+    }
+  }
+}
