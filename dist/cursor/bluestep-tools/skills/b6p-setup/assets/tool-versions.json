@@ -55,8 +55,8 @@
   "plugins": {
     "one-tools": {
       "id": "one-tools@bluestep-internal",
-      "marketplace": { "name": "bluestep-internal", "source": "https://github.com/Bluestep-Systems/one-tools.git" },
-      "accessRepo": "Bluestep-Systems/one-tools"
+      "marketplace": { "name": "bluestep-internal", "source": "https://github.com/Bluestep-Systems/bluestep-ai-internal.git" },
+      "accessRepo": "Bluestep-Systems/bluestep-ai-internal"
     }
   }
 }
