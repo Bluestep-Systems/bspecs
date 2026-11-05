@@ -24,7 +24,8 @@
       "name": "one-tools",
       "source": {
         "source": "github",
-        "repo": "Bluestep-Systems/one-tools"
+        "repo": "Bluestep-Systems/one-tools",
+        "sha": "265738bd9c2db9bd4edd91ab4339c13b88b2de99"
       },
       "description": "Work on BlueStep One in a team: set up a project, claim a slice, discover the legacy Manage system, log findings and send asks, draw review canvases, build and check components, with a re-checked reference and a merge report to component guide. Needs bluestep-tools and core-tools."
     }
