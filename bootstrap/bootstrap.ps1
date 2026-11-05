@@ -665,17 +665,49 @@ public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wP
         }
     }
 
+    function Get-GitInstallLocation {
+        # Where Git for Windows' installer says Git lives (its Inno Setup uninstall entry), user
+        # entry first. $null when there is none.
+        $sub = 'Software\Microsoft\Windows\CurrentVersion\Uninstall\Git_is1'
+        foreach ($hive in [Microsoft.Win32.Registry]::CurrentUser, [Microsoft.Win32.Registry]::LocalMachine) {
+            $k = $null
+            try {
+                $k = $hive.OpenSubKey($sub)
+                if ($k) {
+                    $v = [string]$k.GetValue('Inno Setup: App Path')
+                    if (-not $v) { $v = [string]$k.GetValue('InstallLocation') }
+                    if ($v) { return $v.TrimEnd('\') }
+                }
+            } catch { } finally { if ($k) { $k.Close() } }
+        }
+        return $null
+    }
+
     function Install-GitTool($Asset, $Meta) {
         # Git for Windows' own installer, per user (Run 1: /VERYSILENT /NORESTART /CURRENTUSER,
         # no UAC, installs under %LOCALAPPDATA%\Programs\Git and adds its cmd folder to the user PATH).
+        # The installer reuses the folder of an earlier Git install it finds in the registry (a
+        # machine-wide Git in Program Files, first seen on a CI runner), so the per-user folder is
+        # always passed with /DIR, which wins over the remembered one.
+        $target = Join-Path $env:LOCALAPPDATA 'Programs\Git'
         $dl = New-EmptyDir (Join-Path $toolsRoot '.download') 'git'
         try {
             $file = Get-VerifiedDownload $Asset.url $Asset.sha256 $dl $Meta.Label $Meta.DlEta
             $instArgs = @($Asset.args | ForEach-Object { [string]$_ })
+            if (-not ($instArgs | Where-Object { $_ -like '/DIR=*' })) { $instArgs += "/DIR=$target" }
             Write-Log "    running the Git installer: $([IO.Path]::GetFileName($file)) $($instArgs -join ' ')"
             $r = Invoke-Captured $file $instArgs 1200 -Activity 'Installing Git (no window opens)' -Eta 'about a minute'
             if ($r.ExitCode -ne 0) { throw "Git installer exit $($r.ExitCode) $($r.Error)" }
-            return (Join-Path $env:LOCALAPPDATA 'Programs\Git\cmd')
+            $cmdDir = Join-Path $target 'cmd'
+            if (Test-Path -LiteralPath (Join-Path $cmdDir 'git.exe')) { return $cmdDir }
+            # Not where we asked: say where it went instead of a bare "missing".
+            $actual = Get-GitInstallLocation
+            if ($actual -and (Test-Path -LiteralPath (Join-Path $actual 'cmd\git.exe'))) {
+                Say "    the Git installer used $actual (the folder of an earlier Git install), not $target" 'warn'
+                return (Join-Path $actual 'cmd')
+            }
+            $where = if ($actual) { "; the installer reports its folder as $actual, left by an earlier Git install" } else { '' }
+            throw "the Git installer finished but git.exe is not in $cmdDir$where"
         } finally {
             Remove-DirQuiet $dl
         }
@@ -757,7 +789,7 @@ public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wP
             Say "    would download $($asset.url)"
             Say "    would check SHA-256 $($asset.sha256)"
             switch ($meta.Kind) {
-                'installer' { Say "    would run it with: $(@($asset.args) -join ' ') (installs under $(Split-Path -Parent $meta.OurDir))" }
+                'installer' { Say "    would run it with: $(@($asset.args) -join ' ') /DIR=$(Split-Path -Parent $meta.OurDir)" }
                 'claude'    { Say "    would run: claude.exe install $pinned (launcher in $($meta.OurDir))" }
                 default     { Say "    would install it under $($meta.OurDir)" }
             }
