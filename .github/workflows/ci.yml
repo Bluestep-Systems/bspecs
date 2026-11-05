@@ -1011,8 +1011,21 @@ jobs:
               $added = @($a | Where-Object { $b -notcontains $_ }); $removed = @($b | Where-Object { $a -notcontains $_ })
               Write-Host "machine PATH entries added: $(if ($added) { $added -join ' | ' } else { '(none)' })"
               Write-Host "machine PATH entries removed: $(if ($removed) { $removed -join ' | ' } else { '(none)' })"
-              if ($added -or $removed) { Write-Host '::error::the machine PATH changed during the runs (the script must never edit it)'; $failed = 1 }
-              else { Write-Host '::warning::the machine PATH string changed (order or formatting) but holds the same entries' }
+              # The runner is elevated, and elevated, Git for Windows' installer writes the machine
+              # PATH (not the script, which only writes the user PATH): it adds the cmd folder of the
+              # Git it installs and drops the entries of the Git install it replaces. That much is
+              # expected here and is a warning. With /o:PathOption=Cmd it must add cmd only, never
+              # usr\bin or the mingw/ucrt bin folder. Anything else is an error.
+              $ourGit = (Join-Path $env:LOCALAPPDATA 'Programs\Git').ToLowerInvariant()
+              $badAdd = @($added | Where-Object { $_ -ne "$ourGit\cmd" })
+              $badRemove = @($removed | Where-Object { $_ -notmatch '\\git(\\|$)' })
+              if ($badAdd -or $badRemove) {
+                  if ($badAdd) { Write-Host "unexpected machine PATH additions: $($badAdd -join ' | ')" }
+                  if ($badRemove) { Write-Host "unexpected machine PATH removals: $($badRemove -join ' | ')" }
+                  Write-Host '::error::the machine PATH changed beyond what the elevated Git installer does (the script must never edit it)'; $failed = 1
+              } elseif ($added -or $removed) {
+                  Write-Host '::warning::the elevated Git installer changed the machine PATH (expected on an elevated runner; a normal user cannot write it)'
+              } else { Write-Host '::warning::the machine PATH string changed (order or formatting) but holds the same entries' }
           }
           exit $failed
         shell: pwsh

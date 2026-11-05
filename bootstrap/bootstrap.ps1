@@ -1834,7 +1834,17 @@ public static extern IntPtr SendMessageTimeout(IntPtr hWnd, uint Msg, UIntPtr wP
         Write-Log "PowerShell $($PSVersionTable.PSVersion) $($PSVersionTable.PSEdition); Windows $([Environment]::OSVersion.Version)"
         $elevated = $false
         try { $elevated = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator) } catch { }
-        if ($elevated) { Say 'note: this terminal runs as administrator. It is not needed; tools still go to your own user folder.' 'warn' }
+        if ($elevated) {
+            # Run as administrator, Git for Windows' installer writes the machine PATH instead of
+            # yours (seen on a CI runner), so warn before anything is installed.
+            Say ''
+            Say 'WARNING: this window runs as administrator. This script sets things up for your own user and' 'warn'
+            Say '  does not need it; as administrator, the Git installer changes the PATH for every user of this' 'warn'
+            Say '  computer. Best: close this window, open PowerShell normally (not "Run as administrator") and' 'warn'
+            Say '  run the script again. To go on anyway, wait: it starts in 10 seconds (Ctrl+C stops it).' 'warn'
+            Write-Log 'running elevated: warned the user'
+            if (-not $DryRun -and -not [Console]::IsInputRedirected) { Start-Sleep -Seconds 10 }
+        }
 
         # Step 1: detect.
         Say "platform: $($platform.Pair)"

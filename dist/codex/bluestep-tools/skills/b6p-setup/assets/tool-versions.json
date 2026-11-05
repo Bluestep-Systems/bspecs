@@ -15,7 +15,7 @@
       "min": "2.40.0",
       "pinned": "2.56.0.4",
       "assets": {
-        "windows-x64": { "url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.4/Git-2.56.0.4-64-bit.exe", "sha256": "4961a4a8cc778d8b6e00a5819e5fe4d078b754555aff7aedc2d77a5d74c2de80", "args": ["/VERYSILENT", "/NORESTART", "/CURRENTUSER"] }
+        "windows-x64": { "url": "https://github.com/git-for-windows/git/releases/download/v2.56.0.windows.4/Git-2.56.0.4-64-bit.exe", "sha256": "4961a4a8cc778d8b6e00a5819e5fe4d078b754555aff7aedc2d77a5d74c2de80", "args": ["/VERYSILENT", "/NORESTART", "/CURRENTUSER", "/o:PathOption=Cmd"] }
       }
     },
     "gh": {
