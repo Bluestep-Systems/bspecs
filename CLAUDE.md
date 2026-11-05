@@ -15,7 +15,7 @@ file carries only what a session needs before touching anything.
 ## Architecture
 
 ```text
-.claude-plugin/marketplace.json   ← Claude Code marketplace ("bluestep"): the three plugins + one-tools (GitHub source)
+.claude-plugin/marketplace.json   ← Claude Code marketplace ("bluestep"): the three plugins (one-tools is internal since phase 3)
 .cursor-plugin/marketplace.json   ← GENERATED Cursor marketplace, serves dist/cursor/
 .agents/plugins/marketplace.json  ← GENERATED Codex marketplace, serves dist/codex/
 plugins/<name>/                   ← THE SOURCE OF TRUTH — author only here

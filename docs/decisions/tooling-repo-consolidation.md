@@ -1,7 +1,7 @@
 # ADR: One tooling repo per visibility, several plugins per repo
 
-**Status:** Accepted (2026-11-03). Phases 1 and 2 are done (phase 2 rolled out 2026-11-04; see
-"Phase 2 amendment"). Phases 3 to 5 are planned.
+**Status:** Accepted (2026-11-03). Phases 1 to 3 are done (phase 2 rolled out 2026-11-04, phase 3
+on 2026-11-05; see "Phase 2 amendment" and "Phase 3 amendment"). Phases 4 and 5 are planned.
 
 **Date:** 2026-11-03
 
@@ -132,6 +132,8 @@ settings set `extraKnownMarketplaces`, they need the new repo name.
   "Prove-out" section records the `crossTool` test)
 - Spec: `.claude/specs/marketplace-rename/{requirements,design,tasks}.md` (phase 2; the record of
   its prove-out is the "Prove-out (phase 2)" section below, since the spec folder is not committed)
+- Spec: `.claude/specs/internal-marketplace/` in the internal repo's checkout (phase 3; not
+  committed; its record is the "Phase 3 amendment" below)
 - Layout: `plugins/bluestep-tools/`, `plugins/core-tools/`, `plugins/phi-guard/`;
   marketplace `.claude-plugin/marketplace.json`; catalog [`README.md`](../../README.md)
 - phi-guard: [`plugins/phi-guard/README.md`](../../plugins/phi-guard/README.md); canary nudge in
@@ -419,3 +421,99 @@ the issue in B. A client that does not follow a 307 on POST opens nothing.
 - **Cursor: nothing.** It follows the redirect on restart and keeps its folders. A later move is
   re-importing from the new URL, which creates a second set of folders; not suggested.
 - **Desktop app (Code tab): same as the Claude Code CLI.**
+
+## Phase 3 amendment
+
+Built and rolled out 2026-11-05. one-tools now lives in `plugins/one-tools/` of the private
+`Bluestep-Systems/one-tools` repo, which is the **`bluestep-internal`** marketplace, and this
+marketplace no longer lists it. Spec: `.claude/specs/internal-marketplace/` in that repo's checkout
+(not committed); this section is its record.
+
+**Picks.**
+
+- **The internal repo is `Bluestep-Systems/one-tools`, restructured in place and not renamed.**
+  Every project's one-tools config, the install instructions, clones and the access list already
+  name it, so nothing goes through a redirect. A rename stays possible later, with phase 2's rule
+  that an old name is never reused.
+- **The marketplace is `bluestep-internal`**; the plugin id is `one-tools@bluestep-internal`. The
+  plugin keeps its name (decision 4).
+- **Same layout and release scheme as here** (decision 3): `plugins/<name>/`, a root catalog README,
+  per-plugin CHANGELOG and version, `<name>-v<version>` tags and Releases cut by a copy of
+  `release-tag.yml` on merge. No generator, no Cursor or Codex output.
+- **CI in a private repo.** The version-bump job keeps the job's read-only token on its checkout so
+  `git ls-remote --tags origin` works (here it runs without credentials because this repo is
+  public); `release-tag.yml` already kept it. The organization's GitHub plan cannot make checks
+  required on a private repo, so there the checks are advisory and the rule is "merge on green".
+  The internal CI also rejects files at the plugin's old root paths, for drafts sent by an older
+  `/contribute`.
+- **Moving installs: pin, restructure, bridge, move, remove.** This entry was first pinned to the
+  last root-layout commit (#261), the internal repo was restructured (one-tools 0.10.0), and this
+  entry was then switched to a `git-subdir` source on `plugins/one-tools/` (#262), so
+  `one-tools@bluestep` kept updating with the same releases while users moved. one-tools 0.11.0
+  shipped the move: `/one-setup` reports which copy a machine has and hands over the commands
+  (`marketplace add` of the internal repo's HTTPS URL, `install one-tools@bluestep-internal`,
+  `uninstall one-tools@bluestep`, a new session); it writes the internal marketplace into a
+  project's `extraKnownMarketplaces` and renames an `enabledPlugins` key naming the old id. It
+  never writes a machine file. `/b6p-setup` is unchanged: it never named one-tools.
+- **Removal after every user moved.** one-tools had a handful of staff users; they moved together and this entry
+  was removed the same day (this change), with no fixed waiting period.
+
+**Prove-out** (Claude Code 2.1.317, scratch `CLAUDE_CONFIG_DIR` profiles, a throwaway branch of the
+internal repo; HTTPS-only runs used environment-only git config with the SSH key excluded):
+
+1. A `github` plugin source clones **over SSH only**: with no usable SSH key it fails with
+   "Permission denied (publickey)" and does not try HTTPS. A `git-subdir` source with a full
+   `https://` URL installs and updates with HTTPS credentials alone (its `owner/repo` shorthand
+   would use SSH). So the bridge used the full URL, and machines set up only for SSH needed
+   `gh auth setup-git`; on Git for Windows that helper is written with an empty first value, which
+   skips Git Credential Manager's sign-in window.
+2. The installed version comes from the plugin's manifest, not the source's commit. An unpinned
+   `github` source on a commit whose root holds no `plugin.json` installs an enabled plugin with
+   nothing in it, at a commit-hash version; hence the pin before the restructure.
+3. Switching an existing install's entry from `github` + `sha` to `git-subdir` + `ref` updates it
+   normally. `git-subdir` + `sha` holds an install still, so it is the rollback shape once the
+   repo is restructured.
+4. Two installed copies of one plugin from two marketplaces: a session loads **one** (the earlier
+   source); the other's hooks and hooks module are skipped ("Skipping duplicate hook registration
+   … already registered from another source").
+5. **Removing a plugin's entry does not freeze it.** After the marketplace updates, the plugin
+   stays in `installed_plugins.json` but shows "failed to load — Plugin … not found in
+   marketplace" and no skill, hook or module of it loads. Putting the entry back makes it load
+   again. Nothing is deleted.
+6. A project's `extraKnownMarketplaces` entry for a marketplace the machine lacks is registered at
+   session start in a **trusted** folder (`[reconcile] … (install)`), in exactly the project's
+   source shape, with nothing written to the user's settings; an untrusted folder does nothing.
+   A later `marketplace add` of the same value answers "already on disk" and declares it in the
+   user's settings, where a marketplace's `autoUpdate` lives (project and local values are
+   ignored; there is no CLI flag for it).
+7. Uninstalling one id leaves the other marketplace and its plugins alone; the remaining copy's
+   hooks module loads with no new approval.
+8. `--plugin-dir <path>` loads a checkout over an installed copy ("overrides installed version");
+   a wrong path is skipped with only a warning in `--debug`.
+9. The desktop app's chat side (Customize › Plugins) cannot add the private marketplace until
+   *Connect GitHub* is used there; its Code tab uses the same install as the CLI.
+
+**Rollout.**
+
+1. #261 (pin) merged; `one-tools@bluestep` stayed at 0.9.0.
+2. The internal restructure merged; its CI cut `one-tools-v0.10.0` and a Release (the tag push and
+   `ls-remote` work on the private repo with the kept token).
+3. #262 (bridge) merged about two minutes after #261; `one-tools@bluestep` updated to 0.10.0 from
+   `plugins/one-tools/` and a session loaded it. #262 was stacked on #261's branch and had to be
+   retargeted to `main` by hand.
+4. one-tools 0.11.0 (the move release) merged and tagged; both ids updated to it.
+5. Live check on the maintainer's machine: the move commands left one copy
+   (`one-tools@bluestep-internal`), bluestep-tools and core-tools untouched, and a new session
+   loaded it. In a conversion workspace that enabled the old id at project scope, `/one-setup`
+   reported the project-scope copy and its uninstall; the user-scope copy had already won there
+   (point 4). `/one-setup`'s writes to `.claude/settings.json` need the user's approval: a
+   `claude -p` session cannot make them, even with `acceptEdits`.
+6. The other users moved; this entry was removed (this change).
+
+**NOT OBSERVED.**
+
+- A machine whose one-tools comes from managed settings (the uninstall is refused there; the
+  organization's admin moves it).
+- The desktop app's chat side past *Connect GitHub*.
+- What `autoUpdate` defaults to when no value is set, on the CLI.
+- How a plugin skill is named in `skillOverrides` (relevant to a later one-tools change).

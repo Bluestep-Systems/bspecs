@@ -3,7 +3,7 @@
   "owner": {
     "name": "BlueStep Systems"
   },
-  "description": "BlueStep tooling for Claude Code — bluestep-tools for B6P component workspaces (spec-driven skills, b6p CLI integration, subagents, hooks, platform reference), core-tools for every other repo (core rule set, /repo-setup, /task, /plan), phi-guard for the write-time client-data check in B6P projects, and one-tools for moving a Manage system into BlueStep One and building its components.",
+  "description": "BlueStep tooling for Claude Code — bluestep-tools for B6P component workspaces (spec-driven skills, b6p CLI integration, subagents, hooks, platform reference), core-tools for every other repo (core rule set, /repo-setup, /task, /plan), and phi-guard for the write-time client-data check in B6P projects.",
   "plugins": [
     {
       "name": "bluestep-tools",
@@ -19,15 +19,6 @@
       "name": "phi-guard",
       "source": "./plugins/phi-guard",
       "description": "Write-time client-data check for B6P projects: blocks an agent's Edit or Write that looks like real client data in a committed file. Opt-in, installed per machine; acts only in B6P projects."
-    },
-    {
-      "name": "one-tools",
-      "source": {
-        "source": "git-subdir",
-        "url": "https://github.com/Bluestep-Systems/one-tools.git",
-        "path": "plugins/one-tools"
-      },
-      "description": "Work on BlueStep One in a team: set up a project, claim a slice, discover the legacy Manage system, log findings and send asks, draw review canvases, build and check components, with a re-checked reference and a merge report to component guide. Needs bluestep-tools and core-tools."
     }
   ]
 }
