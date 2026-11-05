@@ -44,13 +44,21 @@ but no rules file at all starts with a one-line offer to set it up.
 The platform token (`B6PT_TOKEN`) is **required**: the bundled gateway MCP, the plugin's main tool
 for reading and building on the platform, does not start without it. The CLI stores its own copy
 (`b6p auth set`), but the same `b6pt_` token works for both. `/b6p-setup` walks you through it and
-calls the gateway to prove it answers. Windows: `setx B6PT_TOKEN "b6pt_…"` at User scope, then fully restart the app — a
+calls the gateway to prove it answers. Windows: the [machine bootstrap](../../bootstrap/README.md)
+saves it at User scope without putting it on a command line, then fully restart the app — a
 variable exported in a shell never reaches a GUI-launched app.
 
 ## Requirements
 
+On Windows, the [machine bootstrap](../../bootstrap/README.md) sets up everything in this list in
+one run, for your user only and without admin rights. `/b6p-setup` hands it over when something is
+missing. Elsewhere, or by hand:
+
 - **git** — every tool downloads the plugin with git, and on Windows the hooks run in Git Bash.
-- **The `b6p` CLI, 0.8.1 or later, on PATH** — the `/b6p-*` skills call a bare `b6p`. With Node.js:
+- **The `b6p` CLI on PATH, at or above `tools.b6p.min`** in
+  [`skills/b6p-setup/assets/tool-versions.json`](skills/b6p-setup/assets/tool-versions.json) (the
+  one file that holds every tool's minimum and pinned version) — the `/b6p-*` skills call a bare
+  `b6p`. With Node.js:
   `npm i -g @bluestep-systems/b6p-cli@latest`; without it, a binary from
   `https://github.com/Bluestep-Systems/b6p-cli/releases` (macOS arm64 and Windows x64).
 - **`B6PT_TOKEN`** in your environment, for the bundled gateway MCP (see above).

@@ -11,6 +11,44 @@ Entries before 0.42.0 were written when this was the repo's only changelog and t
 
 This project follows [Semantic Versioning](https://semver.org/). While the major version is `0.x`, every minor bump (`0.1.x` → `0.2.0`) may contain breaking changes — that is the SemVer convention for pre-1.0 packages.
 
+## [plugin 0.45.0] — 2026-11-05
+
+> **On Windows, `/b6p-setup` now hands over a one-step machine setup.** When the `b6p` CLI, its
+> login or the platform token is missing or too old, it gives you one line to run in your own
+> PowerShell window: the new bootstrap script installs what is missing for your user only, with no
+> admin rights, and saves the token without putting it on a command line. The agent never runs it
+> and never sees the token. No hook changes — Codex users do not need to re-trust.
+
+### Added
+
+- **One file for tool versions:** `skills/b6p-setup/assets/tool-versions.json`. Per tool (Node.js,
+  Git, gh, `b6p`, the Claude Code CLI) it holds the minimum the plugin accepts, the tested version,
+  and per platform the official download URL and its SHA-256. The bootstrap script reads it at its
+  own release tag, and it also says where `one-tools` installs from. CI checks it (every minimum at
+  or below its tested version), and a weekly job opens an issue when a newer release exists.
+- **The machine bootstrap** (`bootstrap/` in this repo, outside the plugin, with its own
+  `bootstrap-v*` releases). On Windows x64 it installs Git, Node.js, gh, `b6p` and, when you use
+  Claude, the Claude Code CLI per user at the tested versions, and checks each download's hash
+  before using it. It signs you in to GitHub, saves the platform token, installs the plugins for
+  the apps it finds, and ends with a summary. A second run changes nothing that works. macOS and
+  Linux are planned. How to run it, check it and undo it: `bootstrap/README.md`. Why:
+  `docs/decisions/machine-bootstrap.md`.
+
+### Changed
+
+- **The minimum `b6p` version is read from `tool-versions.json`.** `/b6p-setup` step 1 and
+  `/b6p-push` step 0 compare `b6p --version` with `tools.b6p.min` there instead of a number in
+  their text (still 0.8.1). The `compatibility` line in `/b6p-push`'s frontmatter keeps the number,
+  and CI fails when it differs from the file.
+- **`/b6p-setup` hands over the bootstrap first.** On Windows, when a machine item is missing or
+  below its minimum, step 1 gives the bootstrap one-liner first and the per-item commands second.
+  On macOS, Linux and WSL it gives the per-item commands, as before.
+- **The platform token page no longer says `setx`.** `setx B6PT_TOKEN "b6pt_…"` puts the token on a
+  command line and in the shell history. `references/platform-token.md` now names the bootstrap
+  first, and for setting it by hand gives a PowerShell form that reads the token with hidden input
+  and saves it at User scope in the same process. The other OS routes are unchanged. The plugin
+  README says the same.
+
 ## [plugin 0.44.0] — 2026-11-03
 
 > **The repo is now `Bluestep-Systems/bluestep-ai`.** The marketplace is still `bluestep`, and the

@@ -1,0 +1,358 @@
+# ============================================================================
+# bluestep-ai Bootstrap versions check
+# ============================================================================
+# Purpose: Once a week, compare every `pinned` version in the bootstrap's
+#          plugins/bluestep-tools/skills/b6p-setup/assets/tool-versions.json
+#          with the latest upstream release, and keep ONE issue with a fixed
+#          title up to date:
+#            - something is behind  → create the issue, or edit its body in
+#                                     place when it is already open;
+#            - everything is current → close the open issue with a comment.
+#          Node releases marked `security: true` in nodejs.org's index.json
+#          that are newer than the pin are listed first. For each tool that
+#          is behind, the body names the new version, the release URL and
+#          where the new SHA-256 comes from, so the bump is mechanical.
+#
+# Report only: never edits files, never opens the bump PR (design decision 9
+# of the machine-bootstrap spec). The bump itself is a normal PR that also
+# bumps bootstrap/version.json.
+#
+# Sources (one per line in the issue):
+#   node   https://nodejs.org/dist/index.json (newest entry with `lts` set)
+#   git    GitHub latest release of git-for-windows/git (v2.56.0.windows.4 →
+#          2.56.0.4)
+#   gh     GitHub latest release of cli/cli
+#   b6p    GitHub latest release of Bluestep-Systems/b6p-cli, and the npm
+#          `latest` dist-tag of @bluestep-systems/b6p-cli
+#   claude https://downloads.claude.ai/claude-code-releases/latest (plain text)
+#
+# A source that does not answer is listed as "could not check: <source>" and
+# does not fail the job; the job fails only when every source fails. When
+# nothing checked is behind but a source failed, an open issue gets its body
+# refreshed (not closed) and no new issue is opened.
+#
+# Dry run: workflow_dispatch with dry_run=true (or DRY_RUN=1 when running the
+# script by hand) prints the issue body and skips every `gh issue` call.
+# ============================================================================
+
+name: Bootstrap versions check
+
+on:
+  schedule:
+    # Mondays 07:00 UTC.
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Print the issue body only; do not create, edit or close the issue"
+        type: boolean
+        default: false
+
+# Read the checkout, write the one issue. No contents: write, so this job
+# cannot push or open PRs.
+permissions:
+  contents: read
+  issues: write
+
+# One check at a time, so two runs never race to create the issue.
+concurrency:
+  group: bootstrap-versions-check
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Pinned versions vs latest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Look up latest versions
+        id: lookup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TOOL_VERSIONS: plugins/bluestep-tools/skills/b6p-setup/assets/tool-versions.json
+          BODY_FILE: ${{ runner.temp }}/versions-check-body.md
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/versions-check.mjs" <<'EOF'
+          // Reads tool-versions.json, asks each upstream source for its latest
+          // version, writes the issue body to $BODY_FILE and `state` to
+          // $GITHUB_OUTPUT: behind | current | partial (nothing behind, some
+          // source failed). Exits 1 only when every source failed.
+          import { readFileSync, writeFileSync, appendFileSync } from 'node:fs';
+
+          const tools = JSON.parse(readFileSync(process.env.TOOL_VERSIONS, 'utf8')).tools;
+
+          const clean = (v) => String(v).trim().replace(/^v/, '');
+          const isVersion = (v) => /^\d+(\.\d+)*$/.test(v);
+          // Part-by-part numeric compare; a missing part counts as 0, so
+          // 4-part git versions compare against 3-part ones.
+          function cmp(a, b) {
+            const pa = a.split('.').map(Number);
+            const pb = b.split('.').map(Number);
+            for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+              const d = (pa[i] ?? 0) - (pb[i] ?? 0);
+              if (d) return Math.sign(d);
+            }
+            return 0;
+          }
+
+          async function get(url, { json = true, github = false } = {}) {
+            const headers = { 'User-Agent': 'bluestep-ai-bootstrap-versions-check' };
+            if (github) {
+              headers.Accept = 'application/vnd.github+json';
+              if (process.env.GH_TOKEN) headers.Authorization = `Bearer ${process.env.GH_TOKEN}`;
+            }
+            let last;
+            for (let attempt = 1; attempt <= 2; attempt++) {
+              try {
+                const res = await fetch(url, { headers, signal: AbortSignal.timeout(30000) });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return json ? await res.json() : await res.text();
+              } catch (e) {
+                last = e;
+              }
+            }
+            throw new Error(last.message);
+          }
+
+          // GitHub asset digests ("sha256:<hex>") for the assets we pin.
+          function digests(release, patterns) {
+            const out = [];
+            for (const re of patterns) {
+              const a = (release.assets || []).find((x) => re.test(x.name));
+              if (a) out.push(`\`${a.name}\` ${a.digest ? '`' + a.digest.replace(/^sha256:/, '') + '`' : '(no digest in the API)'}`);
+            }
+            return out;
+          }
+
+          // Each check returns { latest, releaseUrl, hashFrom: [lines], hashes: [lines] }.
+          const checks = [
+            {
+              tool: 'node', label: 'nodejs.org/dist/index.json', source: 'https://nodejs.org/dist/index.json',
+              pinned: tools.node.pinned,
+              async run() {
+                const index = await get(this.source);
+                const lts = index.find((r) => r.lts);
+                if (!lts) throw new Error('no entry with lts set');
+                const latest = clean(lts.version);
+                // Every release newer than the pin with security: true, any line.
+                security = index
+                  .filter((r) => r.security && cmp(clean(r.version), this.pinned) > 0)
+                  .map((r) => ({ version: clean(r.version), line: r.lts ? `LTS ${r.lts}` : 'Current', date: r.date }));
+                const shasums = `https://nodejs.org/dist/v${latest}/SHASUMS256.txt`;
+                const hashes = [];
+                if (cmp(latest, this.pinned) > 0) {
+                  try {
+                    const text = await get(shasums, { json: false });
+                    for (const name of [`win-x64.zip`, `darwin-arm64.tar.gz`, `darwin-x64.tar.gz`, `linux-x64.tar.gz`]) {
+                      const line = text.split('\n').find((l) => l.endsWith(`node-v${latest}-${name}`));
+                      if (line) { const [h, f] = line.trim().split(/\s+/); hashes.push(`\`${f}\` \`${h}\``); }
+                    }
+                  } catch (e) {
+                    hashes.push(`(could not read SHASUMS256.txt: ${e.message})`);
+                  }
+                }
+                return {
+                  latest, lineNote: `LTS ${lts.lts}`,
+                  releaseUrl: `https://nodejs.org/en/blog/release/v${latest}`,
+                  hashFrom: [`\`SHASUMS256.txt\`: ${shasums}`],
+                  hashes,
+                };
+              },
+            },
+            {
+              tool: 'git', label: 'GitHub release git-for-windows/git', source: 'https://api.github.com/repos/git-for-windows/git/releases/latest',
+              pinned: tools.git.pinned,
+              async run() {
+                const rel = await get(this.source, { github: true });
+                const m = /^v?(\d+\.\d+\.\d+)\.windows\.(\d+)$/.exec(rel.tag_name);
+                if (!m) throw new Error(`unexpected tag ${rel.tag_name}`);
+                return {
+                  latest: `${m[1]}.${m[2]}`, tag: rel.tag_name, releaseUrl: rel.html_url,
+                  hashFrom: [`the SHA-256 table at the end of the release notes (also the asset digest in the GitHub API): ${rel.html_url}`],
+                  hashes: digests(rel, [/^Git-[\d.]+-64-bit\.exe$/]),
+                };
+              },
+            },
+            {
+              tool: 'gh', label: 'GitHub release cli/cli', source: 'https://api.github.com/repos/cli/cli/releases/latest',
+              pinned: tools.gh.pinned,
+              async run() {
+                const rel = await get(this.source, { github: true });
+                const latest = clean(rel.tag_name);
+                return {
+                  latest, tag: rel.tag_name, releaseUrl: rel.html_url,
+                  hashFrom: [`\`gh_${latest}_checksums.txt\`: https://github.com/cli/cli/releases/download/${rel.tag_name}/gh_${latest}_checksums.txt`],
+                  hashes: digests(rel, [/_windows_amd64\.zip$/, /_macOS_arm64\.zip$/, /_macOS_amd64\.zip$/, /_linux_amd64\.tar\.gz$/]),
+                };
+              },
+            },
+            {
+              tool: 'b6p', label: 'GitHub release Bluestep-Systems/b6p-cli', source: 'https://api.github.com/repos/Bluestep-Systems/b6p-cli/releases/latest',
+              pinned: tools.b6p.pinned,
+              async run() {
+                const rel = await get(this.source, { github: true });
+                const latest = clean(rel.tag_name);
+                return {
+                  latest, tag: rel.tag_name, releaseUrl: rel.html_url,
+                  hashFrom: [`the \`.sha256\` sidecar next to each binary: https://github.com/Bluestep-Systems/b6p-cli/releases/download/${rel.tag_name}/<asset>.sha256`],
+                  hashes: digests(rel, [/^b6p-windows-x64\.exe$/, /^b6p-macos-arm64$/]),
+                };
+              },
+            },
+            {
+              tool: 'b6p (npm)', label: 'npm @bluestep-systems/b6p-cli', source: 'https://registry.npmjs.org/@bluestep-systems/b6p-cli/latest',
+              pinned: tools.b6p.npm.version,
+              async run() {
+                const doc = await get(this.source);
+                const latest = clean(doc.version);
+                return {
+                  latest, releaseUrl: `https://www.npmjs.com/package/@bluestep-systems/b6p-cli/v/${latest}`,
+                  hashFrom: [`\`dist.integrity\` (goes in \`b6p.npm.integrity\`): https://registry.npmjs.org/@bluestep-systems/b6p-cli/${latest}`],
+                  hashes: doc.dist?.integrity ? [`integrity \`${doc.dist.integrity}\``] : [],
+                };
+              },
+            },
+            {
+              tool: 'claude', label: 'downloads.claude.ai claude-code-releases/latest', source: 'https://downloads.claude.ai/claude-code-releases/latest',
+              pinned: tools.claude.pinned,
+              async run() {
+                const latest = clean(await get(this.source, { json: false }));
+                const manifest = `https://downloads.claude.ai/claude-code-releases/${latest}/manifest.json`;
+                const hashes = [];
+                if (isVersion(latest) && cmp(latest, this.pinned) > 0) {
+                  try {
+                    const m = await get(manifest);
+                    for (const p of ['win32-x64', 'darwin-arm64', 'darwin-x64', 'linux-x64']) {
+                      const c = m.platforms?.[p]?.checksum;
+                      hashes.push(`\`${p}\` ${c ? '`' + c + '`' : '(missing in manifest)'}`);
+                    }
+                  } catch (e) {
+                    hashes.push(`(could not read manifest.json: ${e.message})`);
+                  }
+                }
+                return {
+                  latest, releaseUrl: 'https://github.com/anthropics/claude-code/blob/main/CHANGELOG.md',
+                  hashFrom: [`\`manifest.json\` \`platforms.<platform>.checksum\`: ${manifest}`],
+                  hashes,
+                };
+              },
+            },
+          ];
+
+          let security = [];
+          const behind = [], current = [], failed = [];
+          for (const c of checks) {
+            try {
+              const r = await c.run();
+              if (!isVersion(r.latest)) throw new Error(`not a version: ${JSON.stringify(r.latest).slice(0, 60)}`);
+              (cmp(r.latest, c.pinned) > 0 ? behind : current).push({ ...c, ...r });
+            } catch (e) {
+              failed.push({ ...c, error: e.message });
+            }
+          }
+
+          const runUrl = process.env.GITHUB_RUN_ID
+            ? `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
+            : 'local run';
+          const L = [];
+          L.push('<!-- bootstrap-versions-check: this body is rewritten by the weekly workflow -->');
+          L.push(`Weekly check of \`${process.env.TOOL_VERSIONS}\` against the latest upstream releases.`);
+          L.push(`Last run: ${new Date().toISOString().slice(0, 10)} (${runUrl}).`);
+          if (security.length) {
+            L.push('', '## Node security releases newer than the pin', '');
+            for (const s of security) L.push(`- **${s.version}** (${s.line}, ${s.date}): https://nodejs.org/en/blog/release/v${s.version}`);
+          }
+          if (behind.length) {
+            L.push('', '## Behind');
+            for (const b of behind) {
+              L.push('', `### ${b.tool}: ${b.pinned} → ${b.latest}${b.lineNote ? ` (${b.lineNote})` : ''}`, '');
+              if (b.tag) L.push(`- Tag: \`${b.tag}\``);
+              L.push(`- Release: ${b.releaseUrl}`);
+              for (const h of b.hashFrom) L.push(`- SHA-256 from ${h}`);
+              if (b.hashes.length) {
+                L.push('- Values read today (check them against the source above):');
+                for (const h of b.hashes) L.push(`  - ${h}`);
+              }
+            }
+          }
+          if (current.length) {
+            L.push('', '## Current', '');
+            for (const c of current) L.push(`- ${c.tool}: ${c.pinned} (latest ${c.latest})`);
+          }
+          if (failed.length) {
+            L.push('', '## Not checked', '');
+            for (const f of failed) L.push(`- could not check: ${f.label} (${f.source}): ${f.error}`);
+          }
+          L.push('', '---', 'To bump: in a PR, set `pinned`, each asset `url` and `sha256` (and `b6p.npm`) in the file above, and bump `bootstrap/version.json`. This workflow only reports; it never edits files.');
+          writeFileSync(process.env.BODY_FILE, L.join('\n') + '\n');
+
+          const state = behind.length ? 'behind' : failed.length ? 'partial' : 'current';
+          if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `state=${state}\n`);
+          console.log(`state=${state} behind=${behind.length} current=${current.length} failed=${failed.length}`);
+          for (const f of failed) console.log(`::warning::could not check: ${f.label}: ${f.error}`);
+          if (failed.length === checks.length) {
+            console.log('::error::every source failed; nothing was checked');
+            process.exit(1);
+          }
+          EOF
+          node "$RUNNER_TEMP/versions-check.mjs"
+          echo "----- issue body -----"
+          cat "$BODY_FILE"
+
+      - name: Create, update or close the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE: ${{ steps.lookup.outputs.state }}
+          BODY_FILE: ${{ runner.temp }}/versions-check-body.md
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: |
+          set -euo pipefail
+          title="Bootstrap: pinned tool versions are behind"
+          if [ -n "${DRY_RUN:-}" ]; then
+            echo "Dry run: state=$STATE; no gh issue call made."
+            exit 0
+          fi
+          number=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open \
+            --search "\"$title\" in:title" --json number,title \
+            --jq ".[] | select(.title == \"$title\") | .number" | head -n 1)
+          case "$STATE" in
+            behind)
+              if [ -n "$number" ]; then
+                gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$BODY_FILE"
+                echo "Updated issue #$number."
+              else
+                gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" --body-file "$BODY_FILE"
+              fi
+              ;;
+            current)
+              if [ -n "$number" ]; then
+                gh issue close "$number" --repo "$GITHUB_REPOSITORY" \
+                  --comment "Every pinned tool version is current again (run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}). Closing."
+              else
+                echo "Everything current; no open issue."
+              fi
+              ;;
+            partial)
+              # Nothing checked is behind, but a source did not answer: do not
+              # claim "current". Refresh an open issue, never open a new one.
+              if [ -n "$number" ]; then
+                gh issue edit "$number" --repo "$GITHUB_REPOSITORY" --body-file "$BODY_FILE"
+                echo "Updated issue #$number (some sources not checked)."
+              else
+                echo "::warning::Nothing behind among the sources checked, but some could not be checked; no issue opened."
+              fi
+              ;;
+            *)
+              echo "::error::unexpected state '$STATE'"
+              exit 1
+              ;;
+          esac

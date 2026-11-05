@@ -8,6 +8,10 @@
 #          secrets.
 #          The cross-tool-drift job regenerates the committed Cursor/Codex
 #          output and fails if it doesn't match what's checked in.
+#          The tool-versions job checks the bootstrap's versions file.
+#          The bootstrap-version job checks the bootstrap scripts' version
+#          stream; bootstrap-smoke runs the scripts on GitHub's Windows and
+#          macOS runners when a PR touches them or the versions file.
 # ============================================================================
 
 name: CI
@@ -97,6 +101,154 @@ jobs:
             console.log(`${p.name} ${p.manifest.version} (crossTool ${p.manifest.crossTool}) OK`);
           }
           console.log(`${marketplaceRel}: ${entries.length} entries OK`);
+          EOF
+        shell: bash
+
+  # The versions file the bootstrap scripts install from and the skills read
+  # minimums from (plugins/bluestep-tools/skills/b6p-setup/assets/
+  # tool-versions.json). Checks its shape (no schema library: the repo has no
+  # dependencies), that every min is at or below its pinned version, that
+  # every download URL names the pinned version (a half-done bump fails), and
+  # that the number in b6p-push's frontmatter `compatibility:` line, which is
+  # static text, equals tools.b6p.min.
+  tool-versions:
+    name: Validate tool-versions.json
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate the versions file
+        run: |
+          node --input-type=module <<'EOF'
+          import { readFileSync } from 'node:fs';
+
+          const FILE = 'plugins/bluestep-tools/skills/b6p-setup/assets/tool-versions.json';
+          const PUSH = 'plugins/bluestep-tools/skills/b6p-push/SKILL.md';
+          const TOOLS = ['node', 'git', 'gh', 'b6p', 'claude'];
+          const PLATFORMS = ['windows-x64', 'macos-arm64', 'macos-x64', 'linux-x64'];
+          const VERSION = /^\d+(\.\d+){2,3}$/;
+          const SHA256 = /^[0-9a-f]{64}$/;
+          const INTEGRITY = /^sha512-[A-Za-z0-9+/]{86}==$/;
+          const REPO = /^[A-Za-z0-9-]+\/[A-Za-z0-9._-]+$/;
+
+          const problems = [];
+          const fail = (msg) => problems.push(msg);
+          const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+          const onlyKeys = (where, obj, allowed) => {
+            for (const k of Object.keys(obj)) if (!allowed.includes(k)) fail(`${where}: unknown key "${k}"`);
+          };
+          // Numeric, part by part; a missing part counts as 0 (2.56.0.4 > 2.56.0).
+          const cmp = (a, b) => {
+            const x = a.split('.').map(Number), y = b.split('.').map(Number);
+            for (let i = 0; i < Math.max(x.length, y.length); i++) {
+              const d = (x[i] ?? 0) - (y[i] ?? 0);
+              if (d) return Math.sign(d);
+            }
+            return 0;
+          };
+
+          let data;
+          try {
+            data = JSON.parse(readFileSync(FILE, 'utf8'));
+          } catch (e) {
+            console.log(`::error file=${FILE}::cannot read or parse: ${e.message}`);
+            process.exit(1);
+          }
+
+          if (!isObj(data)) fail('top level is not an object');
+          else {
+            onlyKeys('top level', data, ['schema', 'tools', 'plugins']);
+            if (data.schema !== 1) fail(`"schema" is ${JSON.stringify(data.schema)}, expected 1`);
+
+            const tools = data.tools;
+            if (!isObj(tools)) fail('"tools" is not an object');
+            else {
+              onlyKeys('tools', tools, TOOLS);
+              for (const name of TOOLS) {
+                const t = tools[name];
+                const at = `tools.${name}`;
+                if (!isObj(t)) { fail(`${at}: missing`); continue; }
+                onlyKeys(at, t, ['min', 'pinned', 'assets', 'npm']);
+                const okMin = typeof t.min === 'string' && VERSION.test(t.min);
+                const okPin = typeof t.pinned === 'string' && VERSION.test(t.pinned);
+                if (!okMin) fail(`${at}.min: ${JSON.stringify(t.min)} is not a version`);
+                if (!okPin) fail(`${at}.pinned: ${JSON.stringify(t.pinned)} is not a version`);
+                if (okMin && okPin && cmp(t.min, t.pinned) > 0) fail(`${at}: min ${t.min} is above pinned ${t.pinned}`);
+
+                if (!isObj(t.assets)) { fail(`${at}.assets: not an object`); continue; }
+                onlyKeys(`${at}.assets`, t.assets, PLATFORMS);
+                for (const [pf, a] of Object.entries(t.assets)) {
+                  const aat = `${at}.assets.${pf}`;
+                  if (!isObj(a)) { fail(`${aat}: not an object`); continue; }
+                  onlyKeys(aat, a, ['url', 'sha256', 'args']);
+                  if (typeof a.url !== 'string' || !a.url.startsWith('https://')) fail(`${aat}.url: not an https URL`);
+                  else if (okPin && !a.url.includes(t.pinned)) fail(`${aat}.url: does not name pinned ${t.pinned}`);
+                  if (typeof a.sha256 !== 'string' || !SHA256.test(a.sha256)) fail(`${aat}.sha256: not 64 lowercase hex digits`);
+                  if (a.args !== undefined && !(Array.isArray(a.args) && a.args.every((s) => typeof s === 'string'))) {
+                    fail(`${aat}.args: not an array of strings`);
+                  }
+                }
+
+                if (t.npm !== undefined) {
+                  const n = t.npm;
+                  if (!isObj(n)) fail(`${at}.npm: not an object`);
+                  else {
+                    onlyKeys(`${at}.npm`, n, ['package', 'version', 'integrity']);
+                    if (typeof n.package !== 'string' || !n.package) fail(`${at}.npm.package: missing`);
+                    if (n.version !== t.pinned) fail(`${at}.npm.version: ${JSON.stringify(n.version)} is not pinned ${t.pinned}`);
+                    if (typeof n.integrity !== 'string' || !INTEGRITY.test(n.integrity)) fail(`${at}.npm.integrity: not a sha512 integrity string`);
+                  }
+                }
+                if (!Object.keys(t.assets).length && t.npm === undefined) fail(`${at}: no asset and no npm entry — no platform can install it`);
+              }
+            }
+
+            const ot = isObj(data.plugins) ? data.plugins['one-tools'] : undefined;
+            if (!isObj(data.plugins)) fail('"plugins" is not an object');
+            else if (!isObj(ot)) fail('plugins.one-tools: missing');
+            else {
+              onlyKeys('plugins.one-tools', ot, ['id', 'marketplace', 'accessRepo']);
+              const mk = isObj(ot.marketplace) ? ot.marketplace : {};
+              if (!isObj(ot.marketplace)) fail('plugins.one-tools.marketplace: not an object');
+              else onlyKeys('plugins.one-tools.marketplace', mk, ['name', 'source']);
+              if (typeof mk.name !== 'string' || !mk.name) fail('plugins.one-tools.marketplace.name: missing');
+              // owner/repo, or a full https GitHub URL (a private repo needs HTTPS on machines with no SSH key).
+              const HTTPS_REPO = /^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+?(\.git)?$/;
+              if (typeof mk.source !== 'string' || !(REPO.test(mk.source) || HTTPS_REPO.test(mk.source))) {
+                fail('plugins.one-tools.marketplace.source: not owner/repo or an https://github.com/<owner>/<repo>.git URL');
+              }
+              if (typeof ot.accessRepo !== 'string' || !REPO.test(ot.accessRepo)) fail('plugins.one-tools.accessRepo: not owner/repo');
+              if (typeof ot.id !== 'string' || ot.id.split('@').length !== 2 || ot.id.split('@')[1] !== mk.name) {
+                fail(`plugins.one-tools.id: ${JSON.stringify(ot.id)} is not <plugin>@${mk.name}`);
+              }
+            }
+
+            // b6p-push frontmatter: static text, so it carries a number.
+            const min = data.tools?.b6p?.min;
+            const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(readFileSync(PUSH, 'utf8'));
+            const line = fm?.[1].split(/\r?\n/).find((l) => l.startsWith('compatibility:'));
+            const num = line?.match(/\d+\.\d+\.\d+/)?.[0];
+            if (!num) fail(`${PUSH}: no version number on the frontmatter compatibility: line`);
+            else if (num !== min) fail(`${PUSH}: frontmatter compatibility: says ${num}, tools.b6p.min is ${min} — make them equal`);
+          }
+
+          if (problems.length) {
+            for (const msg of problems) console.log(`::error file=${FILE}::${msg}`);
+            process.exit(1);
+          }
+          for (const name of TOOLS) {
+            const t = data.tools[name];
+            console.log(`${name}: min ${t.min}, pinned ${t.pinned}, ${Object.keys(t.assets).join(' ') || '-'}${t.npm ? ' + npm' : ''} OK`);
+          }
+          console.log(`plugins.one-tools: ${data.plugins['one-tools'].id} OK; b6p-push frontmatter matches ${data.tools.b6p.min}`);
           EOF
         shell: bash
 
@@ -309,6 +461,635 @@ jobs:
           printf '%s' "$SUMMARY"
           if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
             { echo '### Plugin versions'; echo; printf '%s' "$SUMMARY" | sed 's/^/- /'; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit "$FAILED"
+        shell: bash
+
+  # The bootstrap scripts (bootstrap/) are their own version stream, tagged
+  # bootstrap-v<version> from bootstrap/version.json by release-tag.yml.
+  # (1) On every run: the $ScriptVersion = '<v>' literal in bootstrap.ps1
+  # equals version.json's version. The number is duplicated on purpose: under
+  # `irm | iex` the script cannot read version.json, and it loads
+  # tool-versions.json from its own tag, so a mismatch fetches the wrong file.
+  # (2) On a PR: a change under bootstrap/** or to tool-versions.json (the
+  # script fetches that file at its tag, so a new pin is a new script release)
+  # needs a version.json version whose bootstrap-v tag is not on origin yet.
+  # tool-versions.json lives in bluestep-tools, so plugin-version-bump still
+  # asks for a bluestep-tools bump for it as well.
+  bootstrap-version:
+    name: Bootstrap version check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # the PR step compares version.json across the PR
+          persist-credentials: false
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Script version in bootstrap.ps1 matches bootstrap/version.json
+        run: |
+          node --input-type=module <<'EOF'
+          import { existsSync, readFileSync } from 'node:fs';
+
+          const VFILE = 'bootstrap/version.json';
+          const PS1 = 'bootstrap/bootstrap.ps1';
+          if (!existsSync(VFILE) && !existsSync(PS1)) {
+            console.log('No bootstrap/ scripts in this tree; nothing to check.');
+            process.exit(0);
+          }
+          const problems = [];
+          let version = '';
+          try {
+            version = JSON.parse(readFileSync(VFILE, 'utf8')).version ?? '';
+          } catch (e) {
+            problems.push([VFILE, `cannot read or parse: ${e.message}`]);
+          }
+          if (!problems.length && !/^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(version)) {
+            problems.push([VFILE, `version ${JSON.stringify(version)} does not look like X.Y.Z`]);
+          }
+          if (!existsSync(PS1)) problems.push([PS1, 'missing']);
+          else {
+            // Same regex as release-tag.yml's script_version.
+            const hits = [...readFileSync(PS1, 'utf8').matchAll(/^[ \t]*\$ScriptVersion = '([^']*)'/gm)].map((m) => m[1]);
+            if (hits.length !== 1) problems.push([PS1, `expected one "$ScriptVersion = '<v>'" line, found ${hits.length}`]);
+            else if (hits[0] !== version) problems.push([PS1, `$ScriptVersion is '${hits[0]}' but ${VFILE} says '${version}' — make them equal`]);
+          }
+          // bootstrap.sh (tasks 8-9) gets the same check here once it carries its own version literal.
+          if (problems.length) {
+            for (const [file, msg] of problems) console.log(`::error file=${file}::${msg}`);
+            process.exit(1);
+          }
+          console.log(`bootstrap ${version}: ${PS1} $ScriptVersion matches ${VFILE}. OK`);
+          EOF
+        shell: bash
+
+      - name: Require a bootstrap version bump
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          VFILE="bootstrap/version.json"
+          TV="plugins/bluestep-tools/skills/b6p-setup/assets/tool-versions.json"
+
+          # This PR's own changes only, both sides of every move (see
+          # plugin-version-bump for why merge-base and --no-renames).
+          MB="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
+          CHANGED="$(git diff --name-only --no-renames "$MB" "$HEAD_SHA")"
+          REASONS=""
+          # grep without -q reads all of its input (no SIGPIPE under pipefail).
+          if printf '%s\n' "$CHANGED" | grep '^bootstrap/' >/dev/null; then
+            REASONS="bootstrap/**"
+          fi
+          if printf '%s\n' "$CHANGED" | grep -Fx "$TV" >/dev/null; then
+            REASONS="${REASONS:+$REASONS, }$TV"
+          fi
+
+          has_file() { git cat-file -e "$1:$2" 2>/dev/null; }
+          # read_field REF PATH FIELD — prints the field ('' when missing);
+          # non-zero exit when the file is not valid JSON.
+          read_field() {
+            git show "$1:$2" | node -e '
+              try {
+                const v = JSON.parse(require("fs").readFileSync(0, "utf8"))[process.argv[1]];
+                process.stdout.write(v === undefined || v === null ? "" : String(v));
+              } catch { process.exit(1); }' "$3"
+          }
+          report() {
+            echo "merge-base: $MB"
+            echo "$1"
+            if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+              { echo '### Bootstrap version'; echo; echo "- $1"; } >> "$GITHUB_STEP_SUMMARY"
+            fi
+          }
+
+          if ! has_file "$HEAD_SHA" "$VFILE"; then
+            if [ -n "$REASONS" ]; then
+              echo "::error file=$VFILE::$REASONS changed but there is no $VFILE — the bootstrap scripts need their version file."
+              report "bootstrap: FAIL no $VFILE"
+              exit 1
+            fi
+            report "bootstrap: no $VFILE, nothing changed; OK"
+            exit 0
+          fi
+          if ! HEAD_VER="$(read_field "$HEAD_SHA" "$VFILE" version)"; then
+            echo "::error file=$VFILE::$VFILE is not valid JSON."
+            report "bootstrap: FAIL $VFILE is not valid JSON"
+            exit 1
+          fi
+          if ! [[ "$HEAD_VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error file=$VFILE::version '${HEAD_VER:-<none>}' does not look like X.Y.Z."
+            report "bootstrap: FAIL version '${HEAD_VER:-<none>}' is not X.Y.Z"
+            exit 1
+          fi
+
+          # Base version; a version.json new in this PR is the first release
+          # and needs no bump (its tag still must not exist).
+          BASE_VER=""
+          IS_NEW=1
+          if has_file "$MB" "$VFILE"; then
+            IS_NEW=0
+            if ! BASE_VER="$(read_field "$MB" "$VFILE" version)"; then
+              echo "::error file=$VFILE::$VFILE at the merge-base is not valid JSON — cannot tell whether the version was bumped."
+              report "bootstrap: FAIL base $VFILE is not valid JSON"
+              exit 1
+            fi
+          fi
+
+          FAILED=0
+          STATUS="OK"
+          if [ -n "$REASONS" ] && [ "$IS_NEW" = 0 ] && [ "$HEAD_VER" = "$BASE_VER" ]; then
+            echo "::error file=$VFILE::$REASONS changed but the bootstrap version is still $HEAD_VER. Bump $VFILE (and \$ScriptVersion in bootstrap/bootstrap.ps1) so the change ships under a new bootstrap-v tag."
+            FAILED=1
+            STATUS="FAIL bump required"
+          fi
+
+          # A version this PR asks to ship must never have been released.
+          # Skipped when nothing changed and the version stayed: that is the
+          # current release, and its tag exists by design.
+          if [ -n "$REASONS" ] || [ "$HEAD_VER" != "$BASE_VER" ]; then
+            if ! REMOTE_TAGS="$(git ls-remote --tags --refs origin)"; then
+              echo "::error::Cannot list the tags on origin — the released-version check needs them."
+              exit 1
+            fi
+            TAG="bootstrap-v$HEAD_VER"
+            if printf '%s\n' "$REMOTE_TAGS" | awk -v t="refs/tags/$TAG" '$2 == t { f = 1 } END { exit !f }'; then
+              echo "::error file=$VFILE::tag $TAG already exists on origin — $HEAD_VER was released before. Pick a new version."
+              FAILED=1
+              STATUS="${STATUS/#OK/FAIL} (tag $TAG exists)"
+            fi
+          fi
+
+          if [ "$IS_NEW" = 1 ]; then BASE_LABEL="<new>"; else BASE_LABEL="${BASE_VER:-<none>}"; fi
+          if [ -n "$REASONS" ]; then CHANGE_NOTE="bump needed: $REASONS"; else CHANGE_NOTE="no bump needed"; fi
+          report "bootstrap: $BASE_LABEL -> $HEAD_VER; $CHANGE_NOTE; $STATUS"
+          exit "$FAILED"
+        shell: bash
+
+  # Whether this PR touches the bootstrap: anything under bootstrap/** or the
+  # versions file. Actions has no per-job paths filter, so this job computes
+  # it with the same merge-base diff as the bump checks, and bootstrap-smoke
+  # reads its output.
+  bootstrap-changes:
+    name: Bootstrap changes
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need base + head to diff the PR
+          persist-credentials: false
+
+      - name: Diff the PR against its merge-base
+        id: diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          MB="$(git merge-base "$BASE_SHA" "$HEAD_SHA")"
+          CHANGED="$(git diff --name-only --no-renames "$MB" "$HEAD_SHA")"
+          # grep without -q reads all of its input (no SIGPIPE under pipefail).
+          if printf '%s\n' "$CHANGED" \
+            | grep -E '^(bootstrap/|plugins/bluestep-tools/skills/b6p-setup/assets/tool-versions\.json$)' >/dev/null; then
+            CHANGED_BS=true
+          else
+            CHANGED_BS=false
+          fi
+          echo "changed=$CHANGED_BS" >> "$GITHUB_OUTPUT"
+          echo "bootstrap/** or tool-versions.json changed in this PR: $CHANGED_BS"
+        shell: bash
+
+  # Runs the bootstrap for real on GitHub's runners: a dry run, a real run
+  # with no token and no plugins, the tools checked as a new shell sees them,
+  # then a second run that must change nothing. The runners have admin rights,
+  # so the no-admin claim is checked only by the manual runs (spec tasks 7, 10).
+  #
+  # Runner images (assumption, true of windows-latest and macos-latest as of
+  # 2026-11): Git, Node and gh are already installed system-wide, on the
+  # machine PATH (Windows) or under Homebrew (macOS). Left alone, the script
+  # keeps them ("ok": working and above the minimum) and installs nothing, and
+  # after an install a new shell would still find the system copy first
+  # ("needs you: shadowed"), which is the right answer on such a machine. The
+  # Windows leg therefore drops the PATH entries that hold those tools from
+  # the registry PATH before the runs (see that step); a copy it misses is
+  # reported as a warning, not a failure. The macOS leg does not hide them and
+  # only reports what a new login shell resolves.
+  bootstrap-smoke:
+    name: Bootstrap smoke (${{ matrix.os }})
+    needs: bootstrap-changes
+    if: needs.bootstrap-changes.outputs.changed == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false  # one OS failing still shows the other
+      matrix:
+        os: [windows-latest, macos-latest]
+    env:
+      VERSIONS_FILE: plugins/bluestep-tools/skills/b6p-setup/assets/tool-versions.json
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: macOS leg waits for bootstrap.sh
+        if: runner.os == 'macOS' && hashFiles('bootstrap/bootstrap.sh') == ''
+        run: |
+          echo "::notice title=bootstrap-smoke (macOS)::bootstrap/bootstrap.sh does not exist yet (spec tasks 8-9), so the macOS leg has nothing to run: skipped."
+        shell: bash
+
+      # ------------------------------------------------------------ Windows
+
+      # Cheap checks first. The parser is Windows PowerShell 5.1's, the
+      # stricter of the two hosts; ASCII because 5.1 reads a BOM-less file as
+      # ANSI, so any byte above 0x7F changes meaning there.
+      - name: Parse check and ASCII scan (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rel = 'bootstrap/bootstrap.ps1'
+          $file = Join-Path $env:GITHUB_WORKSPACE $rel
+          $tokens = $null
+          $errors = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile($file, [ref]$tokens, [ref]$errors)
+          foreach ($e in $errors) { Write-Host "::error file=$rel,line=$($e.Extent.StartLineNumber)::$($e.Message)" }
+          # Latin-1 maps every byte to one char, so a char above 0x7F is a byte above 0x7F.
+          $lines = [IO.File]::ReadAllLines($file, [Text.Encoding]::GetEncoding(28591))
+          $bad = 0
+          for ($i = 0; $i -lt $lines.Length; $i++) {
+              if ($lines[$i] -match '[^\x00-\x7F]') {
+                  $bad++
+                  if ($bad -le 20) { Write-Host "::error file=$rel,line=$($i + 1)::non-ASCII byte(s) on this line" }
+              }
+          }
+          if ($errors.Count -or $bad) {
+              Write-Host "$($errors.Count) parse error(s), $bad non-ASCII line(s)"
+              exit 1
+          }
+          Write-Host "$rel parses under PowerShell $($PSVersionTable.PSVersion) with 0 errors and is pure ASCII ($($lines.Length) lines). OK"
+        shell: powershell
+
+      # Writes the helpers the later steps dot-source, then takes the runner's
+      # own Git, Node and gh out of reach of a new shell: every entry of the
+      # registry PATH (machine and user) that holds one of the tools is
+      # dropped. Only processes that read the registry see this (the script's
+      # "new shell" check and the shells these steps start with a PATH rebuilt
+      # from it); the runner hands each step the environment it started with,
+      # so later steps and the post-job cleanup still find the system Git.
+      # Nothing is uninstalled, and the runner VM is discarded after the job.
+      - name: Put the runner's Git, Node and gh out of reach
+        if: runner.os == 'Windows'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $helper = Join-Path $env:RUNNER_TEMP 'bs-ci.ps1'
+          Set-Content -LiteralPath $helper -Encoding utf8 -Value @'
+          $BsScript = Join-Path $env:GITHUB_WORKSPACE 'bootstrap\bootstrap.ps1'
+          $BsVersionsFile = Join-Path $env:GITHUB_WORKSPACE ($env:VERSIONS_FILE -replace '/', '\')
+          $BsPs51 = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
+          $BsPwsh = Join-Path $PSHOME 'pwsh.exe'
+          $BsLogDir = Join-Path $env:USERPROFILE '.bluestep\bootstrap'
+          $BsTools = @('node', 'git', 'gh', 'b6p')   # claude is skipped with -SkipPlugins
+
+          function Get-BsRegPath([string]$Scope) {
+              # The raw registry PATH (%VAR% entries kept), as the script reads it.
+              $k = if ($Scope -eq 'Machine') {
+                  [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey('SYSTEM\CurrentControlSet\Control\Session Manager\Environment')
+              } else {
+                  [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment')
+              }
+              if (-not $k) { return '' }
+              try { return [string]$k.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames) } finally { $k.Close() }
+          }
+
+          function Get-BsNewShellPath {
+              # What a shell started now gets: the machine PATH, then the user PATH, expanded.
+              $dirs = foreach ($s in 'Machine', 'User') {
+                  foreach ($d in (Get-BsRegPath $s).Split(';')) { if ($d.Trim()) { [Environment]::ExpandEnvironmentVariables($d.Trim()) } }
+              }
+              return ($dirs -join ';')
+          }
+
+          function Invoke-BsRun([string]$Shell, [string[]]$ScriptArgs) {
+              # Runs bootstrap.ps1 as a file (so it exits with its code) under $Shell, with PATH set
+              # to what a new shell gets. Returns the exit code and the log file this run wrote.
+              $before = @(Get-ChildItem -LiteralPath $BsLogDir -Filter *.log -ErrorAction SilentlyContinue | ForEach-Object FullName)
+              $saved = $env:Path
+              $env:Path = Get-BsNewShellPath
+              try {
+                  & $Shell -NoProfile -ExecutionPolicy Bypass -File $BsScript @ScriptArgs -VersionsFile $BsVersionsFile | Out-Host
+                  $code = $LASTEXITCODE
+              } finally {
+                  $env:Path = $saved
+              }
+              $log = Get-ChildItem -LiteralPath $BsLogDir -Filter *.log -ErrorAction SilentlyContinue |
+                  Where-Object { $before -notcontains $_.FullName } | Sort-Object LastWriteTime | Select-Object -Last 1
+              $logPath = if ($log) { $log.FullName } else { $null }
+              Write-Host "exit code $code; log $logPath"
+              return [pscustomobject]@{ Code = $code; Log = $logPath }
+          }
+
+          function Get-BsResults([string]$Log) {
+              # item -> status and detail, from the script's result lines in its log:
+              # "<date> <time> [<level>]   <item>: <status> - <detail>".
+              $h = @{}
+              if (-not $Log) { return $h }
+              foreach ($l in [IO.File]::ReadAllLines($Log)) {
+                  $m = [regex]::Match($l, '^\S+ \S+ \[\w+\]   (?<item>[a-z0-9][a-z0-9 ]*): (?<status>ok|installed|would install|needs you|needs IT|failed|skipped) - (?<detail>.*)$')
+                  if ($m.Success) { $h[$m.Groups['item'].Value] = [pscustomobject]@{ Status = $m.Groups['status'].Value; Detail = $m.Groups['detail'].Value } }
+              }
+              return $h
+          }
+
+          function Get-BsVersion([string]$Text) {
+              # The script's own reading: "git version 2.56.0.windows.4" -> 2.56.0.4, "v26.13.0" -> 26.13.0.
+              $m = [regex]::Match(([string]$Text -replace '\.windows\.', '.'), '\d+(\.\d+)+')
+              if ($m.Success) { return $m.Value }
+              return $null
+          }
+
+          function Get-BsPinned {
+              $v = [IO.File]::ReadAllText($BsVersionsFile) | ConvertFrom-Json
+              $h = @{}
+              foreach ($t in $BsTools) { $h[$t] = [string]$v.tools.$t.pinned }
+              return $h
+          }
+
+          function Get-BsOurExe([string]$Tool) {
+              # Where the script installs each tool (OurDir in its Invoke-ToolStep).
+              if ($Tool -eq 'git') {
+                  $p = Join-Path $env:LOCALAPPDATA 'Programs\Git\cmd\git.exe'
+                  if (Test-Path -LiteralPath $p) { return $p }
+                  return $null
+              }
+              $root = Join-Path $env:LOCALAPPDATA "BlueStep\tools\$Tool"
+              return (Get-ChildItem -LiteralPath $root -Filter "$Tool.exe" -Recurse -File -ErrorAction SilentlyContinue |
+                  Sort-Object { $_.FullName.Length } | Select-Object -First 1 -ExpandProperty FullName)
+          }
+          '@
+          . $helper
+
+          $exts = @($env:PATHEXT.Split(';') | Where-Object { $_ })
+          foreach ($scope in 'Machine', 'User') {
+              $keep = New-Object System.Collections.Generic.List[string]
+              $dropped = 0
+              foreach ($d in (Get-BsRegPath $scope).Split(';')) {
+                  if (-not $d.Trim()) { continue }
+                  $dir = [Environment]::ExpandEnvironmentVariables($d.Trim())
+                  $hit = $null
+                  foreach ($t in $BsTools) {
+                      foreach ($x in $exts) {
+                          try { if (-not $hit -and (Test-Path -LiteralPath (Join-Path $dir ($t + $x)) -PathType Leaf)) { $hit = $t + $x } } catch { }
+                      }
+                  }
+                  if ($hit) { Write-Host "$scope PATH: dropping $d (holds $hit)"; $dropped++ } else { $keep.Add($d) }
+              }
+              if ($dropped) {
+                  $key = if ($scope -eq 'Machine') {
+                      [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey('SYSTEM\CurrentControlSet\Control\Session Manager\Environment', $true)
+                  } else {
+                      [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey('Environment')
+                  }
+                  try { $key.SetValue('Path', ($keep -join ';'), [Microsoft.Win32.RegistryValueKind]::ExpandString) } finally { $key.Close() }
+              }
+              Write-Host "$scope PATH: $dropped entr(ies) dropped"
+          }
+
+          # What a new shell resolves now; the machine PATH is kept to check later that the
+          # script never edits it.
+          $env:Path = Get-BsNewShellPath
+          foreach ($t in $BsTools) {
+              $c = Get-Command $t -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($c) { Write-Host "::warning::$t still resolves at $($c.Source) in a new shell; the script will keep that copy if it works" }
+              else { Write-Host "$t - not on a new shell's PATH. OK" }
+          }
+          [IO.File]::WriteAllText((Join-Path $env:RUNNER_TEMP 'machine-path.txt'), (Get-BsRegPath 'Machine'))
+        shell: pwsh
+
+      - name: Dry run under Windows PowerShell 5.1 and PowerShell 7
+        if: runner.os == 'Windows'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . (Join-Path $env:RUNNER_TEMP 'bs-ci.ps1')
+          $userBefore = Get-BsRegPath 'User'
+          $failed = 0
+          foreach ($shell in $BsPs51, $BsPwsh) {
+              Write-Host "::group::bootstrap.ps1 -DryRun under $shell"
+              $r = Invoke-BsRun $shell @('-DryRun')
+              Write-Host '::endgroup::'
+              if ($r.Code -ne 0) { Write-Host "::error::the dry run under $shell exited $($r.Code)"; $failed = 1; continue }
+              if (-not $r.Log) { Write-Host "::error::the dry run under $shell wrote no log under $BsLogDir"; $failed = 1; continue }
+              $res = Get-BsResults $r.Log
+              foreach ($t in $BsTools) {
+                  $s = $res[$t]
+                  if (-not $s) { Write-Host "::error::dry run under ${shell}: no result line for $t in $($r.Log)"; $failed = 1 }
+                  elseif ($s.Status -ne 'would install') { Write-Host "::warning::dry run under ${shell}: $t is '$($s.Status)' ($($s.Detail)), expected 'would install' with the runner's copy out of reach" }
+                  else { Write-Host "$t - would install ($($s.Detail))" }
+              }
+              $dl = @(Select-String -LiteralPath $r.Log -Pattern '\]\s+downloading\s')
+              if ($dl.Count) { Write-Host "::error::the dry run under $shell logged a download: $($dl[0].Line)"; $failed = 1 }
+          }
+          if ((Get-BsRegPath 'User') -ne $userBefore) { Write-Host '::error::a dry run changed the user PATH'; $failed = 1 }
+          if (Test-Path -LiteralPath (Join-Path $env:LOCALAPPDATA 'BlueStep\tools')) { Write-Host '::error::a dry run created %LOCALAPPDATA%\BlueStep\tools'; $failed = 1 }
+          exit $failed
+        shell: pwsh
+
+      - name: Real run, no token, no plugins (Windows PowerShell 5.1)
+        if: runner.os == 'Windows'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . (Join-Path $env:RUNNER_TEMP 'bs-ci.ps1')
+          $r = Invoke-BsRun $BsPs51 @('-SkipToken', '-SkipPlugins')
+          if (-not $r.Log) { Write-Host "::error::the run wrote no log under $BsLogDir"; exit 1 }
+          "BS_RUN1_LOG=$($r.Log)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          [IO.File]::WriteAllText((Join-Path $env:RUNNER_TEMP 'user-path-run1.txt'), (Get-BsRegPath 'User'))
+          if ($r.Code -ne 0) {
+              Write-Host "::error::the first real run exited $($r.Code): an item failed or the run stopped (the summary above says which)"
+              exit 1
+          }
+        shell: pwsh
+
+      # A new shell: pwsh -NoProfile with PATH rebuilt from the registry. Our
+      # copy of each tool must exist and report its pinned version; which copy
+      # the new shell resolves is reported, and a different one is a warning
+      # (a runner copy this job did not hide), not a failure.
+      - name: Each tool at its pinned version, as a new shell sees it
+        if: runner.os == 'Windows'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . (Join-Path $env:RUNNER_TEMP 'bs-ci.ps1')
+          $pinned = Get-BsPinned
+          $res = Get-BsResults $env:BS_RUN1_LOG
+          $probe = @'
+          $ProgressPreference = 'SilentlyContinue'
+          $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+          $out = foreach ($t in 'node', 'git', 'gh', 'b6p') {
+              $c = Get-Command $t -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+              $v = ''
+              if ($c) { try { $v = ((& $c.Source --version 2>&1) | Select-Object -First 1) -join '' } catch { $v = "error: $($_.Exception.Message)" } }
+              [pscustomobject]@{ Tool = $t; Path = $(if ($c) { $c.Source } else { '' }); Version = [string]$v }
+          }
+          ConvertTo-Json -InputObject @($out) -Compress
+          '@
+          $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($probe))
+          $seen = (& $BsPwsh -NoProfile -NonInteractive -EncodedCommand $enc) -join '' | ConvertFrom-Json
+          $failed = 0
+          foreach ($t in $BsTools) {
+              $status = if ($res[$t]) { $res[$t].Status } else { '<no result line>' }
+              $n = $seen | Where-Object { $_.Tool -eq $t } | Select-Object -First 1
+              $newShell = if ($n.Path) { "$($n.Path) ($(Get-BsVersion $n.Version))" } else { 'nothing' }
+              Write-Host "$t - run 1: $status; a new shell resolves $newShell"
+              if ($status -eq 'ok') {
+                  Write-Host "::warning::$t was already on this runner and was kept; its download and install were not exercised"
+                  continue
+              }
+              if ($status -ne 'installed' -and $status -ne 'needs you') {
+                  Write-Host "::error::$t - run 1 reported '$status': $($res[$t].Detail)"
+                  $failed = 1
+                  continue
+              }
+              $ours = Get-BsOurExe $t
+              if (-not $ours) { Write-Host "::error::$t - run 1 reported '$status' but the BlueStep copy is not where the script installs it"; $failed = 1; continue }
+              $ourVer = Get-BsVersion ((& $ours --version 2>&1) -join ' ')
+              if ($ourVer -ne $pinned[$t]) { Write-Host "::error::$t - $ours reports $ourVer, pinned is $($pinned[$t])"; $failed = 1; continue }
+              if ($n.Path -and ([IO.Path]::GetFullPath($n.Path) -ieq [IO.Path]::GetFullPath($ours))) {
+                  Write-Host "$t - the BlueStep copy $ours at pinned $ourVer is what a new shell runs. OK"
+              } else {
+                  Write-Host "::warning::$t - the BlueStep copy $ours is at pinned $ourVer, but a new shell resolves $newShell first (shadowed; the script said '$status': $($res[$t].Detail))"
+              }
+          }
+          $k = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment')
+          try { $kind = $k.GetValueKind('Path') } finally { $k.Close() }
+          if ($kind -ne [Microsoft.Win32.RegistryValueKind]::ExpandString) { Write-Host "::error::the user PATH is $kind, expected REG_EXPAND_SZ"; $failed = 1 }
+          exit $failed
+        shell: pwsh
+
+      # Under PowerShell 7 this time, so a real run goes through both hosts.
+      - name: Second run changes nothing (PowerShell 7)
+        if: runner.os == 'Windows'
+        run: |
+          $ErrorActionPreference = 'Stop'
+          . (Join-Path $env:RUNNER_TEMP 'bs-ci.ps1')
+          $userBefore = [IO.File]::ReadAllText((Join-Path $env:RUNNER_TEMP 'user-path-run1.txt'))
+          $machineBefore = [IO.File]::ReadAllText((Join-Path $env:RUNNER_TEMP 'machine-path.txt'))
+          $r = Invoke-BsRun $BsPwsh @('-SkipToken', '-SkipPlugins')
+          $failed = 0
+          if ($r.Code -ne 0) { Write-Host "::error::the second run exited $($r.Code)"; $failed = 1 }
+          if (-not $r.Log) { Write-Host "::error::the second run wrote no log under $BsLogDir"; $failed = 1 }
+          else {
+              foreach ($hit in @(Select-String -LiteralPath $r.Log -Pattern '\]\s+downloading\s')) { Write-Host "::error::the second run downloaded something: $($hit.Line)"; $failed = 1 }
+              $res = Get-BsResults $r.Log
+              foreach ($t in $BsTools) {
+                  $s = $res[$t]
+                  if (-not $s -or $s.Status -ne 'ok') { Write-Host "::error::second run: $t is '$(if ($s) { $s.Status } else { '<no result line>' })', expected ok"; $failed = 1 }
+                  else { Write-Host "$t - ok ($($s.Detail))" }
+              }
+          }
+          $userAfter = Get-BsRegPath 'User'
+          if ($userAfter -ne $userBefore) {
+              Write-Host "::error::the second run changed the user PATH"
+              Write-Host "before: $userBefore"
+              Write-Host "after:  $userAfter"
+              $failed = 1
+          }
+          $machineAfter = Get-BsRegPath 'Machine'
+          if ($machineAfter -ne $machineBefore) {
+              # Show what changed: added and removed entries, compared case-insensitively and
+              # without trailing backslashes, so a reorder or a cosmetic rewrite is visible as such.
+              $norm = { param($p) @($p -split ';' | Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\').ToLowerInvariant() }) }
+              $b = & $norm $machineBefore; $a = & $norm $machineAfter
+              $added = @($a | Where-Object { $b -notcontains $_ }); $removed = @($b | Where-Object { $a -notcontains $_ })
+              Write-Host "machine PATH entries added: $(if ($added) { $added -join ' | ' } else { '(none)' })"
+              Write-Host "machine PATH entries removed: $(if ($removed) { $removed -join ' | ' } else { '(none)' })"
+              # The runner is elevated, and elevated, Git for Windows' installer writes the machine
+              # PATH (not the script, which only writes the user PATH): it adds the cmd folder of the
+              # Git it installs and drops the entries of the Git install it replaces. That much is
+              # expected here and is a warning. With /o:PathOption=Cmd it must add cmd only, never
+              # usr\bin or the mingw/ucrt bin folder. Anything else is an error.
+              $ourGit = (Join-Path $env:LOCALAPPDATA 'Programs\Git').ToLowerInvariant()
+              $badAdd = @($added | Where-Object { $_ -ne "$ourGit\cmd" })
+              $badRemove = @($removed | Where-Object { $_ -notmatch '\\git(\\|$)' })
+              if ($badAdd -or $badRemove) {
+                  if ($badAdd) { Write-Host "unexpected machine PATH additions: $($badAdd -join ' | ')" }
+                  if ($badRemove) { Write-Host "unexpected machine PATH removals: $($badRemove -join ' | ')" }
+                  Write-Host '::error::the machine PATH changed beyond what the elevated Git installer does (the script must never edit it)'; $failed = 1
+              } elseif ($added -or $removed) {
+                  Write-Host '::warning::the elevated Git installer changed the machine PATH (expected on an elevated runner; a normal user cannot write it)'
+              } else { Write-Host '::warning::the machine PATH string changed (order or formatting) but holds the same entries' }
+          }
+          exit $failed
+        shell: pwsh
+
+      # ------------------------------------------------------------ macOS
+      # Assumes bootstrap.sh mirrors the .ps1's options and log words
+      # (--dry-run, --versions-file, --skip-token, --skip-plugins; a log under
+      # ~/.bluestep/bootstrap/ whose download lines say "downloading"). Spec
+      # tasks 8-9 must keep these steps in step with the script, and may
+      # tighten the version report into an assertion.
+
+      - name: Syntax check and ASCII scan (bash)
+        if: runner.os == 'macOS' && hashFiles('bootstrap/bootstrap.sh') != ''
+        run: |
+          set -euo pipefail
+          bash -n bootstrap/bootstrap.sh
+          if perl -ne 'if (/[^\x00-\x7F]/) { print "::error file=bootstrap/bootstrap.sh,line=" . $. . "::non-ASCII byte(s) on this line\n"; $bad = 1 } END { exit($bad ? 1 : 0) }' bootstrap/bootstrap.sh; then
+            echo "bootstrap/bootstrap.sh: bash -n clean, pure ASCII. OK"
+          else
+            exit 1
+          fi
+        shell: bash
+
+      - name: Dry run, real run, second run (bash)
+        if: runner.os == 'macOS' && hashFiles('bootstrap/bootstrap.sh') != ''
+        run: |
+          set -euo pipefail
+          VF="$GITHUB_WORKSPACE/$VERSIONS_FILE"
+          LOGDIR="$HOME/.bluestep/bootstrap"
+          profiles() {
+            for f in "$HOME/.zprofile" "$HOME/.zshrc" "$HOME/.bash_profile" "$HOME/.bashrc" "$HOME/.profile"; do
+              if [ -f "$f" ]; then shasum -a 256 "$f"; fi
+            done
+          }
+          newest_log() { ls -t "$LOGDIR"/*.log 2>/dev/null | head -n 1 || true; }
+
+          echo "::group::bootstrap.sh --dry-run"
+          bash bootstrap/bootstrap.sh --dry-run --versions-file "$VF"
+          echo "::endgroup::"
+
+          echo "::group::bootstrap.sh --skip-token --skip-plugins (run 1)"
+          bash bootstrap/bootstrap.sh --skip-token --skip-plugins --versions-file "$VF"
+          echo "::endgroup::"
+
+          echo "A new login shell resolves:"
+          zsh -l -c 'for t in node git gh b6p; do printf "  %s: %s %s\n" "$t" "$(command -v "$t" || echo none)" "$("$t" --version 2>&1 | head -n 1)"; done'
+
+          BEFORE="$(profiles)"
+          LOG1="$(newest_log)"
+          echo "::group::bootstrap.sh --skip-token --skip-plugins (run 2)"
+          bash bootstrap/bootstrap.sh --skip-token --skip-plugins --versions-file "$VF"
+          echo "::endgroup::"
+          LOG2="$(newest_log)"
+          FAILED=0
+          if [ -z "$LOG2" ] || [ "$LOG2" = "$LOG1" ]; then
+            echo "::error::the second run wrote no new log under $LOGDIR"
+            FAILED=1
+          elif grep -i 'downloading' "$LOG2"; then
+            echo "::error::the second run downloaded something (lines above)"
+            FAILED=1
+          fi
+          if [ "$(profiles)" != "$BEFORE" ]; then
+            echo "::error::the second run changed a shell profile"
+            FAILED=1
           fi
           exit "$FAILED"
         shell: bash

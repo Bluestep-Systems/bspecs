@@ -1,6 +1,9 @@
 # ADR: One setup skill, setup as a step, and the end of `block-tsc`
 
-**Status:** Accepted (2026-09-22)
+**Status:** Accepted (2026-09-22). **Superseded in part by
+[`machine-bootstrap.md`](machine-bootstrap.md) (2026-11-05):** decision 6's README prompt 1, where
+the agent runs the npm install of `b6p`. On Windows the machine half now starts with a bootstrap
+script the user runs in their own terminal; the agent hands it over and never runs it.
 
 **Date:** 2026-09-22
 

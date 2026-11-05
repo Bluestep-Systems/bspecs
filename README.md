@@ -6,6 +6,23 @@ same source in `plugins/`. Each plugin is installed on its own and released on i
 BlueStep component workspaces, an opt-in check that keeps client data out of committed files, base
 tooling for every other repo, and the BlueStep One team tooling, which lives in its own repo.
 
+## Set up a machine in one step (Windows)
+
+On Windows, start here. Open **Windows PowerShell** (normally, not as administrator), paste this
+line and press Enter:
+
+```powershell
+irm https://raw.githubusercontent.com/Bluestep-Systems/bluestep-ai/bootstrap-v1.0.0/bootstrap/bootstrap.ps1 | iex
+```
+
+It installs, for your user only and without admin rights, the tools the plugins need (Git,
+Node.js, the GitHub CLI, the `b6p` CLI, and the Claude Code CLI if you use Claude), at tested
+versions with checked hashes. It signs you in to GitHub, saves your platform token (you paste it
+once, hidden), installs the plugins for the AI apps it finds, and ends with a summary. Run it
+yourself, in your own terminal; an AI agent hands it over but never runs it.
+[`bootstrap/README.md`](bootstrap/README.md) has the "download, check the hash, read, run" form,
+the options, and how to undo it. macOS and Linux are coming; until then, use the steps below.
+
 ## Plugins
 
 Add the marketplace once per machine, then install the plugins you need:
@@ -33,8 +50,9 @@ JetBrains, Cursor's git requirement, Codex's subagent copy) are in the
 
 ## Get started
 
-For BlueStep work, open your AI coding agent (Claude Code, Cursor or Codex) in any folder, paste
-this, press enter:
+On Windows, run the [one-step setup](#set-up-a-machine-in-one-step-windows) first; then, in your
+project folder, type `/b6p-setup`. Otherwise, for BlueStep work, open your AI coding agent (Claude
+Code, Cursor or Codex) in any folder, paste this, press enter:
 
 > Set up the BlueStep developer tooling on this machine. Work it out by checking, not by asking me;
 > the one question to ask me is in step 3.
@@ -73,8 +91,9 @@ this, press enter:
 > 6. Check whether `B6PT_TOKEN` is set (`test -n "$B6PT_TOKEN" && echo OK`). The plugin's gateway MCP
 >    needs it. If it is missing, tell me where to create my `b6pt_` token (BlueStep → Tools →
 >    Organization Admin → Super tab → Global Users → my account → Access Tokens; if I have no Super
->    tab, I ask BlueStep for one) and how to set it for my OS (Windows: `setx B6PT_TOKEN "b6pt_…"`;
->    macOS/Linux: my shell profile). The same token works for `b6p auth set`. Never ask me for it.
+>    tab, I ask BlueStep for one) and how to set it for my OS (Windows: the one-step setup in this
+>    repo's README, which asks for it hidden and keeps it off the command line; macOS/Linux: my
+>    shell profile). The same token works for `b6p auth set`. Never ask me for it.
 > 7. Finish with one line: fully quit and reopen the app, start a **new** session in the folder
 >    where my BlueStep work will live, and there type `/b6p-setup` — it checks that the gateway
 >    answers.

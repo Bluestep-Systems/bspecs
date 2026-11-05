@@ -28,6 +28,7 @@ plugins/bluestep-tools/           ← crossTool true
 plugins/phi-guard/                ← crossTool true — hooks/phi-guard.sh + hooks/lib/{hook-input,phi-detect}.sh
 plugins/core-tools/               ← crossTool false (Claude Code only) — skills/, lane/, docs/, tools/
 tools/gen-cross-tool/             ← the generator over plugins/* — npm run gen / gen:check
+bootstrap/                        ← bootstrap.ps1, the machine setup the user runs; bootstrap-v* tags from version.json
 dist/{cursor,codex}/<name>/       ← GENERATED per crossTool plugin, committed, never hand-edited
 .github/workflows/                ← ci.yml, release-tag.yml, publish.yml (manual-tag path)
 ```
@@ -54,6 +55,10 @@ conversationally.
   Hooks run in **whatever shell hosts the agent — Git Bash on Windows, not WSL** — so they must
   not assume `jq` or WSL tools; that assumption is why they silently allowed everything for 77
   days. Parser fallback is jq → python3 → python → node, and the guardrails **fail closed**.
+- **Machine bootstrap.** `bootstrap/bootstrap.ps1` installs the tools per user at the versions and
+  SHA-256 in `plugins/bluestep-tools/skills/b6p-setup/assets/tool-versions.json`, the one file the
+  skills also read minimums from. The user runs it; an agent hands it over, never runs it. A change
+  under `bootstrap/**` or to that file needs a `bootstrap/version.json` bump. → `machine-bootstrap.md`
 - **Everything else: read the skill file for what it does, the ADR for why.** Gateway MCP and
   `[PLATFORM]` authoring → `platform-mcp-integration.md` and the single-source procedure page
   `plugins/bluestep-tools/skills/bluestep-reference/conventions/mcp-platform-authoring.md`. Bare
