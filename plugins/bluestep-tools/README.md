@@ -44,10 +44,15 @@ but no rules file at all starts with a one-line offer to set it up.
 The platform token (`B6PT_TOKEN`) is **required**: the bundled gateway MCP, the plugin's main tool
 for reading and building on the platform, does not start without it. The CLI stores its own copy
 (`b6p auth set`), but the same `b6pt_` token works for both. `/b6p-setup` walks you through it and
-calls the gateway to prove it answers. Windows: `setx B6PT_TOKEN "b6pt_…"` at User scope, then fully restart the app — a
+calls the gateway to prove it answers. Windows: the [machine bootstrap](../../bootstrap/README.md)
+saves it at User scope without putting it on a command line, then fully restart the app — a
 variable exported in a shell never reaches a GUI-launched app.
 
 ## Requirements
+
+On Windows, the [machine bootstrap](../../bootstrap/README.md) sets up everything in this list in
+one run, for your user only and without admin rights. `/b6p-setup` hands it over when something is
+missing. Elsewhere, or by hand:
 
 - **git** — every tool downloads the plugin with git, and on Windows the hooks run in Git Bash.
 - **The `b6p` CLI on PATH, at or above `tools.b6p.min`** in

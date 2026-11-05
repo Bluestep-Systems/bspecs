@@ -30,6 +30,13 @@ workaround (Option E). This ADR is now historical — kept for the rationale tra
 > the new binary from the releases page (README prompt 1, which the user pastes, is the one place
 > an agent runs the npm install).
 
+> **Superseded in part by [`machine-bootstrap.md`](machine-bootstrap.md) (2026-11-05):** Option C's
+> "print the commands" and "no half-failed automatic setup" no longer describe the first way to set
+> up a machine. A script the user runs in their own terminal installs `b6p` (and Git, Node, gh) per
+> user at a pinned version with a checked SHA-256, and reports each item it could not finish. The
+> skills still never run an install themselves; they hand over that script first and the per-item
+> commands second.
+
 **Date:** 2026-05-21 (updated 2026-06-19)
 
 ## Update — 2026-06-19 (publish chain shipped)

@@ -29,7 +29,14 @@ test -n "$B6PT_TOKEN" && echo OK
 
 - Prints `OK` → the token is set, but the app started before it was. Fully restart the app, open a new
   session, and run `/b6p-setup` again so the gateway check can run.
-- Prints nothing → walk the user through the two one-time steps below.
+- Prints nothing → on Windows, hand over the bootstrap one-liner first (below); otherwise, or if
+  the user would rather do it by hand, walk them through the two one-time steps after it.
+
+**On Windows, the bootstrap is the first way.** The one-liner in `/b6p-setup` step 1 ("Windows:
+the bootstrap first") asks for the token with hidden input in the user's own PowerShell window,
+checks it against the gateway (a refused token is never saved), and saves it as the User-scope
+`B6PT_TOKEN` and in `b6p`'s own login. The token never goes on a command line. The user runs it; you never run it and
+never see the token. Then the user fully restarts the app and runs `/b6p-setup` again.
 
 The project files do not depend on the token, so the rest of the setup still runs, but the setup is
 **not complete** until `available_tenants` answers.
@@ -50,15 +57,26 @@ BlueStep UI → **Tools → Organization Admin → Super tab → Global Users �
 
 - Linux / WSL / macOS, **launched from a terminal**: add `export B6PT_TOKEN="b6pt_…"` to your shell
   profile (`~/.bashrc` / `~/.zshrc`), then open a new terminal.
-- **Windows**: `setx B6PT_TOKEN "b6pt_…"` — **User scope** — then **fully restart the app** (quit it, don't
-  just open a new terminal or window). A variable exported in a shell session never reaches a
-  GUI-launched app; only the persisted User-scope variable does, and only for processes started after it
-  was set.
+- **Windows**: the bootstrap above, or by hand in PowerShell (not as administrator). These lines ask
+  for the token with hidden input and save it at **User scope** in-process, so the token is never
+  typed on a command line (`setx B6PT_TOKEN "b6pt_…"` would put it there, and in the shell history):
+
+  ```powershell
+  $s = Read-Host -AsSecureString 'Paste your b6pt_ token'
+  $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($s)
+  try { [Environment]::SetEnvironmentVariable('B6PT_TOKEN', [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b), 'User') } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b) }
+  ```
+
+  Then **fully restart the app** (quit it, don't just open a new terminal or window). A variable
+  exported in a shell session never reaches a GUI-launched app; only the persisted User-scope variable
+  does, and only for processes started after it was set.
 - macOS / Linux, **launched from the GUI** (Spotlight / Dock / app icon): GUI apps do **not** read your
   shell profile, so an `export` in `.zshrc` will **not** reach them. Either launch from a terminal, run
   `launchctl setenv B6PT_TOKEN "b6pt_…"` (macOS; clears on logout), or set it in a user-level config the
   tool reads (Claude Code: the `env` block of `~/.claude/settings.json` in your home dir, never committed —
   or a gitignored `.claude/settings.local.json`; **never** the committed project settings file).
+  A macOS bootstrap is planned that keeps the token in the login Keychain and sets it again at each
+  login; it does not exist yet, so use one of these routes until it ships.
 
 Then start a fresh session — the bundled gateway picks up the token automatically — and run
 `/b6p-setup` again: it calls `available_tenants` to confirm the gateway answers.
