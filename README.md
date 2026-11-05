@@ -24,7 +24,7 @@ Add the marketplace once per machine, then install the plugins you need:
 | **`core-tools`** | Every repo that is not a BlueStep component workspace | `claude plugin install core-tools@bluestep --scope user` | not yet | not yet | [README](plugins/core-tools/README.md) |
 
 BlueStep staff: `one-tools` (BlueStep One work) is in the internal `bluestep-internal` marketplace,
-`Bluestep-Systems/one-tools` (staff access); its README there has the install.
+`Bluestep-Systems/bluestep-ai-internal` (staff access); its README there has the install.
 
 On the Claude desktop app, install each one from **Browse plugins** instead; plugins there are
 managed by your claude.ai account, so the CLI commands do not apply. The per-tool details (VS Code,

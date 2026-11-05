@@ -425,7 +425,8 @@ the issue in B. A client that does not follow a 307 on POST opens nothing.
 ## Phase 3 amendment
 
 Built and rolled out 2026-11-05. one-tools now lives in `plugins/one-tools/` of the private
-`Bluestep-Systems/one-tools` repo, which is the **`bluestep-internal`** marketplace, and this
+`Bluestep-Systems/bluestep-ai-internal` repo (named `Bluestep-Systems/one-tools` until the rename
+below), which is the **`bluestep-internal`** marketplace, and this
 marketplace no longer lists it. Spec: `.claude/specs/internal-marketplace/` in that repo's checkout
 (not committed); this section is its record.
 
@@ -435,6 +436,13 @@ marketplace no longer lists it. Spec: `.claude/specs/internal-marketplace/` in t
   Every project's one-tools config, the install instructions, clones and the access list already
   name it, so nothing goes through a redirect. A rename stays possible later, with phase 2's rule
   that an old name is never reused.
+  **Amended 2026-11-05: renamed to `Bluestep-Systems/bluestep-ai-internal` the same day.** With a
+  handful of users the redirect cost is small, and the name now matches the public repo and can
+  hold other internal plugins (phase 5). The marketplace name and the plugin id did not change.
+  The old URL redirects: `git ls-remote` on it and `claude plugin marketplace update
+  bluestep-internal` on a machine registered with it both worked. one-tools 0.12.0 names the new
+  repo and has `/one-setup` move a project's marketplace source off the old name, the same rule as
+  the `bluestep` move. `Bluestep-Systems/one-tools` is never to be reused.
 - **The marketplace is `bluestep-internal`**; the plugin id is `one-tools@bluestep-internal`. The
   plugin keeps its name (decision 4).
 - **Same layout and release scheme as here** (decision 3): `plugins/<name>/`, a root catalog README,
