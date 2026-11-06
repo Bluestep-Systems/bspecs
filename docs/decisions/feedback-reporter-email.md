@@ -1,6 +1,6 @@
 # ADR: Close-out notifications email the feedback reporter, worded by a resolution field
 
-**Status:** Accepted (2026-07-23). Amends [`feedback-intake-bluehq-endpoint.md`](feedback-intake-bluehq-endpoint.md) (reporter identity: optional → **required**). Amended 2026-07-31: multi-reporter support + email-silent `duplicate` closes (see the amendment section at the end).
+**Status:** Accepted (2026-07-23). Amends [`feedback-intake-bluehq-endpoint.md`](feedback-intake-bluehq-endpoint.md) (reporter identity: optional → **required**). Amended 2026-07-31: multi-reporter support + email-silent `duplicate` closes. Amended 2026-11-06: `stale` and `wont-fix` closes go email-silent too (see the amendment sections at the end).
 
 **Date:** 2026-07-23
 
@@ -17,7 +17,7 @@ A plain "your item was closed" email would mislead: on AI.List, *Closed* can mea
 **When an AI.List task transitions to Closed, a BlueHQ endpoint emails the reporter — with wording driven by a `resolution` dropdown that gates the send (no resolution → no email, only a nudge comment), and a body chosen by a three-tier ladder.** "Required" here is enforced by the endpoint, not by ClickUp — Required Custom Fields turned out to be plan-gated (see below).
 
 - **Trigger:** a ClickUp webhook (`taskStatusUpdated`, list-scoped) POSTs to the *existing* intake endpoint at `?hook=close` — one component, two doors (components cannot share code, so a second component would duplicate the credential plumbing). Deliveries are HMAC-verified (`X-Signature`, secret in the same top-level-office token form as the other credentials). Event-driven; no polling.
-- **Semantics via `resolution`:** a new dropdown custom field (`shipped` / `fixed-unreleased` / `wont-fix` / `duplicate` / `stale`) set by whoever closes. **All outcomes** get a (differently-worded) email — even a "no" tells the reporter they were heard. Empty `resolution` → **no email**; the endpoint posts a nudge comment instead ("set `resolution` and re-close to send"). Required Custom Fields turned out to be plan-gated (Business+) and unavailable, so the nudge backstop is the *only* enforcement — anticipated and acceptable.
+- **Semantics via `resolution`:** a new dropdown custom field (`shipped` / `fixed-unreleased` / `wont-fix` / `duplicate` / `stale`) set by whoever closes. **All outcomes** get a (differently-worded) email — even a "no" tells the reporter they were heard. *(Amended 2026-11-06: `stale` and `wont-fix` no longer send one — see the last amendment.)* Empty `resolution` → **no email**; the endpoint posts a nudge comment instead ("set `resolution` and re-close to send"). Required Custom Fields turned out to be plan-gated (Business+) and unavailable, so the nudge backstop is the *only* enforcement — anticipated and acceptable.
 - **Body ladder:** (1) a `resolution-note` text-area custom field — a reporter-facing paragraph sent **verbatim** when present; (2) else a **`B.ai` draft** from the task title/description/resolution/comments — tenant default provider, no `apiKey` (system usage tracking), spend-capped per flag, system prompt constrained to plain, category-level, reporter-facing language; (3) else fixed per-resolution generic wording. An email always goes out once the gates pass — the ladder only picks the body. `resolution-note` is deliberately **never required**: a forced text field yields junk that would land verbatim in an inbox, worse than the AI/generic tiers.
 - **Visibility + dedupe in one artifact:** after sending, the endpoint posts a sent-marker comment on the task **quoting the exact email body**. It is the dedupe key (re-close sends nothing) and the after-the-fact review surface — a closer who skipped the note immediately sees what went out.
 - **Reporter email becomes required at intake** (the amendment): the skill's confirm gate is editable but not skippable, and the endpoint rejects payloads with a missing/implausible email. Anonymous filing ends deliberately — the loop-closing promise is worthless without an address, and `git config` auto-fill makes the requirement near-zero friction. Pre-change tasks with no reporter email are skipped silently at close.
@@ -65,6 +65,30 @@ need (the resolution is the "update your plugin now" signal). Two changes, both 
 Rejected alternative: emailing dupe reporters "tracked elsewhere, follow the link" at
 consolidation time — an actionless interim notification; the reporter only needs the final
 outcome, which the multi-reporter field now guarantees they get.
+
+## Amendment (2026-11-06): `stale` and `wont-fix` closes go email-silent
+
+The backlog sweep of 2026-11 closes many long-parked items as `stale` (the text or tool they
+named is gone) or `wont-fix`. An email for those gives the reporter nothing to act on: there is
+no version to update to and nothing changed. Sent in a batch, months after filing, it mostly
+reads as a notice that the item sat for a long time. The maintainer decided that only a change
+the reporter can use is emailed.
+
+- **`shipped` and `fixed-unreleased` still email**, exactly as before (note → `B.ai` → generic).
+- **`stale` and `wont-fix` send no email.** The endpoint posts a once-only marker comment
+  (`🔇 Silent close — no email sent`, fourth distinct prefix) naming the resolution and the
+  reporters not emailed, so the skip reads as deliberate, not as a failure. A `resolution-note`
+  on such a close is not sent.
+- **The reporter still has a record**: the triage comment on the task and the closed GitHub issue
+  say why it was closed. Whoever wants a reporter told about a `wont-fix` writes to them directly.
+- **Order matters:** no `stale` or `wont-fix` close may run before this endpoint change is
+  published, or the old behaviour emails the reporter.
+
+The `stale` / `wont-fix` wording entries stay in the code but are not used on the live path.
+
+Rejected alternatives: leaving `resolution` empty on these closes (no email, but the outcome is
+lost and the endpoint posts a nudge on every one), and a per-close "do not notify" flag (one more
+field to remember, for a rule that holds for every close of these two kinds).
 
 ## References
 

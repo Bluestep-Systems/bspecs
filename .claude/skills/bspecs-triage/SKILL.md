@@ -23,6 +23,7 @@ on this skill and on the user's in-session decisions.
 | Cross-repo (b6p-cli, web, other) | comment naming the target repo (handoff) | `up next` |
 | Duplicate of an **open/in-flight** task | silent close per conventions (below) | `Closed` |
 | Duplicate of **already-shipped** work, reporter on an older plugin version | close `shipped`, resolution-note names the fixed version + how to update | `Closed` |
+| No longer applies (the cited text, tool or behaviour is gone) | close `stale`, comment says what changed — **no email** | `Closed` |
 | Needs a human decision (capability request, wont-fix candidate, scoping call) | comment stating the exact decision needed | `blocked/waiting` |
 
 **Fix-verification lanes** (used by verification waves, not by intake triage): `check on 20` = a fix
@@ -85,6 +86,10 @@ verification waves `check on 20` / `Rejected fix`.
      (`🔇 Duplicate close — no email sent — reporter(s) <email> get the resolution email from
      <survivor> when it closes`), and the reporter appended to the **survivor's** `reporter`
      field. Never mark `resolution = shipped` unless the fix is actually in a tagged release.
+   - **`stale` and `wont-fix` closes are silent too** (ADR `feedback-reporter-email.md`, amendment
+     2026-11-06): no email goes out and a `resolution-note` is not sent, so put the reason in a
+     task comment instead; the endpoint posts its own `🔇 Silent close — no email sent` marker.
+     Only `shipped` and `fixed-unreleased` email the reporter.
    - Cross-link comments on related tasks (conflicts, corroborations) — cite verified
      file:line evidence, not the reports' own claims.
 
